@@ -1,0 +1,2 @@
+1. Założyć repo na GH
+2. Jedziemy z etapem 2

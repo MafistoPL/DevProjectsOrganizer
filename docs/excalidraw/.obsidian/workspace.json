@@ -1,0 +1,193 @@
+{
+  "main": {
+    "id": "bd458bf1bf22d4e9",
+    "type": "split",
+    "children": [
+      {
+        "id": "f37c4d5e273f8b7f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5619f48c0e0165a6",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "view-9-1-scan.excalidraw"
+              },
+              "icon": "excalidraw-icon",
+              "title": "view-9-1-scan"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f0b52ef6f140b7c6",
+    "type": "split",
+    "children": [
+      {
+        "id": "2d70aeaa7b48f470",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5f350b337f66bb59",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "173a1dbb67399cb7",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "c9b8db040c829167",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "51dfdc66c2deb419",
+    "type": "split",
+    "children": [
+      {
+        "id": "46183cb150a9cd6d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1e23d03447261439",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "view-9-1-scan.excalidraw",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for view-9-1-scan"
+            }
+          },
+          {
+            "id": "a228aed4f0f0a963",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "view-9-1-scan.excalidraw",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from view-9-1-scan"
+            }
+          },
+          {
+            "id": "f301a95f63e2d991",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "e9685007b6f7ca06",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "67c23492494ec706",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "view-9-1-scan.excalidraw",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of view-9-1-scan"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-excalidraw-plugin:New drawing": false
+    }
+  },
+  "active": "5619f48c0e0165a6",
+  "lastOpenFiles": [
+    "view-9-1-scan.excalidraw",
+    "view-9-1-3-scan-whole.excalidraw",
+    "view-9-1-2-scan-roots.excalidraw",
+    "view-9-1-1-scan-idle.excalidraw",
+    "test.md"
+  ]
+}
