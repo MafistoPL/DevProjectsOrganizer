@@ -3,6 +3,11 @@
   flex-direction: column;
   gap: 12px;
   min-width: 480px;
+  padding-top: 16px;
+}
+
+.dialog-content mat-form-field {
+  margin-top: 4px;
 }
 
 .root-list {

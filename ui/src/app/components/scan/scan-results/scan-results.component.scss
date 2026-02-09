@@ -5,6 +5,7 @@
 :host ::ng-deep .panel mat-card-content {
   max-height: 460px;
   overflow: auto;
+  padding-top: 8px;
 }
 
 :host ::ng-deep .live-results-list .suggestion-list {
