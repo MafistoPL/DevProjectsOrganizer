@@ -49,6 +49,12 @@
   padding: 12px 16px;
 }
 
+.suggestion-list.layout-grid .suggestion-card {
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
 .header-row {
   width: 100%;
   display: flex;
@@ -78,6 +84,23 @@
   align-items: center;
 }
 
+.chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #9aa0a6;
+  border-bottom: 2px solid #9aa0a6;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+}
+
+.suggestion-card.is-open .chevron {
+  transform: rotate(45deg);
+}
+
+.suggestion-card.is-grid .chevron {
+  display: none;
+}
+
 .score {
   font-size: 12px;
   color: #37474f;
@@ -104,14 +127,34 @@
 }
 
 .details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 4px;
+}
+
+.details-wrap {
   display: none;
   flex-direction: column;
   gap: 10px;
   padding: 4px 0 4px;
 }
 
-.details[data-open='true'] {
+.details-wrap[data-open='true'] {
   display: flex;
+}
+
+.suggestion-list.layout-grid .details-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.suggestion-list.layout-grid .details {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .detail-row {
@@ -119,11 +162,47 @@
   justify-content: space-between;
   gap: 12px;
   font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row.path-row {
+  align-items: center;
 }
 
 .detail-label {
   color: #5f6368;
   font-weight: 600;
+}
+
+.detail-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.path-value {
+  font-weight: 600;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 2px;
+  text-align: right;
+}
+
+.path-value::-webkit-scrollbar {
+  height: 6px;
+}
+
+.path-value::-webkit-scrollbar-thumb {
+  background: #cfd8dc;
+  border-radius: 999px;
+}
+
+.path-value::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .chip-row {
@@ -150,4 +229,6 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid #eceff1;
 }

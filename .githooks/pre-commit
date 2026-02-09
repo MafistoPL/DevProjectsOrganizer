@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+echo "Running Playwright tests..."
+cd ui
+npm run test:pw

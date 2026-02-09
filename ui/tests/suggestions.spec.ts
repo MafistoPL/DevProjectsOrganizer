@@ -32,6 +32,23 @@ test('project suggestions layout toggles between list and grid', async ({ page }
   await expect(list).not.toHaveClass(/layout-grid/);
 });
 
+test('project suggestions details toggle only in list view', async ({ page }) => {
+  await gotoScan(page);
+
+  const firstCard = page.getByTestId('project-suggest-list').locator('.suggestion-card').first();
+  const firstDetails = firstCard.locator('.details');
+
+  await expect(firstDetails).not.toBeVisible();
+
+  await firstCard.locator('.header-row').click();
+  await expect(firstDetails).toBeVisible();
+
+  const toggle = page.getByTestId('project-suggest-layout');
+  await toggle.getByText('Grid').click();
+
+  await expect(firstDetails).toBeVisible();
+});
+
 test('project suggestions search filters by name', async ({ page }) => {
   await gotoScan(page);
 

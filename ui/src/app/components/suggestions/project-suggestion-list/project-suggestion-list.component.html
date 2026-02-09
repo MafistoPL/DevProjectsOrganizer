@@ -53,7 +53,12 @@
   [class.layout-grid]="layout === 'grid'"
   data-testid="project-suggest-list"
 >
-  <mat-card *ngFor="let item of visibleItems" class="suggestion-card">
+  <mat-card
+    *ngFor="let item of visibleItems"
+    class="suggestion-card"
+    [class.is-open]="layout === 'grid' ? true : item.id === openId"
+    [class.is-grid]="layout === 'grid'"
+  >
     <div class="header-row" (click)="toggleDetails(item.id)" role="button" tabindex="0">
       <div class="title-block">
         <span class="name" data-testid="project-name">{{ item.name }}</span>
@@ -62,28 +67,43 @@
       <div class="meta">
         <span class="score">Score {{ item.score }}</span>
         <span class="status" [attr.data-status]="item.status">{{ item.status }}</span>
+        <span class="chevron" aria-hidden="true"></span>
       </div>
     </div>
 
-    <div class="details" [attr.data-open]="item.id === openId">
-      <div class="detail-row">
-        <span class="detail-label">Path</span>
-        <strong>{{ item.path }}</strong>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Reason</span>
-        <strong>{{ item.reason }}</strong>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Extensions</span>
-        <strong>{{ item.extSummary }}</strong>
-      </div>
+    <div
+      class="details-wrap"
+      [attr.data-open]="layout === 'grid' ? true : item.id === openId"
+    >
+      <div class="details">
+        <div class="detail-row path-row">
+          <span class="detail-label">Path</span>
+          <span
+            #pathValue
+            class="detail-value path-value"
+            [matTooltip]="item.path"
+            [matTooltipDisabled]="!isOverflowing(pathValue)"
+            matTooltipClass="path-tooltip"
+            matTooltipPositionAtOrigin="true"
+          >
+            {{ item.path }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Reason</span>
+          <strong>{{ item.reason }}</strong>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Extensions</span>
+          <strong>{{ item.extSummary }}</strong>
+        </div>
 
-      <div class="detail-row">
-        <span class="detail-label">Markers</span>
-        <div class="chip-row">
-          <span class="chip" *ngFor="let marker of item.markers">{{ marker }}</span>
-          <span class="chip chip-muted" *ngFor="let hint of item.techHints">{{ hint }}</span>
+        <div class="detail-row">
+          <span class="detail-label">Markers</span>
+          <div class="chip-row">
+            <span class="chip" *ngFor="let marker of item.markers">{{ marker }}</span>
+            <span class="chip chip-muted" *ngFor="let hint of item.techHints">{{ hint }}</span>
+          </div>
         </div>
       </div>
 

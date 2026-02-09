@@ -60,3 +60,26 @@ test('Live results items are not clipped', async ({ page }) => {
 
   expect(isLastFullyVisible).toBeTruthy();
 });
+
+test('Live results expands to fill available height', async ({ page }) => {
+  await page.goto('/scan');
+
+  const search = page.getByTestId('project-suggest-search');
+  await search.fill('rust');
+
+  const list = page.getByTestId('project-suggest-list').locator('[data-testid="project-name"]');
+  await expect(list).toHaveCount(1);
+
+  const card = page.getByTestId('live-results-card');
+  await expect(card).toBeVisible();
+
+  const box = await card.boundingBox();
+  const viewport = page.viewportSize();
+
+  if (!box || !viewport) {
+    throw new Error('Unable to read live results bounds');
+  }
+
+  const gap = viewport.height - (box.y + box.height);
+  expect(gap).toBeLessThanOrEqual(96);
+});

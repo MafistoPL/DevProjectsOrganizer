@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type ProjectSuggestionItem = {
   id: string;
@@ -30,7 +31,8 @@ type ProjectSuggestionItem = {
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    MatTooltipModule
   ],
   templateUrl: './project-suggestion-list.component.html',
   styleUrl: './project-suggestion-list.component.scss'
@@ -198,5 +200,12 @@ export class ProjectSuggestionListComponent {
 
   toggleDetails(id: string): void {
     this.openId = this.openId === id ? null : id;
+  }
+
+  isOverflowing(el: HTMLElement | null): boolean {
+    if (!el) {
+      return false;
+    }
+    return el.scrollWidth > el.clientWidth;
   }
 }

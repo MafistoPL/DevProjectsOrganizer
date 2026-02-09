@@ -1,11 +1,27 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .scan-page {
   gap: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .scan-grid {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
   gap: 16px;
+}
+
+.scan-page app-scan-results {
+  flex: 1 1 auto;
+  min-height: 260px;
 }
 
 @media (max-width: 900px) {

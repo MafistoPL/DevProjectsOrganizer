@@ -74,3 +74,10 @@ mat-card.panel .panel-title--roots {
 mat-card.panel .panel-title--status {
   padding-left: 15px;
 }
+
+.mat-mdc-tooltip-panel.path-tooltip .mdc-tooltip__surface {
+  white-space: nowrap !important;
+  max-width: none !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
+}
