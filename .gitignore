@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Node / Angular
+ui/node_modules/
+ui/dist/
+ui/.angular/
+ui/.cache/
+
+# Logs
+npm-debug.log*
+yarn-error.log*
