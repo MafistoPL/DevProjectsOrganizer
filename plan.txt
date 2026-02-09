@@ -1,5 +1,7 @@
 1. Przejrzeć jeszcze plan.md i doszlifować go
-2. Jedziemy z etapem 2
+2. Jedziemy z etapem 2 (inprogress)
+
+2.1 Dodaj żeby pre-commit puszczał testy i nie pozwalał zrobić commit jeśli nie przechodzą testy.
 
 3. Można by do punktu 6.3 Heurystyki sugerowania tagów
 dorzucić, że te heurestyki były by jakoś konfigurowalne z gui / yaml'a

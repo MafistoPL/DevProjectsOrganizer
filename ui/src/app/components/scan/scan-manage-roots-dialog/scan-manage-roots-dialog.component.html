@@ -2,21 +2,33 @@
 <mat-dialog-content class="dialog-content">
   <mat-form-field appearance="outline">
     <mat-label>Add root</mat-label>
-    <input matInput placeholder="D:\\projects" />
+    <input matInput placeholder="D:\\projects" [(ngModel)]="newRoot" />
   </mat-form-field>
-  <button mat-stroked-button color="primary">Add</button>
+  <button mat-stroked-button color="primary" (click)="addRoot()">Add</button>
 
-  <mat-list class="root-list">
-    <mat-list-item *ngFor="let root of roots">
+  <div class="root-list">
+    <div class="root-item" *ngFor="let root of roots$ | async">
       <div class="root-row">
-        <span>{{ root }}</span>
-        <span class="row-actions">
-          <button mat-button>Edit</button>
-          <button mat-button color="warn">Remove</button>
-        </span>
+        <ng-container *ngIf="editingId !== root.id; else editRow">
+          <span>{{ root.path }}</span>
+          <span class="row-actions">
+            <button mat-button (click)="startEdit(root)">Edit</button>
+            <button mat-button color="warn" (click)="removeRoot(root)">Remove</button>
+          </span>
+        </ng-container>
+        <ng-template #editRow>
+          <mat-form-field appearance="outline" class="edit-field">
+            <mat-label>Edit root</mat-label>
+            <input matInput [(ngModel)]="editingPath" />
+          </mat-form-field>
+          <span class="row-actions">
+            <button mat-button color="primary" (click)="saveEdit()">Save</button>
+            <button mat-button (click)="cancelEdit()">Cancel</button>
+          </span>
+        </ng-template>
       </div>
-    </mat-list-item>
-  </mat-list>
+    </div>
+  </div>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button mat-stroked-button mat-dialog-close>Close</button>

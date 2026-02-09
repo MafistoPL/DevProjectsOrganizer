@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+echo "Running Engine unit tests..."
+dotnet test tests/Engine.UnitTests/Engine.UnitTests.csproj
+
+echo "Running AppHost integration tests..."
+dotnet test tests/AppHost.IntegrationTests/AppHost.IntegrationTests.csproj
+
 echo "Running Playwright tests..."
 cd ui
 npm run test:pw

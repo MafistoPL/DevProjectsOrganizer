@@ -37,7 +37,7 @@
 
 .suggestion-list.layout-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(264px, 1fr));
   align-items: start;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .suggestion-list.layout-grid .suggestion-card {
-  height: 260px;
+  height: 286px;
   display: flex;
   flex-direction: column;
 }

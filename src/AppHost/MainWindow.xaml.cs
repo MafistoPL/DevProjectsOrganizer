@@ -1,7 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
+using AppHost.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Web.WebView2.Core;
 
 namespace AppHost;
 
@@ -11,17 +16,196 @@ namespace AppHost;
 public partial class MainWindow : Window
 {
     private const string DefaultDevUrl = "http://localhost:4200/";
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private AppDbContext? _dbContext;
+    private RootStore? _rootStore;
 
     public MainWindow()
     {
         InitializeComponent();
         Loaded += OnLoaded;
+        Closed += OnClosed;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        await InitializePersistenceAsync();
         await WebView.EnsureCoreWebView2Async();
+        WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         WebView.Source = ResolveUiUri();
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _dbContext?.Dispose();
+    }
+
+    private async Task InitializePersistenceAsync()
+    {
+        _dbContext = new AppDbContext(AppDbContext.CreateDefaultOptions());
+        await _dbContext.Database.MigrateAsync();
+        _rootStore = new RootStore(_dbContext);
+        await _rootStore.SeedDefaultsAsync();
+    }
+
+    private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (_rootStore == null)
+        {
+            return;
+        }
+
+        HostRequest? request;
+        try
+        {
+            request = JsonSerializer.Deserialize<HostRequest>(e.WebMessageAsJson, _jsonOptions);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Type))
+        {
+            return;
+        }
+
+        switch (request.Type)
+        {
+            case "roots.list":
+            {
+                var roots = await _rootStore.GetAllAsync();
+                SendResponse(request.Id, request.Type, roots);
+                break;
+            }
+            case "roots.add":
+            {
+                if (!request.Payload.HasValue
+                    || !request.Payload.Value.TryGetProperty("path", out var pathElement))
+                {
+                    SendError(request.Id, request.Type, "Missing root path.");
+                    return;
+                }
+
+                var path = pathElement.GetString();
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    SendError(request.Id, request.Type, "Root path cannot be empty.");
+                    return;
+                }
+
+                var root = await _rootStore.AddAsync(path);
+                SendResponse(request.Id, request.Type, root);
+                break;
+            }
+            case "roots.update":
+            {
+                if (!request.Payload.HasValue)
+                {
+                    SendError(request.Id, request.Type, "Missing payload.");
+                    return;
+                }
+
+                var payload = request.Payload.Value;
+                if (!payload.TryGetProperty("id", out var idElement))
+                {
+                    SendError(request.Id, request.Type, "Missing root id.");
+                    return;
+                }
+
+                if (!payload.TryGetProperty("path", out var pathElement))
+                {
+                    SendError(request.Id, request.Type, "Missing root path.");
+                    return;
+                }
+
+                var idValue = idElement.GetString();
+                if (!Guid.TryParse(idValue, out var rootId))
+                {
+                    SendError(request.Id, request.Type, "Invalid root id.");
+                    return;
+                }
+
+                var path = pathElement.GetString();
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    SendError(request.Id, request.Type, "Root path cannot be empty.");
+                    return;
+                }
+
+                try
+                {
+                    var root = await _rootStore.UpdateAsync(rootId, path);
+                    SendResponse(request.Id, request.Type, root);
+                }
+                catch (Exception ex)
+                {
+                    SendError(request.Id, request.Type, ex.Message);
+                }
+                break;
+            }
+            case "roots.delete":
+            {
+                if (!request.Payload.HasValue)
+                {
+                    SendError(request.Id, request.Type, "Missing payload.");
+                    return;
+                }
+
+                var payload = request.Payload.Value;
+                if (!payload.TryGetProperty("id", out var idElement))
+                {
+                    SendError(request.Id, request.Type, "Missing root id.");
+                    return;
+                }
+
+                var idValue = idElement.GetString();
+                if (!Guid.TryParse(idValue, out var rootId))
+                {
+                    SendError(request.Id, request.Type, "Invalid root id.");
+                    return;
+                }
+
+                var deleted = await _rootStore.DeleteAsync(rootId);
+                SendResponse(request.Id, request.Type, new { id = rootId, deleted });
+                break;
+            }
+            default:
+            {
+                SendError(request.Id, request.Type, $"Unknown message: {request.Type}");
+                break;
+            }
+        }
+    }
+
+    private void SendResponse(string id, string type, object? data)
+    {
+        if (WebView.CoreWebView2 == null)
+        {
+            return;
+        }
+
+        var response = new HostResponse(id, type, true, data, null);
+        var json = JsonSerializer.Serialize(response, _jsonOptions);
+        WebView.CoreWebView2.PostWebMessageAsJson(json);
+    }
+
+    private void SendError(string id, string type, string error)
+    {
+        if (WebView.CoreWebView2 == null)
+        {
+            return;
+        }
+
+        var response = new HostResponse(id, type, false, null, error);
+        var json = JsonSerializer.Serialize(response, _jsonOptions);
+        WebView.CoreWebView2.PostWebMessageAsJson(json);
     }
 
     private Uri ResolveUiUri()
@@ -67,4 +251,7 @@ public partial class MainWindow : Window
 
         return null;
     }
+
+    private sealed record HostRequest(string Id, string Type, JsonElement? Payload);
+    private sealed record HostResponse(string Id, string Type, bool Ok, object? Data, string? Error);
 }

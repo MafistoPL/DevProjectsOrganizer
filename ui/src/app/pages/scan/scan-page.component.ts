@@ -6,6 +6,7 @@ import { ScanResultsComponent } from '../../components/scan/scan-results/scan-re
 import { ScanRootListComponent } from '../../components/scan/scan-root-list/scan-root-list.component';
 import { ScanStartDialogComponent } from '../../components/scan/scan-start-dialog/scan-start-dialog.component';
 import { ScanStatusComponent } from '../../components/scan/scan-status/scan-status.component';
+import { RootsService } from '../../services/roots.service';
 
 @Component({
   selector: 'app-scan-page',
@@ -20,7 +21,10 @@ import { ScanStatusComponent } from '../../components/scan/scan-status/scan-stat
   styleUrl: './scan-page.component.scss'
 })
 export class ScanPageComponent {
-  constructor(private readonly dialog: MatDialog) {}
+  constructor(
+    private readonly dialog: MatDialog,
+    private readonly rootsService: RootsService
+  ) {}
 
   openStartDialog(): void {
     this.dialog.open(ScanStartDialogComponent, {
@@ -30,7 +34,11 @@ export class ScanPageComponent {
 
   openManageRootsDialog(): void {
     this.dialog.open(ScanManageRootsDialogComponent, {
-      width: '560px'
+      width: '560px',
+      data: {
+        roots$: this.rootsService.roots$,
+        rootsService: this.rootsService
+      }
     });
   }
 }

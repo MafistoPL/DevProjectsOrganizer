@@ -3,4 +3,8 @@
     <Project Path="src/AppHost/AppHost.csproj" />
     <Project Path="src/Engine/Engine.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Engine.UnitTests/Engine.UnitTests.csproj" />
+    <Project Path="tests/AppHost.IntegrationTests/AppHost.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

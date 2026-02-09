@@ -14,16 +14,35 @@
   margin-top: 8px;
 }
 
+.root-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.root-item:last-child {
+  border-bottom: none;
+}
+
 .root-row {
   width: 100%;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
   font-size: 13px;
 }
 
+.edit-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
 .row-actions {
   display: flex;
   gap: 8px;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  min-width: 110px;
 }

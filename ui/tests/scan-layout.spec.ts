@@ -83,3 +83,33 @@ test('Live results expands to fill available height', async ({ page }) => {
   const gap = viewport.height - (box.y + box.height);
   expect(gap).toBeLessThanOrEqual(96);
 });
+
+test('Manage roots edit row keeps actions aligned with input', async ({ page }) => {
+  await page.goto('/scan');
+
+  await page.getByRole('button', { name: 'Manage roots' }).click();
+  const dialog = page.locator('mat-dialog-container');
+  await expect(dialog).toBeVisible();
+
+  const editButton = dialog.getByRole('button', { name: 'Edit' }).first();
+  await expect(editButton).toBeVisible();
+  await editButton.click();
+
+  const editField = dialog.locator('.edit-field input');
+  const saveButton = dialog.getByRole('button', { name: 'Save' });
+
+  await expect(editField).toBeVisible();
+  await expect(saveButton).toBeVisible();
+
+  const editBox = await editField.boundingBox();
+  const saveBox = await saveButton.boundingBox();
+
+  if (!editBox || !saveBox) {
+    throw new Error('Unable to read edit layout bounds');
+  }
+
+  const editCenterY = editBox.y + editBox.height / 2;
+  const saveCenterY = saveBox.y + saveBox.height / 2;
+
+  expect(Math.abs(editCenterY - saveCenterY)).toBeLessThanOrEqual(10);
+});
