@@ -1,0 +1,22 @@
+<mat-card class="panel" data-testid="status-card">
+  <mat-card-title class="panel-title panel-title--status">Status</mat-card-title>
+  <mat-card-content class="status-content">
+    <div class="row">
+      <span>Mode</span>
+      <strong>Roots only</strong>
+    </div>
+    <div class="row">
+      <span>Current</span>
+      <strong>E:\backup\...\file.cs</strong>
+    </div>
+    <div class="row">
+      <span>ETA</span>
+      <strong>00:04:12</strong>
+    </div>
+    <div class="row">
+      <span>Files scanned</span>
+      <strong>1,284,992</strong>
+    </div>
+    <mat-progress-bar mode="determinate" [value]="progress"></mat-progress-bar>
+  </mat-card-content>
+</mat-card>

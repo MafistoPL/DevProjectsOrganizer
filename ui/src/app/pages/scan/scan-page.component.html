@@ -1,32 +1,20 @@
-<section class="page">
+<section class="page scan-page">
   <header class="page-header">
     <div>
       <h1 class="page-title">Scan</h1>
-      <p class="page-subtitle">Manage roots, run scans, and review live progress.</p>
+      <p class="page-subtitle">Configure roots, run scans, and review live progress.</p>
     </div>
     <div class="actions">
-      <button mat-raised-button color="primary">Start scan</button>
-      <button mat-stroked-button>Manage roots</button>
+      <button mat-raised-button color="primary" (click)="openStartDialog()">Start scan</button>
+      <button mat-stroked-button (click)="openManageRootsDialog()">Manage roots</button>
+      <button mat-stroked-button>Import roots</button>
     </div>
   </header>
 
-  <div class="card-grid">
-    <mat-card>
-      <mat-card-title>Roots status</mat-card-title>
-      <mat-card-content>Not scanned · Scanned · Changed since last scan</mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-title>Scan options</mat-card-title>
-      <mat-card-content>Roots only · Whole computer · Exclusions</mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-title>Progress</mat-card-title>
-      <mat-card-content>ETA · Files scanned · Current path</mat-card-content>
-    </mat-card>
+  <div class="scan-grid">
+    <app-scan-root-list />
+    <app-scan-status />
   </div>
 
-  <mat-card class="wide-card">
-    <mat-card-title>Live results</mat-card-title>
-    <mat-card-content>Project suggestions stream will appear here.</mat-card-content>
-  </mat-card>
+  <app-scan-results />
 </section>

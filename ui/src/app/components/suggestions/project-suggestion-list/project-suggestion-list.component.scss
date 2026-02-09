@@ -1,0 +1,153 @@
+:host {
+  display: block;
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.toolbar-field {
+  min-width: 200px;
+  flex: 1 1 220px;
+}
+
+.sort-dir,
+.layout-toggle {
+  height: 40px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 4px 16px 4px;
+  box-sizing: border-box;
+}
+
+.suggestion-list.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: start;
+}
+
+.suggestion-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: none;
+  background: #ffffff;
+  padding: 12px 16px;
+}
+
+.header-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.kind {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.score {
+  font-size: 12px;
+  color: #37474f;
+}
+
+.status {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #eceff1;
+  color: #546e7a;
+}
+
+.status[data-status='accepted'] {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status[data-status='rejected'] {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.details {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 4px;
+}
+
+.details[data-open='true'] {
+  display: flex;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.detail-label {
+  color: #5f6368;
+  font-weight: 600;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip-muted {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}

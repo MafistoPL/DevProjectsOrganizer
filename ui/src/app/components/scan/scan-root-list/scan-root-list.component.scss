@@ -1,0 +1,52 @@
+.panel {
+  height: 100%;
+}
+
+.root-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.root-item:last-child .root-row {
+  border-bottom: none;
+}
+
+.path {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+}
+
+.status {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #eceff1;
+  color: #546e7a;
+}
+
+.status[data-status='scanned'] {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status[data-status='changed'] {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.status[data-status='scanning'] {
+  background: #fff8e1;
+  color: #ff8f00;
+}
+
+.status[data-status='not scanned'] {
+  background: #f5f5f5;
+  color: #616161;
+}

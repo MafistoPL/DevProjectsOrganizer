@@ -1,3 +1,15 @@
-.wide-card {
-  margin-top: 8px;
+.scan-page {
+  gap: 20px;
+}
+
+.scan-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .scan-grid {
+    grid-template-columns: 1fr;
+  }
 }

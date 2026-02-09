@@ -48,3 +48,29 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
 }
+
+mat-card.panel {
+  border-radius: 12px;
+}
+
+mat-card.panel .mat-mdc-card-content {
+  padding: 0 16px 20px;
+  overflow: visible;
+}
+
+mat-card.panel mat-card-title {
+  display: block;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 4px 0 8px 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+mat-card.panel .panel-title--roots {
+  padding-left: 12px;
+}
+
+mat-card.panel .panel-title--status {
+  padding-left: 15px;
+}

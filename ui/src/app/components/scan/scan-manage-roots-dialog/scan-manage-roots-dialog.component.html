@@ -1,0 +1,23 @@
+<h2 mat-dialog-title>Manage roots</h2>
+<mat-dialog-content class="dialog-content">
+  <mat-form-field appearance="outline">
+    <mat-label>Add root</mat-label>
+    <input matInput placeholder="D:\\projects" />
+  </mat-form-field>
+  <button mat-stroked-button color="primary">Add</button>
+
+  <mat-list class="root-list">
+    <mat-list-item *ngFor="let root of roots">
+      <div class="root-row">
+        <span>{{ root }}</span>
+        <span class="row-actions">
+          <button mat-button>Edit</button>
+          <button mat-button color="warn">Remove</button>
+        </span>
+      </div>
+    </mat-list-item>
+  </mat-list>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

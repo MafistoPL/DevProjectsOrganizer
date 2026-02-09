@@ -1,0 +1,96 @@
+<div class="list-toolbar">
+  <mat-form-field appearance="outline" class="toolbar-field">
+    <mat-label>Search</mat-label>
+    <input
+      matInput
+      placeholder="Search by project name"
+      [value]="searchTerm"
+      (input)="searchTerm = $any($event.target).value"
+      data-testid="project-suggest-search"
+    />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="toolbar-field">
+    <mat-label>Sort</mat-label>
+    <mat-select
+      [value]="sortKey"
+      (selectionChange)="sortKey = $event.value"
+      data-testid="project-suggest-sort"
+    >
+      <mat-option value="name">Name</mat-option>
+      <mat-option value="score">Score</mat-option>
+      <mat-option value="createdAt">Created</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-button-toggle-group
+    class="sort-dir"
+    [value]="sortDir"
+    (change)="sortDir = $event.value"
+    aria-label="Project suggestions sort direction"
+    data-testid="project-suggest-sort-dir"
+  >
+    <mat-button-toggle value="asc">Asc</mat-button-toggle>
+    <mat-button-toggle value="desc">Desc</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <span class="spacer"></span>
+
+  <mat-button-toggle-group
+    class="layout-toggle"
+    [value]="layout"
+    (change)="layout = $event.value"
+    aria-label="Project suggestions layout"
+    data-testid="project-suggest-layout"
+  >
+    <mat-button-toggle value="list">List</mat-button-toggle>
+    <mat-button-toggle value="grid">Grid</mat-button-toggle>
+  </mat-button-toggle-group>
+</div>
+
+<div
+  class="suggestion-list"
+  [class.layout-grid]="layout === 'grid'"
+  data-testid="project-suggest-list"
+>
+  <mat-card *ngFor="let item of visibleItems" class="suggestion-card">
+    <div class="header-row" (click)="toggleDetails(item.id)" role="button" tabindex="0">
+      <div class="title-block">
+        <span class="name" data-testid="project-name">{{ item.name }}</span>
+        <span class="kind">{{ item.kind }}</span>
+      </div>
+      <div class="meta">
+        <span class="score">Score {{ item.score }}</span>
+        <span class="status" [attr.data-status]="item.status">{{ item.status }}</span>
+      </div>
+    </div>
+
+    <div class="details" [attr.data-open]="item.id === openId">
+      <div class="detail-row">
+        <span class="detail-label">Path</span>
+        <strong>{{ item.path }}</strong>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Reason</span>
+        <strong>{{ item.reason }}</strong>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Extensions</span>
+        <strong>{{ item.extSummary }}</strong>
+      </div>
+
+      <div class="detail-row">
+        <span class="detail-label">Markers</span>
+        <div class="chip-row">
+          <span class="chip" *ngFor="let marker of item.markers">{{ marker }}</span>
+          <span class="chip chip-muted" *ngFor="let hint of item.techHints">{{ hint }}</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button mat-stroked-button color="primary">Accept</button>
+        <button mat-stroked-button color="warn">Reject</button>
+      </div>
+    </div>
+  </mat-card>
+</div>

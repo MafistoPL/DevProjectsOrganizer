@@ -1,0 +1,43 @@
+<div class="layout-toggle">
+  <mat-button-toggle-group
+    [value]="layout"
+    (change)="layout = $event.value"
+    aria-label="Tag suggestions layout"
+  >
+    <mat-button-toggle value="list">List</mat-button-toggle>
+    <mat-button-toggle value="grid">Grid</mat-button-toggle>
+  </mat-button-toggle-group>
+</div>
+
+<mat-accordion class="suggestion-list" [class.layout-grid]="layout === 'grid'">
+  <mat-expansion-panel *ngFor="let item of items" class="suggestion-panel">
+    <mat-expansion-panel-header>
+      <div class="header-row">
+        <div class="title-block">
+          <span class="name">{{ item.project }}</span>
+          <span class="kind">{{ item.action }} · {{ item.tag }}</span>
+        </div>
+        <div class="meta">
+          <span class="score">Conf {{ item.confidence }}</span>
+          <span class="status" [attr.data-status]="item.status">{{ item.status }}</span>
+        </div>
+      </div>
+    </mat-expansion-panel-header>
+
+    <div class="details">
+      <div class="detail-row">
+        <span>Source</span>
+        <strong>{{ item.source }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Reason</span>
+        <strong>{{ item.reason }}</strong>
+      </div>
+
+      <div class="actions">
+        <button mat-stroked-button color="primary">Accept</button>
+        <button mat-stroked-button color="warn">Reject</button>
+      </div>
+    </div>
+  </mat-expansion-panel>
+</mat-accordion>

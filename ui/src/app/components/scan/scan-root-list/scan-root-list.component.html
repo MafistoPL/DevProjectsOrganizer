@@ -1,0 +1,13 @@
+<mat-card class="panel" data-testid="roots-card">
+  <mat-card-title class="panel-title panel-title--roots">Roots</mat-card-title>
+  <mat-card-content>
+    <mat-list>
+      <mat-list-item *ngFor="let root of roots" class="root-item">
+        <div class="root-row">
+          <span class="path">{{ root.path }}</span>
+          <span class="status" [attr.data-status]="root.status">{{ root.status }}</span>
+        </div>
+      </mat-list-item>
+    </mat-list>
+  </mat-card-content>
+</mat-card>

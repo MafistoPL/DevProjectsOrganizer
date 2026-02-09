@@ -1,0 +1,24 @@
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 480px;
+}
+
+.root-list {
+  margin-top: 8px;
+}
+
+.root-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}

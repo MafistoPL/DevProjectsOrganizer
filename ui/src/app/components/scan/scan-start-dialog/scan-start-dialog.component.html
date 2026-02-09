@@ -1,0 +1,40 @@
+<h2 mat-dialog-title>Start scan</h2>
+<mat-dialog-content class="dialog-content">
+  <section class="block">
+    <h3>Mode</h3>
+    <mat-radio-group>
+      <mat-radio-button value="roots">Scan selected roots</mat-radio-button>
+      <mat-radio-button value="whole">Scan whole computer</mat-radio-button>
+      <mat-radio-button value="changed">Only changed since last scan</mat-radio-button>
+    </mat-radio-group>
+  </section>
+
+  <section class="block">
+    <h3>Scope</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Root set</mat-label>
+      <mat-select>
+        <mat-option value="default">Default roots</mat-option>
+        <mat-option value="work">Work</mat-option>
+        <mat-option value="archive">Archive</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Exclude patterns</mat-label>
+      <input matInput placeholder=".git, node_modules, bin" />
+    </mat-form-field>
+  </section>
+
+  <section class="block">
+    <h3>Performance</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Depth limit</mat-label>
+      <input matInput placeholder="10" />
+    </mat-form-field>
+  </section>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button mat-dialog-close>Cancel</button>
+  <button mat-raised-button color="primary">Start</button>
+</mat-dialog-actions>

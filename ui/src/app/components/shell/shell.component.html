@@ -1,16 +1,18 @@
 <app-topbar />
-<nav mat-tab-nav-bar class="tabs" [tabPanel]="tabPanel">
-  <a
-    mat-tab-link
-    *ngFor="let item of navItems"
-    [routerLink]="item.route"
-    routerLinkActive
-    #rla="routerLinkActive"
-    [active]="rla.isActive"
-  >
-    {{ item.label }}
-  </a>
-</nav>
-<mat-tab-nav-panel #tabPanel class="content">
-  <router-outlet />
-</mat-tab-nav-panel>
+<div class="content">
+  <nav mat-tab-nav-bar class="tabs" [tabPanel]="tabPanel">
+    <a
+      mat-tab-link
+      *ngFor="let item of navItems"
+      [routerLink]="item.route"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [active]="rla.isActive"
+    >
+      {{ item.label }}
+    </a>
+  </nav>
+  <mat-tab-nav-panel #tabPanel class="content-inner">
+    <router-outlet />
+  </mat-tab-nav-panel>
+</div>
