@@ -48,6 +48,12 @@ Status projektu (nie jest tagiem):
 - `Local + GitHub`
 - `Archived` (opcjonalnie w przyszłości)
 
+Granularność i niejednoznaczne foldery (v1):
+- jeśli są markery repo/projektu -> traktujemy jako `ProjectRoot`.
+- jeśli brak markerów i tylko pojedynczy plik źródłowy -> `SingleFileMiniProject`.
+- jeśli brak markerów i wiele plików -> `Collection` jako kandydat + opcjonalne kandydaty `SingleFileMiniProject` dla pojedynczych plików.
+- w przypadkach niejednoznacznych decyzję o podziale podejmuje użytkownik, a opcjonalnie można wesprzeć się AI (opcja opt-in).
+
 [↑ do góry](#1-spis-treści)
 
 ## 5. Architektura i przepływ
@@ -63,68 +69,73 @@ Status projektu (nie jest tagiem):
 ## 6. Model danych i tagowanie
 
 ### 6.1. Model danych (v1)
-Wszystkie encje mają `id`, `created_at`, `updated_at` i opcjonalne `notes`.
+Wspólne pola dla wszystkich encji:
+- `id`: unikalny identyfikator rekordu.
+- `created_at`: data utworzenia rekordu.
+- `updated_at`: data ostatniej modyfikacji rekordu.
+- `notes` (opcjonalne): notatki użytkownika lub systemu.
 
 Project (logiczny byt):
-- `name`
-- `canonical_path`
-- `alt_paths[]`
-- `local_path` (opcjonalny)
-- `remote_path` (opcjonalny, np. GitHub URL)
-- `status` (Local | GitHub | Local + GitHub | Archived)
-- `kind`
-- `score`
-- `tech_hints[]`
-- `markers[]`
-- `ext_counts{}`
-- `file_count`
-- `last_scanned_at`
-- `last_viewed_at`
-- `last_opened_at`
+- `name`: przyjazna nazwa projektu (wyświetlana w UI).
+- `canonical_path`: kanoniczna (zdeterminowana) ścieżka do deduplikacji.
+- `alt_paths[]`: alternatywne ścieżki prowadzące do tego samego projektu.
+- `local_path` (opcjonalny): główna ścieżka lokalna, jeśli projekt jest na dysku.
+- `remote_path` (opcjonalny, np. GitHub URL): zdalna lokalizacja repo.
+- `status` (Local | GitHub | Local + GitHub | Archived): status dostępności projektu.
+- `kind`: typ projektu (np. `ProjectRoot`, `Collection`, `SingleFileMiniProject`).
+- `score`: wynik heurystyki (siła kandydata).
+- `tech_hints[]`: podpowiedzi technologii (np. języki, frameworki).
+- `markers[]`: wykryte markery projektu (np. `.git`, `package.json`).
+- `ext_counts{}`: histogram rozszerzeń (np. `{ "ts": 24, "md": 3 }`).
+- `file_count`: liczba plików w projekcie (wg skanu).
+- `last_scanned_at`: ostatni czas skanowania projektu.
+- `last_viewed_at`: ostatni czas podglądu w UI.
+- `last_opened_at`: ostatni czas uruchomienia/otwarcia projektu.
 
 ProjectLocation (ProjectL) - gdy potrzebne rozbicie lokalizacji:
-- `project_id`
-- `location_type` (local | github)
-- `path_or_url`
-- `is_primary`
-- `last_seen_at`
+- `project_id`: referencja do `Project`.
+- `location_type` (local | github): typ lokalizacji.
+- `path_or_url`: ścieżka lokalna lub URL zdalny.
+- `is_primary`: czy to lokalizacja główna.
+- `last_seen_at`: ostatni raz, kiedy lokalizację wykryto podczas skanu.
 
 Tag:
-- `name`
-- `slug`
-- `category` (opcjonalna, np. `language`, `course`, `status`)
-- `aliases[]` (synonimy, skróty, alternatywne nazwy)
-- `description`
+- `name`: nazwa taga widoczna dla użytkownika.
+- `slug`: znormalizowana nazwa (np. do wyszukiwania i URL).
+- `category` (opcjonalna, np. `language`, `course`, `status`): grupa taga.
+- `aliases[]` (synonimy, skróty, alternatywne nazwy): alternatywne nazwy.
+- `description`: krótki opis znaczenia taga.
 
 ProjectTag (relacja wiele-do-wielu):
-- `project_id`
-- `tag_id`
-- `source` (user | heuristic | ai)
-- `confidence` (0..1)
-- `applied_at`
+- `project_id`: referencja do `Project`.
+- `tag_id`: referencja do `Tag`.
+- `source` (user | heuristic | ai): źródło przypisania.
+- `confidence` (0..1): pewność przypisania (dla heurystyk/AI).
+- `applied_at`: data przypięcia taga do projektu.
 
 TagSuggestion:
-- `project_id`
-- `tag_id` lub `tag_name`
-- `action` (add | remove | replace)
-- `confidence`
-- `source` (heuristic | ai | user)
-- `reason` (krótki opis: „package.json”, „ext=ts=24”)
-- `status` (pending | accepted | rejected)
-- `created_at`
-- `resolved_at`
+- `project_id`: referencja do `Project`.
+- `tag_id` lub `tag_name`: istniejący tag lub nowy tag do utworzenia.
+- `action` (add | remove | replace): proponowana akcja.
+- `confidence`: pewność sugestii (0..1).
+- `source` (heuristic | ai | user): źródło sugestii.
+- `reason` (krótki opis: „package.json”, „ext=ts=24”): powód sugestii.
+- `status` (pending | accepted | rejected): stan rozpatrzenia.
+- `created_at`: data utworzenia sugestii.
+- `resolved_at`: data akceptacji/odrzucenia.
 
 ProjectSuggestion:
-- `path`
-- `name`
-- `score`
-- `markers[]`
-- `ext_counts{}`
-- `file_count`
-- `depth`
-- `status` (pending | accepted | rejected)
-- `first_seen_at`
-- `last_seen_at`
+- `path` (folder lub pojedynczy plik): wykryta lokalizacja kandydata.
+- `name`: proponowana nazwa projektu.
+- `score`: wynik heurystyki wykrycia.
+- `suggested_kind` (ProjectRoot | Collection | SingleFileMiniProject): proponowany typ.
+- `markers[]`: markery, które wpłynęły na wykrycie.
+- `ext_counts{}`: histogram rozszerzeń w kandydacie.
+- `file_count`: liczba plików w kandydacie.
+- `depth`: głębokość względem rootu skanu.
+- `status` (pending | accepted | rejected): stan decyzji.
+- `first_seen_at`: pierwszy raz wykryty podczas skanu.
+- `last_seen_at`: ostatni raz wykryty podczas skanu.
 
 ### 6.2. Workflow UX (bez UI implementacji)
 1. Scan -> lista `ProjectSuggestion`.
@@ -132,8 +143,9 @@ ProjectSuggestion:
 3. Auto Tag Suggestion -> user:
    - wybiera istniejące tagi,
    - i/lub tworzy nowy tag.
-4. Po utworzeniu nowego taga dostępny przycisk „Uruchom backfill” -> generuje sugestie dla już znanych projektów.
+4. Po utworzeniu nowego taga dostępny przycisk „Uruchom backfill” -> generuje sugestie dla już znanych projektów (heurystyki, a opcjonalnie AI).
 5. Po utworzeniu projektu użytkownik może ręcznie uruchomić „Sugestie tagów” (heurystyki, a opcjonalnie AI).
+6. Backfill i „Sugestie tagów” nigdy nie przypinają tagów automatycznie, tylko tworzą `TagSuggestion`.
 
 ### 6.3. Heurystyki sugerowania tagów (bez AI na start)
 - Markery:
@@ -157,6 +169,11 @@ Wynik heurystyk:
 
 ### 6.4. AI jako drugi krok (opcjonalnie)
 Cel: po heurystykach uruchomić AI jako dodatkowe źródło sugestii tagów.
+
+Opcjonalny use-case dodatkowy:
+- rozstrzyganie niejednoznacznej granularności (czy folder to jeden projekt, czy wiele),
+- wejście do AI ograniczone rozmiarem: drzewo + nazwy plików + krótkie próbki treści,
+- jeśli przekroczymy limit, wracamy do heurystyk i decyzji użytkownika.
 
 Założenia:
 - AI nigdy nie przypina tagów automatycznie, tylko generuje `TagSuggestion`.
@@ -195,6 +212,8 @@ Przechowywane informacje:
 Skan incremental:
 - skanuj tylko foldery, które mają `last_modified_at` > `last_scanned_at`.
 - jeśli brak stanu, traktuj folder jako „nowy”.
+- stan w UI: „niezeskanowane”, „zeskanowane”, „zmienione od ostatniego skanu” (kolory ustalimy w makietach).
+- decyzja UX: domyślnie skanuj tylko „zmienione”, a pełny rescan jako akcja użytkownika.
 
 [↑ do góry](#1-spis-treści)
 
