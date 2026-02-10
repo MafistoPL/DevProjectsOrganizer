@@ -1,0 +1,122 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { AppHostBridgeService } from './apphost-bridge.service';
+
+export type ScanSessionView = {
+  id: string;
+  rootPath: string;
+  mode: string;
+  state: string;
+  disk: string;
+  currentPath?: string | null;
+  filesScanned: number;
+  totalFiles?: number | null;
+  queueReason?: string | null;
+  outputPath?: string | null;
+  progress: number;
+  eta?: string | null;
+};
+
+export type StartScanPayload = {
+  mode: 'roots' | 'whole' | 'changed';
+  rootId?: string | null;
+  depthLimit?: number | null;
+};
+
+type ScanEvent = {
+  type: string;
+  data?: unknown;
+};
+
+@Injectable({ providedIn: 'root' })
+export class ScanService {
+  private readonly scansSubject = new BehaviorSubject<ScanSessionView[]>([]);
+  readonly scans$ = this.scansSubject.asObservable();
+
+  constructor(private readonly bridge: AppHostBridgeService) {
+    void this.load();
+    this.bridge.events$.subscribe((event) => this.handleEvent(event as ScanEvent));
+  }
+
+  async load(): Promise<void> {
+    const scans = await this.bridge.request<ScanSessionView[]>('scan.list');
+    this.scansSubject.next(scans.map((scan) => this.normalize(scan)));
+  }
+
+  async startScan(payload: StartScanPayload): Promise<ScanSessionView> {
+    const session = await this.bridge.request<ScanSessionView>('scan.start', payload);
+    this.upsert(session);
+    return session;
+  }
+
+  async pause(scanId: string): Promise<void> {
+    await this.bridge.request('scan.pause', { id: scanId });
+  }
+
+  async resume(scanId: string): Promise<void> {
+    await this.bridge.request('scan.resume', { id: scanId });
+  }
+
+  async stop(scanId: string): Promise<void> {
+    await this.bridge.request('scan.stop', { id: scanId });
+  }
+
+  private handleEvent(event: ScanEvent): void {
+    if (!event?.type) {
+      return;
+    }
+
+    if (event.type === 'scan.progress' && event.data) {
+      this.upsert(event.data as ScanSessionView);
+      return;
+    }
+
+    if (event.type === 'scan.completed' && event.data) {
+      const payload = event.data as { id: string; outputPath?: string | null };
+      this.updateState(payload.id, {
+        state: 'Completed',
+        outputPath: payload.outputPath ?? null
+      });
+      return;
+    }
+
+    if (event.type === 'scan.failed' && event.data) {
+      const payload = event.data as { id: string };
+      this.updateState(payload.id, { state: 'Failed' });
+    }
+  }
+
+  private updateState(scanId: string, update: Partial<ScanSessionView>): void {
+    const current = this.scansSubject.getValue();
+    const next = current.map((scan) =>
+      scan.id === scanId ? this.normalize({ ...scan, ...update }) : scan
+    );
+    this.scansSubject.next(next);
+  }
+
+  private upsert(scan: ScanSessionView): void {
+    const normalized = this.normalize(scan);
+    const current = this.scansSubject.getValue();
+    const index = current.findIndex((item) => item.id === normalized.id);
+    if (index === -1) {
+      this.scansSubject.next([normalized, ...current]);
+      return;
+    }
+    const next = [...current];
+    next[index] = normalized;
+    this.scansSubject.next(next);
+  }
+
+  private normalize(scan: ScanSessionView): ScanSessionView {
+    const totalFiles = scan.totalFiles ?? null;
+    const filesScanned = scan.filesScanned ?? 0;
+    const progress =
+      totalFiles && totalFiles > 0 ? Math.min(100, (filesScanned / totalFiles) * 100) : 0;
+    return {
+      ...scan,
+      totalFiles,
+      filesScanned,
+      progress
+    };
+  }
+}

@@ -1,22 +1,48 @@
 <mat-card class="panel" data-testid="status-card">
-  <mat-card-title class="panel-title panel-title--status">Status</mat-card-title>
+  <mat-card-title class="panel-title panel-title--status">Active scans</mat-card-title>
   <mat-card-content class="status-content">
-    <div class="row">
-      <span>Mode</span>
-      <strong>Roots only</strong>
+    <div class="empty" *ngIf="(scans$ | async)?.length === 0">
+      No active scans yet.
     </div>
-    <div class="row">
-      <span>Current</span>
-      <strong>E:\backup\...\file.cs</strong>
+    <div class="scan-item" *ngFor="let scan of scans$ | async" [attr.data-state]="scan.state">
+      <div class="scan-header">
+        <div class="scan-title">
+          <strong>{{ scan.rootPath }}</strong>
+          <span class="scan-meta">{{ scan.mode }} · {{ scan.disk }}</span>
+        </div>
+        <span class="scan-state" [attr.data-state]="scan.state">{{ scan.state }}</span>
+      </div>
+
+      <div class="scan-row" *ngIf="scan.state === 'Queued'">
+        <span>Queue</span>
+        <strong>{{ scan.queueReason }}</strong>
+      </div>
+
+      <div class="scan-row" *ngIf="scan.state !== 'Queued'">
+        <span>Current</span>
+        <strong>{{ scan.currentPath }}</strong>
+      </div>
+      <div class="scan-row">
+        <span>ETA</span>
+        <strong>{{ scan.eta ?? '--' }}</strong>
+      </div>
+      <div class="scan-row">
+        <span>Files scanned</span>
+        <strong>{{ scan.filesScanned | number }}</strong>
+      </div>
+      <mat-progress-bar
+        [mode]="isIndeterminate(scan) ? 'indeterminate' : 'determinate'"
+        [value]="scan.progress"
+      ></mat-progress-bar>
+      <div class="scan-actions">
+        <button mat-stroked-button *ngIf="scan.state === 'Running'" (click)="pause(scan)">
+          Pause
+        </button>
+        <button mat-stroked-button *ngIf="scan.state === 'Paused'" (click)="resume(scan)">
+          Resume
+        </button>
+        <button mat-stroked-button color="warn" (click)="stop(scan)">Stop</button>
+      </div>
     </div>
-    <div class="row">
-      <span>ETA</span>
-      <strong>00:04:12</strong>
-    </div>
-    <div class="row">
-      <span>Files scanned</span>
-      <strong>1,284,992</strong>
-    </div>
-    <mat-progress-bar mode="determinate" [value]="progress"></mat-progress-bar>
   </mat-card-content>
 </mat-card>

@@ -11,6 +11,7 @@ public sealed class AppDbContext : DbContext
     }
 
     public DbSet<RootEntity> Roots => Set<RootEntity>();
+    public DbSet<ScanSessionEntity> ScanSessions => Set<ScanSessionEntity>();
 
     public static string GetDefaultDbPath()
     {
@@ -38,6 +39,17 @@ public sealed class AppDbContext : DbContext
             entity.Property(e => e.Status).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasIndex(e => e.Path).IsUnique();
+        });
+
+        modelBuilder.Entity<ScanSessionEntity>(entity =>
+        {
+            entity.ToTable("scan_sessions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RootPath).IsRequired();
+            entity.Property(e => e.Mode).IsRequired();
+            entity.Property(e => e.State).IsRequired();
+            entity.Property(e => e.DiskKey).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
         });
     }
 }

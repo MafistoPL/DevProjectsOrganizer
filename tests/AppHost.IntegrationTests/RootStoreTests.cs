@@ -10,7 +10,7 @@ public sealed class RootStoreTests
     [Fact]
     public async Task Migrate_creates_roots_table()
     {
-        var (db, path) = await CreateDbAsync();
+        var (options, db, path) = await CreateDbAsync();
         try
         {
             await using var connection = db.Database.GetDbConnection();
@@ -31,7 +31,7 @@ public sealed class RootStoreTests
     [Fact]
     public async Task AddAsync_then_GetAllAsync_returns_roots()
     {
-        var (db, path) = await CreateDbAsync();
+        var (options, db, path) = await CreateDbAsync();
         try
         {
             var store = new RootStore(db);
@@ -53,7 +53,7 @@ public sealed class RootStoreTests
     [Fact]
     public async Task UpdateAsync_changes_path()
     {
-        var (db, path) = await CreateDbAsync();
+        var (options, db, path) = await CreateDbAsync();
         try
         {
             var store = new RootStore(db);
@@ -75,7 +75,7 @@ public sealed class RootStoreTests
     [Fact]
     public async Task DeleteAsync_removes_root()
     {
-        var (db, path) = await CreateDbAsync();
+        var (options, db, path) = await CreateDbAsync();
         try
         {
             var store = new RootStore(db);
@@ -94,7 +94,7 @@ public sealed class RootStoreTests
         }
     }
 
-    private static async Task<(AppDbContext Db, string Path)> CreateDbAsync()
+    internal static async Task<(DbContextOptions<AppDbContext> Options, AppDbContext Db, string Path)> CreateDbAsync()
     {
         var dbPath = Path.Combine(Path.GetTempPath(), $"dpo-tests-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -105,10 +105,10 @@ public sealed class RootStoreTests
 
         var db = new AppDbContext(options);
         await db.Database.MigrateAsync();
-        return (db, dbPath);
+        return (options, db, dbPath);
     }
 
-    private static async Task DisposeDbAsync(AppDbContext db, string path)
+    internal static async Task DisposeDbAsync(AppDbContext db, string path)
     {
         await db.DisposeAsync();
 

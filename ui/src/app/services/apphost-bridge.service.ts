@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
 
 type PendingRequest = {
   resolve: (value: any) => void;
@@ -13,28 +14,40 @@ type HostResponse = {
   error?: string;
 };
 
+type HostEvent = {
+  type: string;
+  data?: unknown;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly webview = (window as any).chrome?.webview;
   private mockRoots: Array<{ id: string; path: string; status: string }> = [];
+  private mockScans: Array<any> = [];
+  private readonly eventSubject = new Subject<HostEvent>();
+  readonly events$ = this.eventSubject.asObservable();
 
   constructor() {
     if (this.webview) {
       this.webview.addEventListener('message', (event: MessageEvent<HostResponse>) => {
         const message = event.data;
-        if (!message?.id) {
+        if (message?.id) {
+          const pending = this.pending.get(message.id);
+          if (!pending) {
+            return;
+          }
+          this.pending.delete(message.id);
+          if (message.ok) {
+            pending.resolve(message.data);
+          } else {
+            pending.reject(new Error(message.error ?? 'Unknown host error'));
+          }
           return;
         }
-        const pending = this.pending.get(message.id);
-        if (!pending) {
-          return;
-        }
-        this.pending.delete(message.id);
-        if (message.ok) {
-          pending.resolve(message.data);
-        } else {
-          pending.reject(new Error(message.error ?? 'Unknown host error'));
+
+        if (message?.type) {
+          this.eventSubject.next({ type: message.type, data: message.data });
         }
       });
     } else {
@@ -117,6 +130,54 @@ export class AppHostBridgeService {
         this.mockRoots = this.mockRoots.filter((root) => root.id !== id);
         this.saveMockRoots();
         return Promise.resolve({ id, deleted: true } as T);
+      }
+      case 'scan.list': {
+        return Promise.resolve(this.mockScans as T);
+      }
+      case 'scan.start': {
+        const scan = {
+          id: this.createId(),
+          rootPath: 'C:\\src',
+          mode: payload?.mode ?? 'roots',
+          state: 'Running',
+          disk: 'C:',
+          currentPath: 'C:\\src\\project\\file.cs',
+          filesScanned: 120,
+          totalFiles: 480,
+          queueReason: null,
+          outputPath: null
+        };
+        this.mockScans = [scan, ...this.mockScans];
+        this.eventSubject.next({ type: 'scan.progress', data: scan });
+        return Promise.resolve(scan as T);
+      }
+      case 'scan.pause': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        this.mockScans = this.mockScans.map((scan) =>
+          scan.id === id ? { ...scan, state: 'Paused' } : scan
+        );
+        const updated = this.mockScans.find((scan) => scan.id === id);
+        if (updated) {
+          this.eventSubject.next({ type: 'scan.progress', data: updated });
+        }
+        return Promise.resolve({ id } as T);
+      }
+      case 'scan.resume': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        this.mockScans = this.mockScans.map((scan) =>
+          scan.id === id ? { ...scan, state: 'Running' } : scan
+        );
+        const updated = this.mockScans.find((scan) => scan.id === id);
+        if (updated) {
+          this.eventSubject.next({ type: 'scan.progress', data: updated });
+        }
+        return Promise.resolve({ id } as T);
+      }
+      case 'scan.stop': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        this.mockScans = this.mockScans.filter((scan) => scan.id !== id);
+        this.eventSubject.next({ type: 'scan.completed', data: { id } });
+        return Promise.resolve({ id } as T);
       }
       default:
         return Promise.reject(new Error(`Unknown mock request: ${type}`));

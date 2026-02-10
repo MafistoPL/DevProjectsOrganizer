@@ -37,5 +37,58 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 
             b.ToTable("roots");
         });
+
+        modelBuilder.Entity("AppHost.Persistence.ScanSessionEntity", b =>
+        {
+            b.Property<Guid>("Id")
+                .HasColumnType("TEXT");
+
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("DiskKey")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<int?>("DepthLimit")
+                .HasColumnType("INTEGER");
+
+            b.Property<DateTimeOffset?>("FinishedAt")
+                .HasColumnType("TEXT");
+
+            b.Property<long>("FilesScanned")
+                .HasColumnType("INTEGER");
+
+            b.Property<string>("Mode")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string?>("CurrentPath")
+                .HasColumnType("TEXT");
+
+            b.Property<string?>("OutputPath")
+                .HasColumnType("TEXT");
+
+            b.Property<Guid?>("RootId")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("RootPath")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<DateTimeOffset?>("StartedAt")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("State")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<long?>("TotalFiles")
+                .HasColumnType("INTEGER");
+
+            b.HasKey("Id");
+
+            b.ToTable("scan_sessions");
+        });
     }
 }

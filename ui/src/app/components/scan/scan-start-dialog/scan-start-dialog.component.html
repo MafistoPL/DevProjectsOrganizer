@@ -2,39 +2,53 @@
 <mat-dialog-content class="dialog-content">
   <section class="block">
     <h3>Mode</h3>
-    <mat-radio-group>
-      <mat-radio-button value="roots">Scan selected roots</mat-radio-button>
+    <mat-radio-group [(ngModel)]="mode" (ngModelChange)="onModeChange()">
+      <mat-radio-button value="roots">Scan a single root</mat-radio-button>
       <mat-radio-button value="whole">Scan whole computer</mat-radio-button>
-      <mat-radio-button value="changed">Only changed since last scan</mat-radio-button>
+      <mat-radio-button value="changed">Scan root changed since last scan</mat-radio-button>
     </mat-radio-group>
   </section>
 
   <section class="block">
     <h3>Scope</h3>
-    <mat-form-field appearance="outline">
-      <mat-label>Root set</mat-label>
-      <mat-select>
-        <mat-option value="default">Default roots</mat-option>
-        <mat-option value="work">Work</mat-option>
-        <mat-option value="archive">Archive</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>Exclude patterns</mat-label>
-      <input matInput placeholder=".git, node_modules, bin" />
-    </mat-form-field>
+    <ng-container *ngIf="roots$ | async as roots">
+      <mat-form-field appearance="outline" *ngIf="requiresRoot()">
+        <mat-label>Select root</mat-label>
+        <mat-select [(ngModel)]="selectedRootId" [disabled]="filteredRoots(roots).length === 0">
+          <mat-option *ngFor="let root of filteredRoots(roots)" [value]="root.id">
+            {{ root.path }} <span class="root-status">({{ root.status }})</span>
+          </mat-option>
+        </mat-select>
+        <mat-hint *ngIf="mode === 'changed' && filteredRoots(roots).length === 0">
+          No roots marked as changed yet.
+        </mat-hint>
+      </mat-form-field>
+      <p class="hint" *ngIf="mode === 'whole'">
+        Whole-computer scans run without the file counting phase.
+      </p>
+      <p class="hint" *ngIf="mode !== 'whole'">
+        File counting runs first to improve progress accuracy.
+      </p>
+    </ng-container>
   </section>
 
   <section class="block">
     <h3>Performance</h3>
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" *ngIf="mode !== 'whole'">
       <mat-label>Depth limit</mat-label>
-      <input matInput placeholder="10" />
+      <input matInput type="number" min="1" [(ngModel)]="depthLimit" />
+      <mat-hint>Lower depth = faster scan.</mat-hint>
     </mat-form-field>
+    <p class="hint">
+      Only one scan per physical disk runs at a time. Scans on other disks can run in parallel.
+    </p>
   </section>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
   <button mat-stroked-button mat-dialog-close>Cancel</button>
-  <button mat-raised-button color="primary">Start</button>
+  <ng-container *ngIf="roots$ | async as roots">
+    <button mat-raised-button color="primary" [disabled]="!canStart(roots)" (click)="startScan()">
+      Start
+    </button>
+  </ng-container>
 </mat-dialog-actions>
