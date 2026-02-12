@@ -34,6 +34,8 @@ Program lokalny do porządkowania projektów na dysku:
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
+- **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
+- **State/event consistency**: scan states and event names are centralized in shared constants.
 
 ## 4. Skanowanie
 Założenia:
