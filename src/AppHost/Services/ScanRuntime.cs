@@ -13,7 +13,7 @@ public sealed class ScanRuntime
     public string RootPath { get; }
     public string DiskKey { get; }
     public ScanStartRequest Request { get; }
-    public string State { get; private set; } = "Queued";
+    public string State { get; private set; } = ScanSessionStates.Queued;
     public long FilesScanned { get; set; }
     public long? TotalFiles { get; set; }
     public string? CurrentPath { get; set; }
@@ -33,24 +33,24 @@ public sealed class ScanRuntime
 
     public void Pause()
     {
-        if (State == "Paused")
+        if (State == ScanSessionStates.Paused)
         {
             return;
         }
 
         _pauseEvent.Reset();
-        State = "Paused";
+        State = ScanSessionStates.Paused;
     }
 
     public void Resume()
     {
-        if (State != "Paused")
+        if (State != ScanSessionStates.Paused)
         {
             return;
         }
 
         _pauseEvent.Set();
-        State = "Running";
+        State = ScanSessionStates.Running;
     }
 
     public void Stop()

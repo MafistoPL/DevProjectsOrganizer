@@ -1,3 +1,5 @@
+using AppHost.Services;
+
 namespace AppHost.Persistence;
 
 public sealed class ScanSessionEntity
@@ -6,7 +8,7 @@ public sealed class ScanSessionEntity
     public Guid? RootId { get; set; }
     public string RootPath { get; set; } = string.Empty;
     public string Mode { get; set; } = "roots";
-    public string State { get; set; } = "queued";
+    public string State { get; set; } = ScanSessionStates.Queued;
     public string DiskKey { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? StartedAt { get; set; }

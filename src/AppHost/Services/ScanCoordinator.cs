@@ -27,8 +27,7 @@ public sealed record ScanStartRequest(
 public sealed class ScanCoordinator
 {
     private readonly Func<AppDbContext> _dbFactory;
-    private readonly ScanSnapshotBuilder _snapshotBuilder;
-    private readonly ScanSnapshotWriter _snapshotWriter;
+    private readonly ScanExecutionService _executionService;
     private readonly ConcurrentDictionary<Guid, ScanRuntime> _scans = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _diskLocks =
         new(StringComparer.OrdinalIgnoreCase);
@@ -38,12 +37,10 @@ public sealed class ScanCoordinator
 
     public ScanCoordinator(
         Func<AppDbContext> dbFactory,
-        ScanSnapshotBuilder? snapshotBuilder = null,
-        ScanSnapshotWriter? snapshotWriter = null)
+        ScanExecutionService? executionService = null)
     {
         _dbFactory = dbFactory;
-        _snapshotBuilder = snapshotBuilder ?? new ScanSnapshotBuilder();
-        _snapshotWriter = snapshotWriter ?? new ScanSnapshotWriter();
+        _executionService = executionService ?? new ScanExecutionService();
     }
 
     public async Task<ScanSessionDto> StartAsync(ScanStartRequest request, CancellationToken cancellationToken)
@@ -55,7 +52,7 @@ public sealed class ScanCoordinator
             RootId = rootId,
             RootPath = rootPath,
             Mode = request.Mode,
-            State = "Queued",
+            State = ScanSessionStates.Queued,
             DiskKey = diskKey,
             CreatedAt = DateTimeOffset.UtcNow,
             DepthLimit = request.DepthLimit
@@ -109,7 +106,7 @@ public sealed class ScanCoordinator
     {
         if (_scans.TryGetValue(scanId, out var runtime))
         {
-            runtime.SetState("Stopped");
+            runtime.SetState(ScanSessionStates.Stopped);
             runtime.Stop();
             _ = UpdateStateAsync(runtime.ScanId, runtime.State, runtime);
         }
@@ -128,7 +125,7 @@ public sealed class ScanCoordinator
             if (runtime.Request.Mode != "whole" && _wholeLock.CurrentCount == 0)
             {
                 runtime.QueueReason = "Waiting for whole-computer scan";
-                await UpdateStateAsync(runtime.ScanId, "Queued", runtime);
+                await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Queued, runtime);
             }
 
             if (runtime.Request.Mode == "whole")
@@ -147,43 +144,30 @@ public sealed class ScanCoordinator
             if (diskLock.CurrentCount == 0)
             {
                 runtime.QueueReason = $"Waiting for disk {runtime.DiskKey}";
-                await UpdateStateAsync(runtime.ScanId, "Queued", runtime);
+                await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Queued, runtime);
             }
 
             await diskLock.WaitAsync(runtime.StopToken);
             diskLockHeld = true;
             runtime.QueueReason = null;
 
-            var shouldCount = runtime.Request.Mode != "whole";
-            if (shouldCount)
-            {
-                runtime.SetState("Counting");
-                await UpdateStateAsync(runtime.ScanId, "Counting", runtime);
-                runtime.TotalFiles = await _snapshotBuilder.CountFilesAsync(runtime);
-            }
-
-            runtime.SetState("Running");
-            await UpdateStateAsync(runtime.ScanId, "Running", runtime);
-
-            var snapshot = await _snapshotBuilder.BuildSnapshotAsync(runtime, ReportProgressAsync);
-            var outputPath = await _snapshotWriter.SaveAsync(snapshot, runtime.ScanId, runtime.StopToken);
-
-            runtime.SetState("Completed");
+            var outputPath = await _executionService.ExecuteAsync(runtime, ReportStateAsync);
+            runtime.SetState(ScanSessionStates.Completed);
             runtime.OutputPath = outputPath;
-            await UpdateStateAsync(runtime.ScanId, "Completed", runtime);
-            Emit("scan.completed", new { id = runtime.ScanId, outputPath });
+            await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Completed, runtime);
+            Emit(ScanEventTypes.Completed, new { id = runtime.ScanId, outputPath });
         }
         catch (OperationCanceledException)
         {
-            runtime.SetState("Stopped");
-            await UpdateStateAsync(runtime.ScanId, "Stopped", runtime);
-            Emit("scan.completed", new { id = runtime.ScanId });
+            runtime.SetState(ScanSessionStates.Stopped);
+            await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Stopped, runtime);
+            Emit(ScanEventTypes.Completed, new { id = runtime.ScanId });
         }
         catch (Exception ex)
         {
-            runtime.SetState("Failed");
-            await UpdateStateAsync(runtime.ScanId, "Failed", runtime);
-            Emit("scan.failed", new { id = runtime.ScanId, error = ex.Message });
+            runtime.SetState(ScanSessionStates.Failed);
+            await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Failed, runtime);
+            Emit(ScanEventTypes.Failed, new { id = runtime.ScanId, error = ex.Message });
         }
         finally
         {
@@ -198,14 +182,14 @@ public sealed class ScanCoordinator
                 runtime.HoldsWholeLock = false;
             }
 
-            if (runtime.State is "Completed" or "Failed" or "Stopped")
+            if (ScanSessionStates.IsTerminal(runtime.State))
             {
                 _scans.TryRemove(runtime.ScanId, out _);
             }
         }
     }
 
-    private async Task ReportProgressAsync(ScanRuntime runtime)
+    private async Task ReportStateAsync(ScanRuntime runtime)
     {
         await UpdateStateAsync(runtime.ScanId, runtime.State, runtime);
     }
@@ -218,8 +202,9 @@ public sealed class ScanCoordinator
 
             var others = _scans.Values.Where(scan => scan.ScanId != runtime.ScanId).ToList();
             var blocking = others.Any(scan =>
-                scan.State is "Running" or "Counting" or "Paused"
-                || (scan.State == "Queued" && scan.QueueReason != "Waiting for whole-computer scan"));
+                scan.State is ScanSessionStates.Running or ScanSessionStates.Counting or ScanSessionStates.Paused
+                || (scan.State == ScanSessionStates.Queued
+                    && scan.QueueReason != "Waiting for whole-computer scan"));
 
             if (!blocking)
             {
@@ -228,7 +213,7 @@ public sealed class ScanCoordinator
             }
 
             runtime.QueueReason = "Waiting for other scans to finish";
-            await UpdateStateAsync(runtime.ScanId, "Queued", runtime);
+            await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Queued, runtime);
             await Task.Delay(500, runtime.StopToken);
         }
     }
@@ -247,12 +232,12 @@ public sealed class ScanCoordinator
         session.TotalFiles = runtime.TotalFiles;
         session.CurrentPath = runtime.CurrentPath;
         session.OutputPath = runtime.OutputPath;
-        if (state is "Counting" or "Running" or "Paused")
+        if (state is ScanSessionStates.Counting or ScanSessionStates.Running or ScanSessionStates.Paused)
         {
             session.StartedAt ??= DateTimeOffset.UtcNow;
         }
 
-        if (state is "Completed" or "Failed" or "Stopped")
+        if (ScanSessionStates.IsTerminal(state))
         {
             session.FinishedAt = DateTimeOffset.UtcNow;
         }
@@ -295,7 +280,7 @@ public sealed class ScanCoordinator
 
     private void EmitProgress(ScanSessionDto dto)
     {
-        Emit("scan.progress", dto);
+        Emit(ScanEventTypes.Progress, dto);
     }
 
     private static ScanSessionDto ToDto(ScanSessionEntity session, string? queueReason)
