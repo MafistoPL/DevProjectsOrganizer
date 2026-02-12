@@ -105,7 +105,7 @@ Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.
 Piramida testów:
 - **Unit (Engine)**: logika heurystyk, policy dla próbek, filtrowanie.
 - **Integration (AppHost)**: DB + skan + JSON.
-- **Integration (AppHost)**: DB + skan + JSON + regresja heurystyk względem historycznych decyzji (`Accepted`/`Rejected`).
+- **Integration (AppHost)**: DB + skan + JSON + regresja heurystyk względem historycznych decyzji (`Accepted`/`Rejected`) powiązanych z konkretnym `ScanSessionId` i jego `scan-<id>.json`.
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 
 Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).

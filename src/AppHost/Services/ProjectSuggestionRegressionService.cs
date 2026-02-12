@@ -141,34 +141,33 @@ public sealed class ProjectSuggestionRegressionService
                 "No accepted/rejected suggestions found in database. Build baseline via UI decisions first.");
         }
 
-        var decisionsByRoot = historicalDecisions
-            .OrderByDescending(item => item.CreatedAt)
-            .GroupBy(item => item.RootPath, StringComparer.OrdinalIgnoreCase)
+        var decisionsByScan = historicalDecisions
+            .GroupBy(item => item.ScanSessionId)
             .ToList();
 
         var rootReports = new List<ProjectSuggestionReplayRegressionRootReport>();
-        foreach (var rootGroup in decisionsByRoot)
+        foreach (var scanGroup in decisionsByScan)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var rootPath = rootGroup.Key;
-            var latestByPath = rootGroup
+            var scanSessionId = scanGroup.Key;
+            var baselineByPath = scanGroup
+                .OrderByDescending(item => item.CreatedAt)
                 .GroupBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
                 .Select(group => group.First())
                 .ToList();
 
-            var latestScan = await db.ScanSessions
+            var scanSession = await db.ScanSessions
                 .AsNoTracking()
-                .Where(item => item.RootPath == rootPath && item.OutputPath != null)
-                .OrderByDescending(item => item.FinishedAt ?? item.CreatedAt)
+                .Where(item => item.Id == scanSessionId && item.OutputPath != null)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (latestScan == null || string.IsNullOrWhiteSpace(latestScan.OutputPath))
+            if (scanSession == null || string.IsNullOrWhiteSpace(scanSession.OutputPath))
             {
                 continue;
             }
 
-            var snapshotPath = latestScan.OutputPath;
+            var snapshotPath = scanSession.OutputPath;
             if (!File.Exists(snapshotPath))
             {
                 continue;
@@ -179,7 +178,7 @@ public sealed class ProjectSuggestionRegressionService
                 .Select(item => item.Path)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var acceptedMissing = latestByPath
+            var acceptedMissing = baselineByPath
                 .Where(item =>
                     item.Status == ProjectSuggestionStatus.Accepted
                     && !recomputedPaths.Contains(item.Path))
@@ -188,7 +187,7 @@ public sealed class ProjectSuggestionRegressionService
                 .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var rejectedMissing = latestByPath
+            var rejectedMissing = baselineByPath
                 .Where(item =>
                     item.Status == ProjectSuggestionStatus.Rejected
                     && !recomputedPaths.Contains(item.Path))
@@ -197,17 +196,17 @@ public sealed class ProjectSuggestionRegressionService
                 .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var baselinePathSet = latestByPath
+            var baselinePathSet = baselineByPath
                 .Select(item => item.Path)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var addedCount = recomputedPaths.Count(path => !baselinePathSet.Contains(path));
 
             rootReports.Add(new ProjectSuggestionReplayRegressionRootReport(
-                rootPath,
-                latestScan.Id,
+                scanSession.RootPath,
+                scanSession.Id,
                 snapshotPath,
-                latestByPath.Count(item => item.Status == ProjectSuggestionStatus.Accepted),
-                latestByPath.Count(item => item.Status == ProjectSuggestionStatus.Rejected),
+                baselineByPath.Count(item => item.Status == ProjectSuggestionStatus.Accepted),
+                baselineByPath.Count(item => item.Status == ProjectSuggestionStatus.Rejected),
                 acceptedMissing.Count,
                 rejectedMissing.Count,
                 addedCount,

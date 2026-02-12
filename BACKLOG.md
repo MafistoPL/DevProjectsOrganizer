@@ -29,6 +29,7 @@
 
 ## Done (recent)
 - Integration tests no longer clean global `%APPDATA%\\DevProjectsOrganizer\\scans`; scan snapshots in tests are now isolated to test-specific temp data directories.
+- Replay regression now compares user decisions against matching `scan-<id>.json` per `ScanSessionId` (instead of mixing root-wide history into latest snapshot).
 - UI `Live results` now loads real `ProjectSuggestion` rows from SQLite through IPC (`suggestions.list`).
 - `Accept` / `Reject` in UI now persist suggestion status in DB (`suggestions.setStatus`).
 - `Debug JSON` action now exports suggestion debug payload in-memory and copies it to clipboard with confirmation bubble.
