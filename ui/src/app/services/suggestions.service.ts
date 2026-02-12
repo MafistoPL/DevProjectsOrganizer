@@ -75,6 +75,14 @@ export class SuggestionsService {
     return response.json;
   }
 
+  async exportArchiveJson(): Promise<{ path: string; count: number }> {
+    return await this.bridge.request<{ path: string; count: number }>('suggestions.exportArchive');
+  }
+
+  async openArchiveFolder(): Promise<{ path: string }> {
+    return await this.bridge.request<{ path: string }>('suggestions.openArchiveFolder');
+  }
+
   private upsert(item: ProjectSuggestionItem): void {
     const current = this.itemsSubject.getValue();
     const index = current.findIndex((entry) => entry.id === item.id);

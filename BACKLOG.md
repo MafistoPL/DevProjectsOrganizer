@@ -31,6 +31,8 @@
 - UI `Live results` now loads real `ProjectSuggestion` rows from SQLite through IPC (`suggestions.list`).
 - `Accept` / `Reject` in UI now persist suggestion status in DB (`suggestions.setStatus`).
 - `Debug JSON` action now exports suggestion debug payload in-memory and copies it to clipboard with confirmation bubble.
+- `Suggestions` view now supports `Pending` (all scans) and `Archive` (Accepted+Rejected) scopes.
+- Added archive export action (`suggestions.exportArchive`) and open export folder action (`suggestions.openArchiveFolder`) in Suggestions UI.
 - Marker heuristics for project detection (`.sln`, `.csproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`) + save suggestions to SQLite.
 - `ProjectSuggestion` status moved from free `string` to enum (`Pending`/`Accepted`/`Rejected`).
 - EF entity mapping moved to dedicated configuration classes + `ApplyConfigurationsFromAssembly`.

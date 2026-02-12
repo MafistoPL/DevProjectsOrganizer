@@ -1,5 +1,5 @@
-import { NgFor } from '@angular/common';
-import { Component, OnDestroy } from '@angular/core';
+import { NgFor, NgIf } from '@angular/common';
+import { Component, Input, OnDestroy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTooltip, MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from '../../../services/suggestions.service';
 
@@ -16,6 +16,7 @@ import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from
   selector: 'app-project-suggestion-list',
   imports: [
     NgFor,
+    NgIf,
     MatButtonModule,
     MatButtonToggleModule,
     MatCardModule,
@@ -29,12 +30,16 @@ import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from
   styleUrl: './project-suggestion-list.component.scss'
 })
 export class ProjectSuggestionListComponent implements OnDestroy {
+  @Input() mode: 'live' | 'suggestions' = 'live';
+
   layout: 'list' | 'grid' = 'list';
+  scope: 'pending' | 'archive' = 'pending';
   openId: string | null = null;
   sortKey: 'name' | 'score' | 'createdAt' = 'name';
   sortDir: 'asc' | 'desc' = 'asc';
   searchTerm = '';
   private readonly subscription: Subscription;
+  private exportTooltipTimer: number | null = null;
 
   private items: ProjectSuggestionItem[] = [];
 
@@ -51,10 +56,22 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   }
 
   get visibleItems(): ProjectSuggestionItem[] {
+    const byScope = this.items.filter((item) => {
+      if (this.mode === 'live') {
+        return item.status === 'pending';
+      }
+
+      if (this.scope === 'pending') {
+        return item.status === 'pending';
+      }
+
+      return item.status === 'accepted' || item.status === 'rejected';
+    });
+
     const term = this.searchTerm.trim().toLowerCase();
     const filtered = term
-      ? this.items.filter((item) => item.name.toLowerCase().includes(term))
-      : this.items;
+      ? byScope.filter((item) => item.name.toLowerCase().includes(term))
+      : byScope;
 
     const sorted = [...filtered].sort((a, b) => {
       let result = 0;
@@ -101,8 +118,37 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     }
   }
 
+  async exportArchiveJson(doneTooltip: MatTooltip): Promise<void> {
+    try {
+      await this.suggestionsService.exportArchiveJson();
+      doneTooltip.show();
+      if (this.exportTooltipTimer !== null) {
+        window.clearTimeout(this.exportTooltipTimer);
+      }
+      this.exportTooltipTimer = window.setTimeout(() => {
+        doneTooltip.hide();
+        this.exportTooltipTimer = null;
+      }, 1400);
+    } catch {
+      this.snackBar.open('Archive export failed', 'Close', { duration: 1500 });
+    }
+  }
+
+  async openArchiveFolder(): Promise<void> {
+    try {
+      const result = await this.suggestionsService.openArchiveFolder();
+      this.snackBar.open(`Opened: ${result.path}`, undefined, { duration: 1500 });
+    } catch {
+      this.snackBar.open('Open folder failed', 'Close', { duration: 1500 });
+    }
+  }
+
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
+    if (this.exportTooltipTimer !== null) {
+      window.clearTimeout(this.exportTooltipTimer);
+      this.exportTooltipTimer = null;
+    }
   }
 
   private async writeClipboard(text: string): Promise<boolean> {

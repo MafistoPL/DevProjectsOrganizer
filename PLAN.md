@@ -38,7 +38,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
-- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`.
+- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -95,6 +95,7 @@ Główne zakładki:
 - **Scan**: rooty, start skanu, kolejka, postęp.
 - **Project Organizer**: lista projektów, filtry, szczegóły.
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
+- **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Tags**: zarządzanie tagami i backfill.
 - **Recent**: last_viewed / last_opened.
 

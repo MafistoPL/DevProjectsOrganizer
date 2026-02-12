@@ -241,6 +241,20 @@ export class AppHostBridgeService {
           json: JSON.stringify(debug, null, 2)
         } as T);
       }
+      case 'suggestions.exportArchive': {
+        const archive = this.mockSuggestions
+          .filter((item) => item.status !== 'Pending')
+          .map((item) => ({ ...item }));
+        return Promise.resolve({
+          path: 'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\exports\\suggestions-archive-mock.json',
+          count: archive.length
+        } as T);
+      }
+      case 'suggestions.openArchiveFolder': {
+        return Promise.resolve({
+          path: 'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\exports'
+        } as T);
+      }
       default:
         return Promise.reject(new Error(`Unknown mock request: ${type}`));
     }

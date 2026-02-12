@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using AppHost.Persistence;
 using AppHost.Services;
 
@@ -116,6 +117,42 @@ public partial class MainWindow
             id = suggestion.Id,
             json
         });
+    }
+
+    private async Task HandleSuggestionsExportArchiveAsync(HostRequest request)
+    {
+        var exporter = new ProjectSuggestionArchiveService(() => new AppDbContext(AppDbContext.CreateDefaultOptions()));
+        var result = await exporter.ExportAsync(CancellationToken.None);
+
+        SendResponse(request.Id, request.Type, new
+        {
+            path = result.Path,
+            count = result.Count
+        });
+    }
+
+    private Task HandleSuggestionsOpenArchiveFolderAsync(HostRequest request)
+    {
+        try
+        {
+            var exporter = new ProjectSuggestionArchiveService(() => new AppDbContext(AppDbContext.CreateDefaultOptions()));
+            var path = exporter.EnsureArchiveDirectory();
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+
+            SendResponse(request.Id, request.Type, new { path });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+
+        return Task.CompletedTask;
     }
 
     private static bool TryGetSuggestionId(JsonElement? payload, out Guid suggestionId)

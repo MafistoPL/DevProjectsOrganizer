@@ -7,6 +7,12 @@ const gotoScan = async (page: Page) => {
   await expect(page.getByTestId('project-suggest-list').locator('[data-testid="project-name"]').first()).toBeVisible();
 };
 
+const gotoSuggestions = async (page: Page) => {
+  await page.goto('/suggestions');
+  await expect(page.getByTestId('project-suggest-list')).toBeVisible();
+  await expect(page.getByTestId('project-suggest-scope')).toBeVisible();
+};
+
 const selectSort = async (page: Page, label: string) => {
   await page.getByTestId('project-suggest-sort').click();
   await page.getByRole('option', { name: label }).click();
@@ -122,17 +128,22 @@ test('project suggestions sort by created date asc/desc', async ({ page }) => {
   expect(names[0]).toBe('rust-playground');
 });
 
-test('project suggestion accept/reject updates status badge', async ({ page }) => {
+test('project suggestion accept/reject removes items from live pending list', async ({ page }) => {
   await gotoScan(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  await expect(list.locator('.suggestion-card')).toHaveCount(10);
 
   const firstCard = page.getByTestId('project-suggest-list').locator('.suggestion-card').first();
   await firstCard.locator('.header-row').click();
 
   await firstCard.getByRole('button', { name: 'Accept' }).click();
-  await expect(firstCard.locator('.status')).toHaveText('accepted');
+  await expect(list.locator('.suggestion-card')).toHaveCount(9);
 
-  await firstCard.getByRole('button', { name: 'Reject' }).click();
-  await expect(firstCard.locator('.status')).toHaveText('rejected');
+  const nextCard = list.locator('.suggestion-card').first();
+  await nextCard.locator('.header-row').click();
+  await nextCard.getByRole('button', { name: 'Reject' }).click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(8);
 });
 
 test('project suggestion debug json copies to clipboard and shows bubble', async ({ page, context }) => {
@@ -144,4 +155,37 @@ test('project suggestion debug json copies to clipboard and shows bubble', async
 
   await firstCard.getByTestId('debug-json-btn').click();
   await expect(page.getByText('Copied to clipboard')).toBeVisible();
+});
+
+test('suggestions scope shows pending from all scans and archive with accepted+rejected', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  await expect(list.locator('.suggestion-card')).toHaveCount(10);
+
+  const firstCard = list.locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: 'Accept' }).click();
+
+  const nextCard = list.locator('.suggestion-card').first();
+  await nextCard.locator('.header-row').click();
+  await nextCard.getByRole('button', { name: 'Reject' }).click();
+
+  await expect(list.locator('.suggestion-card')).toHaveCount(8);
+
+  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(2);
+
+  const statuses = await list.locator('.status').allTextContents();
+  expect([...statuses].sort()).toEqual(['accepted', 'rejected']);
+});
+
+test('suggestions archive export shows exported popup and open folder action', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  await page.getByTestId('project-suggest-export-archive').click();
+  await expect(page.locator('.cdk-overlay-container .mat-mdc-tooltip-surface', { hasText: 'Exported' })).toBeVisible();
+
+  await page.getByTestId('project-suggest-open-archive-folder').click();
+  await expect(page.getByText(/Opened:/)).toBeVisible();
 });

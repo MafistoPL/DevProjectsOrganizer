@@ -34,6 +34,18 @@
     <mat-button-toggle value="desc">Desc</mat-button-toggle>
   </mat-button-toggle-group>
 
+  <mat-button-toggle-group
+    *ngIf="mode === 'suggestions'"
+    class="scope-toggle"
+    [value]="scope"
+    (change)="scope = $event.value"
+    aria-label="Project suggestions scope"
+    data-testid="project-suggest-scope"
+  >
+    <mat-button-toggle value="pending">Pending</mat-button-toggle>
+    <mat-button-toggle value="archive">Archive</mat-button-toggle>
+  </mat-button-toggle-group>
+
   <span class="spacer"></span>
 
   <mat-button-toggle-group
@@ -46,6 +58,26 @@
     <mat-button-toggle value="list">List</mat-button-toggle>
     <mat-button-toggle value="grid">Grid</mat-button-toggle>
   </mat-button-toggle-group>
+
+  <button
+    *ngIf="mode === 'suggestions'"
+    mat-stroked-button
+    data-testid="project-suggest-export-archive"
+    #exportDone="matTooltip"
+    matTooltip="Exported"
+    matTooltipPosition="above"
+    (click)="exportArchiveJson(exportDone)"
+  >
+    Export archive JSON
+  </button>
+  <button
+    *ngIf="mode === 'suggestions'"
+    mat-stroked-button
+    data-testid="project-suggest-open-archive-folder"
+    (click)="openArchiveFolder()"
+  >
+    Open export folder
+  </button>
 </div>
 
 <div

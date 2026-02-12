@@ -23,7 +23,9 @@ public partial class MainWindow
             ["scan.stop"] = HandleScanStopAsync,
             ["suggestions.list"] = HandleSuggestionsListAsync,
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
-            ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync
+            ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync,
+            ["suggestions.exportArchive"] = HandleSuggestionsExportArchiveAsync,
+            ["suggestions.openArchiveFolder"] = HandleSuggestionsOpenArchiveFolderAsync
         };
     }
 
