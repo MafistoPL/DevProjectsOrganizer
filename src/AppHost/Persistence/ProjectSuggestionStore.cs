@@ -38,7 +38,9 @@ public sealed class ProjectSuggestionStore
             _db.ProjectSuggestions.RemoveRange(existing);
         }
 
-        var entities = suggestions.Select(item => new ProjectSuggestionEntity
+        var filteredSuggestions = await FilterByHistoricalRejectionsAsync(suggestions, cancellationToken);
+
+        var entities = filteredSuggestions.Select(item => new ProjectSuggestionEntity
         {
             Id = Guid.NewGuid(),
             ScanSessionId = scanSessionId,
@@ -49,6 +51,7 @@ public sealed class ProjectSuggestionStore
             Score = item.Score,
             Reason = item.Reason,
             ExtensionsSummary = item.ExtensionsSummary,
+            Fingerprint = item.Fingerprint,
             MarkersJson = JsonSerializer.Serialize(item.Markers, JsonOptions),
             TechHintsJson = JsonSerializer.Serialize(item.TechHints, JsonOptions),
             CreatedAt = item.CreatedAt,
@@ -105,5 +108,71 @@ public sealed class ProjectSuggestionStore
         entity.Status = status;
         await _db.SaveChangesAsync(cancellationToken);
         return entity;
+    }
+
+    public async Task<bool> DeleteAsync(
+        Guid suggestionId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.ProjectSuggestions
+            .FirstOrDefaultAsync(item => item.Id == suggestionId, cancellationToken);
+        if (entity == null)
+        {
+            return false;
+        }
+
+        _db.ProjectSuggestions.Remove(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task<IReadOnlyList<Services.DetectedProjectSuggestion>> FilterByHistoricalRejectionsAsync(
+        IReadOnlyList<Services.DetectedProjectSuggestion> suggestions,
+        CancellationToken cancellationToken)
+    {
+        if (suggestions.Count == 0)
+        {
+            return suggestions;
+        }
+
+        var candidatePaths = suggestions
+            .Select(item => item.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var historicalDecisions = await _db.ProjectSuggestions
+            .AsNoTracking()
+            .Where(item =>
+                item.Status != ProjectSuggestionStatus.Pending
+                && candidatePaths.Contains(item.Path))
+            .Select(item => new
+            {
+                item.Path,
+                item.Kind,
+                item.Fingerprint,
+                item.Status,
+                item.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var rejectedKeys = historicalDecisions
+            .GroupBy(
+                item => BuildDecisionKey(item.Path, item.Kind, item.Fingerprint),
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(item => item.CreatedAt)
+                .First())
+            .Where(item => item.Status == ProjectSuggestionStatus.Rejected)
+            .Select(item => BuildDecisionKey(item.Path, item.Kind, item.Fingerprint))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return suggestions
+            .Where(item => !rejectedKeys.Contains(BuildDecisionKey(item.Path, item.Kind, item.Fingerprint)))
+            .ToList();
+    }
+
+    private static string BuildDecisionKey(string path, string kind, string fingerprint)
+    {
+        return $"{path.Trim().ToLowerInvariant()}::{kind.Trim().ToLowerInvariant()}::{fingerprint.Trim().ToLowerInvariant()}";
     }
 }

@@ -184,14 +184,11 @@
         </div>
       </div>
 
-      <div
-        class="actions"
-        *ngIf="(mode !== 'suggestions' || scope !== 'archive') || item.status === 'rejected'"
-      >
+      <div class="actions" *ngIf="shouldShowActions(item)">
         <button
           mat-stroked-button
           color="primary"
-          *ngIf="(mode !== 'suggestions' || scope !== 'archive') || item.status === 'rejected'"
+          *ngIf="canAccept(item)"
           (click)="setStatus(item.id, 'accepted')"
         >
           Accept
@@ -199,10 +196,19 @@
         <button
           mat-stroked-button
           color="warn"
-          *ngIf="mode !== 'suggestions' || scope !== 'archive'"
+          *ngIf="canReject()"
           (click)="setStatus(item.id, 'rejected')"
         >
           Reject
+        </button>
+        <button
+          mat-stroked-button
+          color="warn"
+          *ngIf="canDelete()"
+          data-testid="project-suggest-delete-btn"
+          (click)="deleteSuggestion(item)"
+        >
+          Delete
         </button>
       </div>
     </div>

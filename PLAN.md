@@ -29,6 +29,8 @@ Program lokalny do porządkowania projektów na dysku:
   (`%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`).
 - **Sugestie projektów:** marker heuristics działają po skanie i zapisują `ProjectSuggestion` do SQLite.
 - **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
+- **Persistencja decyzji:** sugestia ma fingerprint; odrzucone (`Rejected`) wpisy z tym samym (`path`,`kind`,`fingerprint`) są automatycznie pomijane przy kolejnych skanach.
+- **Kasowanie archiwum:** usunięcie wpisu z archiwum zdejmuje baseline odrzucenia (sugestia może wrócić przy kolejnym skanie).
 - **Tryby skanu:** `roots`, `changed`, `whole`.
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
@@ -65,6 +67,13 @@ Heurystyki (v1):
 - histogram rozszerzeń (np. przewaga `*.cs` -> `csharp`).
 - struktura projektu (`src/`, `tests/`, `docs/`) — do rozszerzenia.
 
+Semantyka (doprecyzowanie):
+- W tym projekcie **solution = projekt** (jednostka biznesowa w organizerze).
+- `*.csproj` / `*.vcxproj` / `*.vcproj` pod solution są traktowane jako **moduły** projektu, nie osobne projekty.
+- Jeśli katalog ma `.sln`, to jest kanonicznym kandydatem `ProjectRoot`.
+- Jeśli pod nim są podkatalogi z `*.csproj` / `*.vcxproj`, ich sugestie powinny być scalane/supresowane pod solution.
+- Wyjątek: jeśli wewnątrz jest **osobna, zagnieżdżona `.sln`**, to jest osobny projekt.
+
 Niejasne przypadki:
 - folder bez markerów i wiele plików -> `Collection` + opcjonalne `SingleFileMiniProject`.
 - opcjonalne rozstrzyganie z udziałem AI (limitowany kontekst).
@@ -86,10 +95,13 @@ Konfigurowalność:
 Minimalny zestaw:
 - **Root**: ścieżka, status, statystyki skanu.
 - **ScanSession**: tryb, stan, liczba plików, postęp, output JSON.
-- **ProjectSuggestion**: kandydat projektu + metadane wykrycia.
-- **ProjectSuggestion**: kandydat projektu + status decyzji; wpisy są archiwalne per skan (pod regresję i audyt).
+- **ProjectSuggestion**: kandydat projektu + metadane wykrycia + status decyzji; wpisy są archiwalne per skan (pod regresję i audyt).
+- **ProjectSuggestion.Fingerprint**: deterministyczny podpis heurystyki dla konkretnego kandydata (używany do suppress/restore po `Reject/Delete`).
 - **Project**: zaakceptowany projekt.
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
+
+Uwagi modelowe:
+- Dla sugestii opartych o `.sln` planujemy przechowywać także metadane modułów (np. liczba/ścieżki), ale nadal jako jeden wpis projektu.
 
 ## 8. UI / widoki
 Główne zakładki:

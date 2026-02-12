@@ -1,5 +1,6 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, Input, OnDestroy } from '@angular/core';
+import { Component, Input, OnDestroy, effect, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -9,7 +10,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltip, MatTooltipModule } from '@angular/material/tooltip';
-import { Subscription } from 'rxjs';
 import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from '../../../services/suggestions.service';
 
 
@@ -34,6 +34,9 @@ import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from
 export class ProjectSuggestionListComponent implements OnDestroy {
   @Input() mode: 'live' | 'suggestions' = 'live';
 
+  private readonly suggestionsService = inject(SuggestionsService);
+  private readonly snackBar = inject(MatSnackBar);
+
   layout: 'list' | 'grid' = 'list';
   scope: 'pending' | 'archive' = 'pending';
   openId: string | null = null;
@@ -41,17 +44,15 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   sortDir: 'asc' | 'desc' = 'asc';
   searchTerm = '';
   gridCardSizePercent = 100;
-  private readonly subscription: Subscription;
   private exportTooltipTimer: number | null = null;
 
-  private items: ProjectSuggestionItem[] = [];
+  private readonly items = toSignal(this.suggestionsService.items$, {
+    initialValue: [] as ProjectSuggestionItem[]
+  });
 
-  constructor(
-    private readonly suggestionsService: SuggestionsService,
-    private readonly snackBar: MatSnackBar
-  ) {
-    this.subscription = this.suggestionsService.items$.subscribe((items) => {
-      this.items = items;
+  constructor() {
+    effect(() => {
+      const items = this.items();
       if (this.openId && !items.some((item) => item.id === this.openId)) {
         this.openId = null;
       }
@@ -59,7 +60,7 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   }
 
   get visibleItems(): ProjectSuggestionItem[] {
-    const byScopeRaw = this.items.filter((item) => {
+    const byScopeRaw = this.items().filter((item) => {
       if (this.mode === 'live') {
         return item.status === 'pending';
       }
@@ -109,6 +110,26 @@ export class ProjectSuggestionListComponent implements OnDestroy {
 
   async setStatus(id: string, status: SuggestionStatus): Promise<void> {
     await this.suggestionsService.setStatus(id, status);
+  }
+
+  shouldShowActions(item: ProjectSuggestionItem): boolean {
+    return this.canAccept(item) || this.canReject() || this.canDelete();
+  }
+
+  canAccept(item: ProjectSuggestionItem): boolean {
+    if (!this.isArchiveScope()) {
+      return true;
+    }
+
+    return item.status === 'rejected';
+  }
+
+  canReject(): boolean {
+    return !this.isArchiveScope();
+  }
+
+  canDelete(): boolean {
+    return this.isArchiveScope();
   }
 
   async copyReason(reason: string): Promise<void> {
@@ -165,8 +186,12 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     }
   }
 
+  async deleteSuggestion(item: ProjectSuggestionItem): Promise<void> {
+    await this.suggestionsService.deleteSuggestion(item.id);
+    this.snackBar.open('Suggestion deleted', undefined, { duration: 1200 });
+  }
+
   ngOnDestroy(): void {
-    this.subscription.unsubscribe();
     if (this.exportTooltipTimer !== null) {
       window.clearTimeout(this.exportTooltipTimer);
       this.exportTooltipTimer = null;
@@ -194,6 +219,10 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     const copied = document.execCommand('copy');
     document.body.removeChild(area);
     return copied;
+  }
+
+  private isArchiveScope(): boolean {
+    return this.mode === 'suggestions' && this.scope === 'archive';
   }
 
   private dedupeByPathAndKind(items: ProjectSuggestionItem[]): ProjectSuggestionItem[] {

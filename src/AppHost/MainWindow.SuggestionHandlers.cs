@@ -54,6 +54,32 @@ public partial class MainWindow
         }
     }
 
+    private async Task HandleSuggestionsDeleteAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!TryGetSuggestionId(request.Payload, out var suggestionId))
+        {
+            SendError(request.Id, request.Type, "Missing suggestion id.");
+            return;
+        }
+
+        try
+        {
+            var store = new ProjectSuggestionStore(_dbContext);
+            var deleted = await store.DeleteAsync(suggestionId);
+            SendResponse(request.Id, request.Type, new { id = suggestionId, deleted });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task HandleSuggestionsExportDebugAsync(HostRequest request)
     {
         if (_dbContext == null)
@@ -93,6 +119,7 @@ public partial class MainWindow
                 suggestion.Score,
                 suggestion.Reason,
                 suggestion.ExtensionsSummary,
+                suggestion.Fingerprint,
                 markers,
                 techHints,
                 status = suggestion.Status.ToString(),

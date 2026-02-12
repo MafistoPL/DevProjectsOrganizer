@@ -23,6 +23,7 @@ public partial class MainWindow
             ["scan.stop"] = HandleScanStopAsync,
             ["suggestions.list"] = HandleSuggestionsListAsync,
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
+            ["suggestions.delete"] = HandleSuggestionsDeleteAsync,
             ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync,
             ["suggestions.exportArchive"] = HandleSuggestionsExportArchiveAsync,
             ["suggestions.openArchiveFolder"] = HandleSuggestionsOpenArchiveFolderAsync,

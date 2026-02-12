@@ -95,6 +95,7 @@ public sealed class ProjectSuggestionHeuristicsServiceTests
 
         results.Should().ContainSingle();
         results[0].Markers.Should().Contain(".vcxproj");
+        results[0].Fingerprint.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -214,5 +215,33 @@ public sealed class ProjectSuggestionHeuristicsServiceTests
 
         results.Select(item => item.Path).Should().Contain(@"D:\old\aleksandra-wiejaczka-strona");
         results.Select(item => item.Path).Should().NotContain(@"D:\old\aleksandra-wiejaczka-strona\_strona-oli");
+    }
+
+    [Fact]
+    public void Detect_generates_stable_fingerprint_for_same_snapshot_shape()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "2Dsource",
+                    Path = @"D:\old\2Dsource",
+                    Files =
+                    {
+                        new FileNode { Name = "2Dsource.vcxproj", Extension = ".vcxproj" },
+                        new FileNode { Name = "main.cpp", Extension = ".cpp" }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var first = sut.Detect(snapshot).Single();
+        var second = sut.Detect(snapshot).Single();
+
+        first.Fingerprint.Should().Be(second.Fingerprint);
     }
 }

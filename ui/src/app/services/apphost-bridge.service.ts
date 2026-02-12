@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { Subject } from 'rxjs';
 
 type PendingRequest = {
@@ -40,7 +40,7 @@ export class AppHostBridgeService {
   private readonly eventSubject = new Subject<HostEvent>();
   readonly events$ = this.eventSubject.asObservable();
 
-  constructor() {
+  constructor(private readonly ngZone: NgZone) {
     if (this.webview) {
       this.webview.addEventListener('message', (event: MessageEvent<HostResponse>) => {
         const message = event.data;
@@ -50,16 +50,20 @@ export class AppHostBridgeService {
             return;
           }
           this.pending.delete(message.id);
-          if (message.ok) {
-            pending.resolve(message.data);
-          } else {
-            pending.reject(new Error(message.error ?? 'Unknown host error'));
-          }
+          this.ngZone.run(() => {
+            if (message.ok) {
+              pending.resolve(message.data);
+            } else {
+              pending.reject(new Error(message.error ?? 'Unknown host error'));
+            }
+          });
           return;
         }
 
         if (message?.type) {
-          this.eventSubject.next({ type: message.type, data: message.data });
+          this.ngZone.run(() => {
+            this.eventSubject.next({ type: message.type, data: message.data });
+          });
         }
       });
     } else {
@@ -230,6 +234,19 @@ export class AppHostBridgeService {
           ...this.mockSuggestions.slice(index + 1)
         ];
         return Promise.resolve(updated as T);
+      }
+      case 'suggestions.delete': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing suggestion id.'));
+        }
+
+        const existed = this.mockSuggestions.some((item) => item.id === id);
+        if (existed) {
+          this.mockSuggestions = this.mockSuggestions.filter((item) => item.id !== id);
+        }
+
+        return Promise.resolve({ id, deleted: existed } as T);
       }
       case 'suggestions.exportDebug': {
         const id = typeof payload?.id === 'string' ? payload.id : '';

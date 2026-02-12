@@ -67,6 +67,12 @@ export class SuggestionsService {
     this.upsert(this.normalize(updated));
   }
 
+  async deleteSuggestion(id: string): Promise<void> {
+    await this.bridge.request<{ id: string; deleted: boolean }>('suggestions.delete', { id });
+    const current = this.itemsSubject.getValue();
+    this.itemsSubject.next(current.filter((item) => item.id !== id));
+  }
+
   async exportArchiveJson(): Promise<{ path: string; count: number }> {
     return await this.bridge.request<{ path: string; count: number }>('suggestions.exportArchive');
   }

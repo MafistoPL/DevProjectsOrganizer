@@ -1,6 +1,7 @@
 using AppHost.Persistence;
 using AppHost.Services;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace AppHost.IntegrationTests;
@@ -123,5 +124,179 @@ public sealed class ProjectSuggestionStoreTests
         {
             await RootStoreTests.DisposeDbAsync(db, path);
         }
+    }
+
+    [Fact]
+    public async Task ReplaceForScanAsync_skips_suggestion_when_latest_matching_decision_is_rejected()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var rootPath = @"D:\code";
+            var previousScanId = Guid.NewGuid();
+            var currentScanId = Guid.NewGuid();
+
+            db.ScanSessions.AddRange(
+                new ScanSessionEntity
+                {
+                    Id = previousScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new ScanSessionEntity
+                {
+                    Id = currentScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+
+            db.ProjectSuggestions.Add(new ProjectSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ScanSessionId = previousScanId,
+                RootPath = rootPath,
+                Name = "2Dsource",
+                Path = @"D:\code\2Dsource",
+                Kind = "ProjectRoot",
+                Score = 0.7,
+                Reason = "markers: .vcxproj",
+                ExtensionsSummary = "cpp=4",
+                Fingerprint = "fp-2dsource-v1",
+                MarkersJson = "[\".vcxproj\"]",
+                TechHintsJson = "[\"cpp\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4),
+                Status = ProjectSuggestionStatus.Rejected
+            });
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            await store.ReplaceForScanAsync(
+                currentScanId,
+                new[]
+                {
+                    CreateDetectedSuggestion(
+                        name: "2Dsource",
+                        path: @"D:\code\2Dsource",
+                        kind: "ProjectRoot",
+                        fingerprint: "fp-2dsource-v1")
+                });
+
+            await using var checkDb = new AppDbContext(options);
+            var currentScanSuggestions = await checkDb.ProjectSuggestions
+                .Where(item => item.ScanSessionId == currentScanId)
+                .ToListAsync();
+
+            currentScanSuggestions.Should().BeEmpty();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task DeleteAsync_removes_archived_rejection_and_allows_reinsertion_on_next_scan()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var rootPath = @"D:\code";
+            var previousScanId = Guid.NewGuid();
+            var currentScanId = Guid.NewGuid();
+
+            db.ScanSessions.AddRange(
+                new ScanSessionEntity
+                {
+                    Id = previousScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new ScanSessionEntity
+                {
+                    Id = currentScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+
+            var archivedRejection = new ProjectSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ScanSessionId = previousScanId,
+                RootPath = rootPath,
+                Name = "2Dsource",
+                Path = @"D:\code\2Dsource",
+                Kind = "ProjectRoot",
+                Score = 0.7,
+                Reason = "markers: .vcxproj",
+                ExtensionsSummary = "cpp=4",
+                Fingerprint = "fp-2dsource-v1",
+                MarkersJson = "[\".vcxproj\"]",
+                TechHintsJson = "[\"cpp\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4),
+                Status = ProjectSuggestionStatus.Rejected
+            };
+            db.ProjectSuggestions.Add(archivedRejection);
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            var deleted = await store.DeleteAsync(archivedRejection.Id);
+            deleted.Should().BeTrue();
+
+            await store.ReplaceForScanAsync(
+                currentScanId,
+                new[]
+                {
+                    CreateDetectedSuggestion(
+                        name: "2Dsource",
+                        path: @"D:\code\2Dsource",
+                        kind: "ProjectRoot",
+                        fingerprint: "fp-2dsource-v1")
+                });
+
+            await using var checkDb = new AppDbContext(options);
+            var currentScanSuggestions = await checkDb.ProjectSuggestions
+                .Where(item => item.ScanSessionId == currentScanId)
+                .ToListAsync();
+
+            currentScanSuggestions.Should().ContainSingle();
+            currentScanSuggestions[0].Path.Should().Be(@"D:\code\2Dsource");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    private static DetectedProjectSuggestion CreateDetectedSuggestion(
+        string name,
+        string path,
+        string kind,
+        string fingerprint)
+    {
+        return new DetectedProjectSuggestion(
+            name,
+            path,
+            kind,
+            0.7,
+            "markers: .vcxproj",
+            "cpp=4",
+            new[] { ".vcxproj" },
+            new[] { "cpp" },
+            fingerprint,
+            DateTimeOffset.UtcNow);
     }
 }

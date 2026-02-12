@@ -1,5 +1,7 @@
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace AppHost.Services;
 
@@ -12,6 +14,7 @@ public sealed record DetectedProjectSuggestion(
     string ExtensionsSummary,
     IReadOnlyList<string> Markers,
     IReadOnlyList<string> TechHints,
+    string Fingerprint,
     DateTimeOffset CreatedAt
 );
 
@@ -165,6 +168,7 @@ public sealed class ProjectSuggestionHeuristicsService
         var reason = $"markers: {string.Join(", ", markers)}";
         var score = CalculateScore(markers);
         var techHints = BuildTechHints(markers, histogram);
+        var fingerprint = BuildFingerprint(node, "ProjectRoot", markers, histogram);
 
         return new DetectedProjectSuggestion(
             normalizedName,
@@ -175,6 +179,7 @@ public sealed class ProjectSuggestionHeuristicsService
             extensionSummary,
             markers,
             techHints,
+            fingerprint,
             DateTimeOffset.UtcNow);
     }
 
@@ -304,6 +309,7 @@ public sealed class ProjectSuggestionHeuristicsService
             var source = sourceFiles[0];
             var markers = new[] { "single-source-file" };
             var reason = $"single file candidate: {source.File.Name}";
+            var fingerprint = BuildFingerprint(node, "SingleFileMiniProject", markers, histogram);
             return new DetectedProjectSuggestion(
                 normalizedName,
                 node.Path,
@@ -313,6 +319,7 @@ public sealed class ProjectSuggestionHeuristicsService
                 extensionSummary,
                 markers,
                 BuildTechHints(markers, histogram),
+                fingerprint,
                 DateTimeOffset.UtcNow);
         }
 
@@ -320,6 +327,7 @@ public sealed class ProjectSuggestionHeuristicsService
         {
             var markers = new[] { "main-source" };
             var reason = "native sources with entry/header layout";
+            var fingerprint = BuildFingerprint(node, "ProjectRoot", markers, histogram);
             return new DetectedProjectSuggestion(
                 normalizedName,
                 node.Path,
@@ -329,6 +337,7 @@ public sealed class ProjectSuggestionHeuristicsService
                 extensionSummary,
                 markers,
                 BuildTechHints(markers, histogram),
+                fingerprint,
                 DateTimeOffset.UtcNow);
         }
 
@@ -336,6 +345,7 @@ public sealed class ProjectSuggestionHeuristicsService
         {
             var markers = new[] { "index.html" };
             var reason = "static site layout";
+            var fingerprint = BuildFingerprint(node, "ProjectRoot", markers, histogram);
             return new DetectedProjectSuggestion(
                 normalizedName,
                 node.Path,
@@ -345,6 +355,7 @@ public sealed class ProjectSuggestionHeuristicsService
                 extensionSummary,
                 markers,
                 BuildTechHints(markers, histogram),
+                fingerprint,
                 DateTimeOffset.UtcNow);
         }
 
@@ -423,5 +434,56 @@ public sealed class ProjectSuggestionHeuristicsService
         {
             target[key] = target.GetValueOrDefault(key) + value;
         }
+    }
+
+    private static string BuildFingerprint(
+        DirectoryNode node,
+        string kind,
+        IReadOnlyList<string> markers,
+        Dictionary<string, int> histogram)
+    {
+        var builder = new StringBuilder();
+        builder.Append("v1|");
+        builder.Append(kind);
+        builder.Append('|');
+
+        foreach (var marker in markers.OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append("m:");
+            builder.Append(marker.ToLowerInvariant());
+            builder.Append('|');
+        }
+
+        foreach (var extension in histogram.Keys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append("e:");
+            builder.Append(extension.ToLowerInvariant());
+            builder.Append('=');
+            builder.Append(histogram[extension]);
+            builder.Append('|');
+        }
+
+        builder.Append("df:");
+        builder.Append(node.Directories.Count);
+        builder.Append("|ff:");
+        builder.Append(node.Files.Count);
+        builder.Append('|');
+
+        foreach (var fileName in node.Files.Select(file => file.Name).OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append("f:");
+            builder.Append(fileName.ToLowerInvariant());
+            builder.Append('|');
+        }
+
+        foreach (var directoryName in node.Directories.Select(directory => directory.Name).OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append("d:");
+            builder.Append(directoryName.ToLowerInvariant());
+            builder.Append('|');
+        }
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }

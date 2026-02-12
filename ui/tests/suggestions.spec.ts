@@ -247,6 +247,24 @@ test('archive scope allows fixing rejected item and hides reject action', async 
   await expect(rejectedCard.getByRole('button', { name: /^Reject$/ })).toHaveCount(0);
 });
 
+test('archive scope allows deleting archived suggestion', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  const firstCard = list.locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+
+  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+  await page.getByTestId('project-suggest-layout').getByText('Grid').click();
+
+  const archivedCard = list.locator('.suggestion-card').first();
+  await expect(archivedCard.getByTestId('project-suggest-delete-btn')).toBeVisible();
+  await archivedCard.getByTestId('project-suggest-delete-btn').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(0);
+});
+
 test('grid card size slider changes card dimensions', async ({ page }) => {
   await gotoScan(page);
 

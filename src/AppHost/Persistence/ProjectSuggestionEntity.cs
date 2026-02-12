@@ -11,6 +11,7 @@ public sealed class ProjectSuggestionEntity
     public double Score { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string ExtensionsSummary { get; set; } = string.Empty;
+    public string Fingerprint { get; set; } = string.Empty;
     public string MarkersJson { get; set; } = "[]";
     public string TechHintsJson { get; set; } = "[]";
     public DateTimeOffset CreatedAt { get; set; }

@@ -17,6 +17,7 @@ public sealed class ProjectSuggestionEntityConfiguration : IEntityTypeConfigurat
         entity.Property(e => e.Score).IsRequired();
         entity.Property(e => e.Reason).IsRequired();
         entity.Property(e => e.ExtensionsSummary).IsRequired();
+        entity.Property(e => e.Fingerprint).IsRequired();
         entity.Property(e => e.MarkersJson).IsRequired();
         entity.Property(e => e.TechHintsJson).IsRequired();
         entity.Property(e => e.CreatedAt).IsRequired();
@@ -27,5 +28,6 @@ public sealed class ProjectSuggestionEntityConfiguration : IEntityTypeConfigurat
         entity.HasIndex(e => e.RootPath);
         entity.HasIndex(e => e.Path);
         entity.HasIndex(e => e.Status);
+        entity.HasIndex(e => new { e.Path, e.Kind, e.Fingerprint });
     }
 }
