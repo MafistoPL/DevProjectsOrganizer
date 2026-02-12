@@ -20,7 +20,10 @@ public partial class MainWindow
             ["scan.start"] = HandleScanStartAsync,
             ["scan.pause"] = HandleScanPauseAsync,
             ["scan.resume"] = HandleScanResumeAsync,
-            ["scan.stop"] = HandleScanStopAsync
+            ["scan.stop"] = HandleScanStopAsync,
+            ["suggestions.list"] = HandleSuggestionsListAsync,
+            ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
+            ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync
         };
     }
 

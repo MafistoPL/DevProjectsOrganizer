@@ -64,8 +64,30 @@ public sealed class ProjectSuggestionStore
         CancellationToken cancellationToken = default)
     {
         return await _db.ProjectSuggestions
+            .AsNoTracking()
             .Where(item => item.ScanSessionId == scanSessionId)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProjectSuggestionEntity>> ListAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var items = await _db.ProjectSuggestions
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return items
+            .OrderByDescending(item => item.CreatedAt)
+            .ToList();
+    }
+
+    public async Task<ProjectSuggestionEntity?> GetByIdAsync(
+        Guid suggestionId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.ProjectSuggestions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == suggestionId, cancellationToken);
     }
 
     public async Task<ProjectSuggestionEntity> SetStatusAsync(

@@ -32,11 +32,13 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tryby skanu:** `roots`, `changed`, `whole`.
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
+- **Live Results:** lista sugestii jest już zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status, a `Debug JSON` kopiuje payload do schowka (bez zapisu pliku).
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
+- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 

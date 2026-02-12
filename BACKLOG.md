@@ -4,9 +4,6 @@
 - GUI: Completed scan shouldn't have "Stop" button visible. It should have dismiss button or something like this.
 - GUI: Active scans current path if dont fit into window it should have horizontal scroll.
 - ETA doesn't work
-- UI: `Live results` should load real `ProjectSuggestion` rows from SQLite (no mock data).
-- UI: add per-item debug action (next to `Accept`/`Reject`) to export JSON explaining suggestion origin.
-- Pipeline: plug DB suggestions into `Live results` with Accept/Reject and persistent status updates.
 - Root badges in Scan: project count + ongoing suggestions count.
 - Scan summary per root (last state, time, files count).
 - Queue visibility in Scan UI with `queue reason` (if still incomplete).
@@ -27,7 +24,13 @@
 - Remote backend + client sync.
 - Full-text search over scan metadata.
 
+## To segregate
+- Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
+
 ## Done (recent)
+- UI `Live results` now loads real `ProjectSuggestion` rows from SQLite through IPC (`suggestions.list`).
+- `Accept` / `Reject` in UI now persist suggestion status in DB (`suggestions.setStatus`).
+- `Debug JSON` action now exports suggestion debug payload in-memory and copies it to clipboard with confirmation bubble.
 - Marker heuristics for project detection (`.sln`, `.csproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`) + save suggestions to SQLite.
 - `ProjectSuggestion` status moved from free `string` to enum (`Pending`/`Accepted`/`Rejected`).
 - EF entity mapping moved to dedicated configuration classes + `ApplyConfigurationsFromAssembly`.

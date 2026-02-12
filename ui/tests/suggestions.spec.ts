@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test';
 const gotoScan = async (page: Page) => {
   await page.goto('/scan');
   await expect(page.getByTestId('project-suggest-list')).toBeVisible();
+  await expect(page.getByTestId('project-suggest-list').locator('[data-testid="project-name"]').first()).toBeVisible();
 };
 
 const selectSort = async (page: Page, label: string) => {
@@ -119,4 +120,28 @@ test('project suggestions sort by created date asc/desc', async ({ page }) => {
   ).toHaveText('rust-playground');
   names = await getNames(page);
   expect(names[0]).toBe('rust-playground');
+});
+
+test('project suggestion accept/reject updates status badge', async ({ page }) => {
+  await gotoScan(page);
+
+  const firstCard = page.getByTestId('project-suggest-list').locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+
+  await firstCard.getByRole('button', { name: 'Accept' }).click();
+  await expect(firstCard.locator('.status')).toHaveText('accepted');
+
+  await firstCard.getByRole('button', { name: 'Reject' }).click();
+  await expect(firstCard.locator('.status')).toHaveText('rejected');
+});
+
+test('project suggestion debug json copies to clipboard and shows bubble', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await gotoScan(page);
+
+  const firstCard = page.getByTestId('project-suggest-list').locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+
+  await firstCard.getByTestId('debug-json-btn').click();
+  await expect(page.getByText('Copied to clipboard')).toBeVisible();
 });

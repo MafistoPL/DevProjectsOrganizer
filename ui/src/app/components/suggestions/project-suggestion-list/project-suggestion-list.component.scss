@@ -232,3 +232,32 @@
   padding-top: 6px;
   border-top: 1px solid #eceff1;
 }
+
+.debug-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-icon {
+  position: relative;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #5f6368;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.copy-icon::before {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #5f6368;
+  border-radius: 2px;
+  box-sizing: border-box;
+  top: -4px;
+  left: -4px;
+  background: transparent;
+}

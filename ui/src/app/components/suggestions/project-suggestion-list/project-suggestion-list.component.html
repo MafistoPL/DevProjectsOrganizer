@@ -108,8 +108,17 @@
       </div>
 
       <div class="actions">
-        <button mat-stroked-button color="primary">Accept</button>
-        <button mat-stroked-button color="warn">Reject</button>
+        <button mat-stroked-button color="primary" (click)="setStatus(item.id, 'accepted')">Accept</button>
+        <button mat-stroked-button color="warn" (click)="setStatus(item.id, 'rejected')">Reject</button>
+        <button
+          mat-stroked-button
+          class="debug-copy-btn"
+          data-testid="debug-json-btn"
+          (click)="copyDebugJson(item.id)"
+        >
+          <span class="copy-icon" aria-hidden="true"></span>
+          <span>Debug JSON</span>
+        </button>
       </div>
     </div>
   </mat-card>
