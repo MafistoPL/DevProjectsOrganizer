@@ -1,16 +1,17 @@
 # Backlog
 
 ## Now (next 2-4 weeks)
-- Heuristics for project detection (markers: `.sln`, `.csproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`).
 - GUI: Completed scan shouldn't have "Stop" button visible. It should have dismiss button or something like this.
 - GUI: Active scans current path if dont fit into window it should have horizontal scroll.
 - ETA doesn't work
-- Pipeline: scan JSON -> `ProjectSuggestion` + save to SQLite + UI suggestions list.
+- UI: `Live results` should load real `ProjectSuggestion` rows from SQLite (no mock data).
+- UI: add per-item debug action (next to `Accept`/`Reject`) to export JSON explaining suggestion origin.
+- Pipeline: plug DB suggestions into `Live results` with Accept/Reject and persistent status updates.
 - Root badges in Scan: project count + ongoing suggestions count.
 - Scan summary per root (last state, time, files count).
 - Queue visibility in Scan UI with `queue reason` (if still incomplete).
 - Hide `Stop` button after scan is finished (confirm UX and close).
-- Pre-commit: run tests and block commit when tests fail.
+- Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
 
 ## Soon (1-3 months)
 - Tag suggestions (heuristics first, no AI by default).
@@ -26,6 +27,12 @@
 - Full-text search over scan metadata.
 
 ## Done (recent)
+- Marker heuristics for project detection (`.sln`, `.csproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`) + save suggestions to SQLite.
+- `ProjectSuggestion` status moved from free `string` to enum (`Pending`/`Accepted`/`Rejected`).
+- EF entity mapping moved to dedicated configuration classes + `ApplyConfigurationsFromAssembly`.
+- Heuristics regression analyzer (integration-level) comparing current run vs historical accepted/rejected suggestions per root.
+- Historical suggestions persisted per scan (`project_suggestions` includes `RootPath`) for regression and audit.
+- Pre-commit script exists in `.githooks/pre-commit` and blocks commit on test failures when `core.hooksPath` is configured.
 - Ignore build/IDE artifacts in scan (`bin/`, `obj/`, `.vs/`, `.idea/`, `node_modules/`, `*.pdb`, `*.obj`, `*.tlog`, `*.exe`, `*.suo`).
 - Split `MainWindow` request handling into dedicated partial files for web message dispatch, roots handlers, and scan handlers.
 - Extracted `ScanRuntime` and snapshot building/writing into dedicated classes (`ScanRuntime`, `ScanSnapshotBuilder`, `ScanSnapshotWriter`).

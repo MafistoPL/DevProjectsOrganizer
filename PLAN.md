@@ -24,8 +24,11 @@ Program lokalny do porządkowania projektów na dysku:
 ## 2. Stan projektu (teraz)
 - **Stos:** WPF + WebView2 (AppHost), Angular (UI), .NET (Engine).
 - **Dane:** SQLite w `%APPDATA%\DevProjectsOrganizer\data.db`.
+- **Mapowanie EF:** konfiguracje encji są w osobnych klasach (`IEntityTypeConfiguration`) i ładowane przez `ApplyConfigurationsFromAssembly`.
 - **Skanowanie:** uruchamiane z UI, zapisuje `ScanSession` w DB i generuje JSON
   (`%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`).
+- **Sugestie projektów:** marker heuristics działają po skanie i zapisują `ProjectSuggestion` do SQLite.
+- **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
 - **Tryby skanu:** `roots`, `changed`, `whole`.
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
@@ -54,10 +57,10 @@ Docelowym produktem skanowania są **ProjectSuggestion** (i później projekty +
 nie sam JSON.
 
 ## 5. Detekcja projektów
-Heurystyki (v1, do wdrożenia):
+Heurystyki (v1):
 - markery: `.git`, `.sln`, `*.csproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`.
 - histogram rozszerzeń (np. przewaga `*.cs` -> `csharp`).
-- struktura projektu (`src/`, `tests/`, `docs/`).
+- struktura projektu (`src/`, `tests/`, `docs/`) — do rozszerzenia.
 
 Niejasne przypadki:
 - folder bez markerów i wiele plików -> `Collection` + opcjonalne `SingleFileMiniProject`.
@@ -81,6 +84,7 @@ Minimalny zestaw:
 - **Root**: ścieżka, status, statystyki skanu.
 - **ScanSession**: tryb, stan, liczba plików, postęp, output JSON.
 - **ProjectSuggestion**: kandydat projektu + metadane wykrycia.
+- **ProjectSuggestion**: kandydat projektu + status decyzji; wpisy są archiwalne per skan (pod regresję i audyt).
 - **Project**: zaakceptowany projekt.
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
 
@@ -98,13 +102,14 @@ Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.
 Piramida testów:
 - **Unit (Engine)**: logika heurystyk, policy dla próbek, filtrowanie.
 - **Integration (AppHost)**: DB + skan + JSON.
+- **Integration (AppHost)**: DB + skan + JSON + regresja heurystyk względem historycznych decyzji (`Accepted`/`Rejected`).
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 
-Plan: dodać pre‑commit, który uruchamia testy i blokuje commit przy błędach.
+Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).
 
 ## 10. Roadmapa
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
-- **Near Term:** ignorowanie artefaktów, heurystyki projektów, pipeline sugestii, root‑badges.
+- **Near Term:** UI pod realne sugestie z DB, akcje Accept/Reject + debug export, root‑badges.
 - **Mid Term:** tag suggestions, split/merge projektów, incremental scan.
 - **Later:** AI do „one project vs many”, sync z backendem.
 
