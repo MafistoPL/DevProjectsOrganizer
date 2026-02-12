@@ -200,4 +200,66 @@ test('roots list shows project and pending badges with summary', async ({ page }
   await expect(page.getByTestId('root-project-count').first()).toContainText('Projects');
   await expect(page.getByTestId('root-pending-count').first()).toContainText('Pending');
   await expect(page.getByTestId('root-last-summary').first()).toContainText('Last:');
+  await expect(page.getByTestId('scan-root-path').first()).toContainText('D:\\code');
+});
+
+test('roots card path uses own horizontal scroll for long values', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockRoots',
+      JSON.stringify([
+        {
+          id: 'root-long',
+          path: 'D:\\z-pulpitu\\ProgrammingLearning\\one_drive\\Old_Projects\\Very_Long_Root_Name\\More\\Segments\\Even_More\\Path',
+          status: 'changed',
+          projectCount: 3,
+          ongoingSuggestionCount: 1,
+          lastScanState: 'Completed',
+          lastScanAt: '2026-02-12T18:24:00.000Z',
+          lastScanFiles: 1284992
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  const rootPath = page.getByTestId('scan-root-path').first();
+  await expect(rootPath).toBeVisible();
+
+  const hasOverflow = await rootPath.evaluate((element) => element.scrollWidth > element.clientWidth);
+  expect(hasOverflow).toBeTruthy();
+});
+
+test('manage roots dialog keeps horizontal scroll on path element, not whole dialog', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockRoots',
+      JSON.stringify([
+        {
+          id: 'root-long-dialog',
+          path: 'D:\\z-pulpitu\\ProgrammingLearning\\one_drive\\Old_Projects\\Very_Long_Root_Name\\More\\Segments\\Even_More\\Path',
+          status: 'changed',
+          projectCount: 3,
+          ongoingSuggestionCount: 1,
+          lastScanState: null,
+          lastScanAt: null,
+          lastScanFiles: null
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+  await page.getByRole('button', { name: 'Manage roots' }).click();
+
+  const dialogContent = page.locator('mat-dialog-content.dialog-content');
+  await expect(dialogContent).toBeVisible();
+
+  const dialogHasOverflow = await dialogContent.evaluate((element) => element.scrollWidth > element.clientWidth);
+  expect(dialogHasOverflow).toBeFalsy();
+
+  const rootPath = page.getByTestId('manage-root-path').first();
+  const pathHasOverflow = await rootPath.evaluate((element) => element.scrollWidth > element.clientWidth);
+  expect(pathHasOverflow).toBeTruthy();
 });

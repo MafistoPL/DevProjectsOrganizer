@@ -10,7 +10,7 @@
     <div class="root-item" *ngFor="let root of roots$ | async">
       <div class="root-row">
         <ng-container *ngIf="editingId !== root.id; else editRow">
-          <span>{{ root.path }}</span>
+          <span class="root-path" data-testid="manage-root-path">{{ root.path }}</span>
           <span class="row-actions">
             <button mat-button (click)="startEdit(root)">Edit</button>
             <button mat-button color="warn" (click)="removeRoot(root)">Remove</button>
