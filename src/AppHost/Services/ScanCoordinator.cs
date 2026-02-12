@@ -15,7 +15,8 @@ public sealed record ScanSessionDto(
     long FilesScanned,
     long? TotalFiles,
     string? QueueReason,
-    string? OutputPath
+    string? OutputPath,
+    string? Eta
 );
 
 public sealed record ScanStartRequest(
@@ -69,7 +70,7 @@ public sealed class ScanCoordinator
 
         _ = Task.Run(() => RunScanAsync(runtime), CancellationToken.None);
 
-        var dto = ToDto(session, runtime.QueueReason);
+        var dto = runtime.ToDto();
         EmitProgress(dto);
         return dto;
     }
@@ -289,21 +290,6 @@ public sealed class ScanCoordinator
     private void EmitProgress(ScanSessionDto dto)
     {
         Emit(ScanEventTypes.Progress, dto);
-    }
-
-    private static ScanSessionDto ToDto(ScanSessionEntity session, string? queueReason)
-    {
-        return new ScanSessionDto(
-            session.Id,
-            session.RootPath,
-            session.Mode,
-            session.State,
-            session.DiskKey,
-            session.CurrentPath,
-            session.FilesScanned,
-            session.TotalFiles,
-            queueReason,
-            session.OutputPath);
     }
 
     private void Emit(string type, object? data)

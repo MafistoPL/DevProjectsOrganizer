@@ -4,8 +4,28 @@
     <mat-list>
       <mat-list-item *ngFor="let root of roots$ | async" class="root-item">
         <div class="root-row">
-          <span class="path">{{ root.path }}</span>
-          <span class="status" [attr.data-status]="root.status">{{ root.status }}</span>
+          <div class="root-main">
+            <span class="path">{{ root.path }}</span>
+            <span class="summary" data-testid="root-last-summary" *ngIf="root.lastScanState; else noScanSummary">
+              Last: {{ root.lastScanState }} · {{ root.lastScanFiles ?? 0 | number }} files ·
+              {{ root.lastScanAt | date: 'yyyy-MM-dd HH:mm' }}
+            </span>
+            <ng-template #noScanSummary>
+              <span class="summary summary--empty">No scans yet</span>
+            </ng-template>
+          </div>
+
+          <div class="root-meta">
+            <div class="badges">
+              <span class="badge badge--projects" data-testid="root-project-count">
+                Projects {{ root.projectCount ?? 0 }}
+              </span>
+              <span class="badge badge--pending" data-testid="root-pending-count">
+                Pending {{ root.ongoingSuggestionCount ?? 0 }}
+              </span>
+            </div>
+            <span class="status" [attr.data-status]="root.status">{{ root.status }}</span>
+          </div>
         </div>
       </mat-list-item>
     </mat-list>

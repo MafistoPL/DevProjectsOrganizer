@@ -1,13 +1,6 @@
 # Backlog
 
 ## Now (next 2-4 weeks)
-- GUI: Completed scan shouldn't have "Stop" button visible. It should have dismiss button or something like this.
-- GUI: Active scans current path if dont fit into window it should have horizontal scroll.
-- ETA doesn't work
-- Root badges in Scan: project count + ongoing suggestions count.
-- Scan summary per root (last state, time, files count).
-- Queue visibility in Scan UI with `queue reason` (if still incomplete).
-- Hide `Stop` button after scan is finished (confirm UX and close).
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
 - UI: expose action to run/export regression report against historical user decisions.
 
@@ -28,6 +21,10 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Scan UI: ETA is now computed and propagated from runtime to UI (`HH:MM:SS`).
+- Scan UI: active scan `Current path` supports horizontal scroll for long paths.
+- Scan UI: roots list now shows `Projects` + `Pending` badges.
+- Scan UI: roots list now shows per-root last scan summary (`state`, `time`, `files`).
 - Integration tests no longer clean global `%APPDATA%\\DevProjectsOrganizer\\scans`; scan snapshots in tests are now isolated to test-specific temp data directories.
 - Replay regression now compares user decisions against matching `scan-<id>.json` per `ScanSessionId` (instead of mixing root-wide history into latest snapshot).
 - UI: `Stop` action is now hidden for terminal scan states (e.g., `Completed`) and covered by Playwright test.

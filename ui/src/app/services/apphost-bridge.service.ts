@@ -19,11 +19,22 @@ type HostEvent = {
   data?: unknown;
 };
 
+type MockRoot = {
+  id: string;
+  path: string;
+  status: string;
+  projectCount: number;
+  ongoingSuggestionCount: number;
+  lastScanState: string | null;
+  lastScanAt: string | null;
+  lastScanFiles: number | null;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly webview = (window as any).chrome?.webview;
-  private mockRoots: Array<{ id: string; path: string; status: string }> = [];
+  private mockRoots: MockRoot[] = [];
   private mockScans: Array<any> = [];
   private mockSuggestions: Array<any> = [];
   private readonly eventSubject = new Subject<HostEvent>();
@@ -89,7 +100,12 @@ export class AppHostBridgeService {
         const root = {
           id: this.createId(),
           path: raw,
-          status: 'not scanned'
+          status: 'not scanned',
+          projectCount: 0,
+          ongoingSuggestionCount: 0,
+          lastScanState: null,
+          lastScanAt: null,
+          lastScanFiles: null
         };
         this.mockRoots = [...this.mockRoots, root];
         this.saveMockRoots();
@@ -273,13 +289,50 @@ export class AppHostBridgeService {
     const stored = localStorage.getItem('mockRoots');
     if (stored) {
       this.mockRoots = JSON.parse(stored);
+      this.mockRoots = this.mockRoots.map((root) => ({
+        id: root.id,
+        path: root.path,
+        status: root.status,
+        projectCount: root.projectCount ?? 0,
+        ongoingSuggestionCount: root.ongoingSuggestionCount ?? 0,
+        lastScanState: root.lastScanState ?? null,
+        lastScanAt: root.lastScanAt ?? null,
+        lastScanFiles: root.lastScanFiles ?? null
+      }));
       return;
     }
 
     this.mockRoots = [
-      { id: this.createId(), path: 'D:\\code', status: 'scanned' },
-      { id: this.createId(), path: 'C:\\src', status: 'changed' },
-      { id: this.createId(), path: 'E:\\backup', status: 'scanning' }
+      {
+        id: this.createId(),
+        path: 'D:\\code',
+        status: 'scanned',
+        projectCount: 8,
+        ongoingSuggestionCount: 2,
+        lastScanState: 'Completed',
+        lastScanAt: '2026-02-12T18:24:00.000Z',
+        lastScanFiles: 1284992
+      },
+      {
+        id: this.createId(),
+        path: 'C:\\src',
+        status: 'changed',
+        projectCount: 5,
+        ongoingSuggestionCount: 1,
+        lastScanState: 'Completed',
+        lastScanAt: '2026-02-12T17:12:00.000Z',
+        lastScanFiles: 462193
+      },
+      {
+        id: this.createId(),
+        path: 'E:\\backup',
+        status: 'scanning',
+        projectCount: 3,
+        ongoingSuggestionCount: 4,
+        lastScanState: 'Running',
+        lastScanAt: '2026-02-12T19:01:00.000Z',
+        lastScanFiles: 228344
+      }
     ];
     this.saveMockRoots();
   }

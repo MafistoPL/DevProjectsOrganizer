@@ -141,3 +141,63 @@ test('completed scan does not show stop button', async ({ page }) => {
   await expect(statusCard).toContainText('Completed');
   await expect(page.getByTestId('scan-stop-btn-scan-completed-1')).toHaveCount(0);
 });
+
+test('active scan current path supports horizontal scroll for long paths', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-running-long-path',
+          rootPath: 'D:\\old-projects',
+          mode: 'roots',
+          state: 'Running',
+          disk: 'D:',
+          currentPath:
+            'D:\\z-pulpitu\\ProgrammingLearning\\one_drive\\Old_Projects\\Simple_Data_Structures\\One_Direction_Linked_List\\very\\long\\nested\\folder\\structure\\main.cpp',
+          filesScanned: 77,
+          totalFiles: 400,
+          queueReason: null,
+          outputPath: null,
+          eta: '00:02:31'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  const pathValue = page.getByTestId('scan-current-path-scan-running-long-path');
+  await expect(pathValue).toBeVisible();
+
+  const hasHorizontalOverflow = await pathValue.evaluate((element) => {
+    return element.scrollWidth > element.clientWidth;
+  });
+  expect(hasHorizontalOverflow).toBeTruthy();
+});
+
+test('roots list shows project and pending badges with summary', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockRoots',
+      JSON.stringify([
+        {
+          id: 'root-1',
+          path: 'D:\\code',
+          status: 'scanned',
+          projectCount: 8,
+          ongoingSuggestionCount: 2,
+          lastScanState: 'Completed',
+          lastScanAt: '2026-02-12T18:24:00.000Z',
+          lastScanFiles: 1284992
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  await expect(page.getByTestId('root-project-count').first()).toContainText('Projects');
+  await expect(page.getByTestId('root-pending-count').first()).toContainText('Pending');
+  await expect(page.getByTestId('root-last-summary').first()).toContainText('Last:');
+});

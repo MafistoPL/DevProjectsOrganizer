@@ -1,4 +1,5 @@
 using System;
+using AppHost.Services;
 
 namespace AppHost;
 
@@ -12,8 +13,16 @@ public partial class MainWindow
             return;
         }
 
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database context not ready.");
+            return;
+        }
+
         var roots = await _rootStore.GetAllAsync();
-        SendResponse(request.Id, request.Type, roots);
+        var overviewService = new RootOverviewService(_dbContext);
+        var overview = await overviewService.BuildAsync(roots, CancellationToken.None);
+        SendResponse(request.Id, request.Type, overview);
     }
 
     private async Task HandleRootsAddAsync(HostRequest request)

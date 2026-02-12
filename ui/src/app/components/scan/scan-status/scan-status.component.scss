@@ -73,8 +73,36 @@
 .scan-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   font-size: 13px;
+}
+
+.scan-row--path {
+  min-width: 0;
+}
+
+.scan-current-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.scan-current-value::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scan-current-value::-webkit-scrollbar-thumb {
+  background: #cfd8dc;
+  border-radius: 999px;
+}
+
+.scan-current-value::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .scan-actions {

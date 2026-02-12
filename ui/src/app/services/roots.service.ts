@@ -6,6 +6,11 @@ export type RootItem = {
   id: string;
   path: string;
   status: string;
+  projectCount?: number;
+  ongoingSuggestionCount?: number;
+  lastScanState?: string | null;
+  lastScanAt?: string | null;
+  lastScanFiles?: number | null;
 };
 
 @Injectable({ providedIn: 'root' })

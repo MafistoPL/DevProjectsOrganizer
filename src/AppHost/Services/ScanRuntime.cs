@@ -7,6 +7,7 @@ public sealed class ScanRuntime
 {
     private readonly AsyncManualResetEvent _pauseEvent = new(true);
     private DateTimeOffset _lastProgressAt = DateTimeOffset.MinValue;
+    private DateTimeOffset? _scanStartedAt;
     private readonly CancellationTokenSource _cts = new();
 
     public Guid ScanId { get; }
@@ -60,6 +61,11 @@ public sealed class ScanRuntime
 
     public void SetState(string state)
     {
+        if ((state == ScanSessionStates.Counting || state == ScanSessionStates.Running) && _scanStartedAt == null)
+        {
+            _scanStartedAt = DateTimeOffset.UtcNow;
+        }
+
         State = state;
     }
 
@@ -114,6 +120,48 @@ public sealed class ScanRuntime
             FilesScanned,
             TotalFiles,
             QueueReason,
-            OutputPath);
+            OutputPath,
+            CalculateEta());
+    }
+
+    private string? CalculateEta()
+    {
+        if (_scanStartedAt is null)
+        {
+            return null;
+        }
+
+        if (TotalFiles is null || TotalFiles <= 0 || FilesScanned <= 0)
+        {
+            return null;
+        }
+
+        var remaining = TotalFiles.Value - FilesScanned;
+        if (remaining <= 0)
+        {
+            return "00:00:00";
+        }
+
+        var elapsedSeconds = (DateTimeOffset.UtcNow - _scanStartedAt.Value).TotalSeconds;
+        if (elapsedSeconds <= 0)
+        {
+            return null;
+        }
+
+        var filesPerSecond = FilesScanned / elapsedSeconds;
+        if (filesPerSecond <= 0 || double.IsNaN(filesPerSecond) || double.IsInfinity(filesPerSecond))
+        {
+            return null;
+        }
+
+        var etaSeconds = remaining / filesPerSecond;
+        if (double.IsNaN(etaSeconds) || double.IsInfinity(etaSeconds))
+        {
+            return null;
+        }
+
+        var boundedSeconds = Math.Max(0, (long)Math.Ceiling(etaSeconds));
+        var eta = TimeSpan.FromSeconds(boundedSeconds);
+        return $"{(int)eta.TotalHours:00}:{eta.Minutes:00}:{eta.Seconds:00}";
     }
 }

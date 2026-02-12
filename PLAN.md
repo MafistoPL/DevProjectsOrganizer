@@ -32,15 +32,14 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tryby skanu:** `roots`, `changed`, `whole`.
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
-- **Live Results:** lista sugestii jest już zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status, a `Debug JSON` kopiuje payload do schowka (bez zapisu pliku).
-- **Live Results / Suggestions cards:** `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
+- **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
+- **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
-- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`.
-- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
+- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -116,7 +115,7 @@ User-data replay regression jest osobną kategorią testów (`Category=UserDataR
 
 ## 10. Roadmapa
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
-- **Near Term:** UI pod realne sugestie z DB, akcje Accept/Reject + debug export, root‑badges.
+- **Near Term:** UI pod realne sugestie z DB, akcje Accept/Reject, raport regresji w UI.
 - **Mid Term:** tag suggestions, split/merge projektów, incremental scan.
 - **Later:** AI do „one project vs many”, sync z backendem.
 

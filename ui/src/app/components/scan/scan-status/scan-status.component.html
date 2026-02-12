@@ -18,9 +18,15 @@
         <strong>{{ scan.queueReason }}</strong>
       </div>
 
-      <div class="scan-row" *ngIf="scan.state !== 'Queued'">
+      <div class="scan-row scan-row--path" *ngIf="scan.state !== 'Queued'">
         <span>Current</span>
-        <strong>{{ scan.currentPath }}</strong>
+        <strong
+          class="scan-current-value"
+          [attr.data-testid]="'scan-current-path-' + scan.id"
+          [attr.title]="scan.currentPath ?? '--'"
+        >
+          {{ scan.currentPath ?? '--' }}
+        </strong>
       </div>
       <div class="scan-row">
         <span>ETA</span>
