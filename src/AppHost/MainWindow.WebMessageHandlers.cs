@@ -25,7 +25,8 @@ public partial class MainWindow
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
             ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync,
             ["suggestions.exportArchive"] = HandleSuggestionsExportArchiveAsync,
-            ["suggestions.openArchiveFolder"] = HandleSuggestionsOpenArchiveFolderAsync
+            ["suggestions.openArchiveFolder"] = HandleSuggestionsOpenArchiveFolderAsync,
+            ["suggestions.openPath"] = HandleSuggestionsOpenPathAsync
         };
     }
 

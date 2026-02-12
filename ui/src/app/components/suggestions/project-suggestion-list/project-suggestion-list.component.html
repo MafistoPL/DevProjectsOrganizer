@@ -59,6 +59,20 @@
     <mat-button-toggle value="grid">Grid</mat-button-toggle>
   </mat-button-toggle-group>
 
+  <label class="grid-size" data-testid="project-suggest-grid-size-wrap">
+    <span>Card size (grid)</span>
+    <input
+      type="range"
+      min="85"
+      max="130"
+      step="5"
+      [disabled]="layout !== 'grid'"
+      [value]="gridCardSizePercent"
+      (input)="gridCardSizePercent = +$any($event.target).value"
+      data-testid="project-suggest-grid-size"
+    />
+  </label>
+
   <button
     *ngIf="mode === 'suggestions'"
     mat-stroked-button
@@ -83,6 +97,7 @@
 <div
   class="suggestion-list"
   [class.layout-grid]="layout === 'grid'"
+  [style.--grid-card-scale]="gridScaleFactor"
   data-testid="project-suggest-list"
 >
   <mat-card
@@ -110,20 +125,50 @@
       <div class="details">
         <div class="detail-row path-row">
           <span class="detail-label">Path</span>
-          <span
-            #pathValue
-            class="detail-value path-value"
-            [matTooltip]="item.path"
-            [matTooltipDisabled]="!isOverflowing(pathValue)"
-            matTooltipClass="path-tooltip"
-            matTooltipPositionAtOrigin="true"
+          <button
+            type="button"
+            class="detail-value path-value path-menu-trigger"
+            [matMenuTriggerFor]="pathMenu"
+            data-testid="path-menu-trigger"
           >
-            {{ item.path }}
-          </span>
+            <span
+              #pathValue
+              class="path-value-text"
+              [matTooltip]="item.path"
+              [matTooltipDisabled]="!isOverflowing(pathValue)"
+              matTooltipClass="path-tooltip"
+              matTooltipPositionAtOrigin="true"
+            >
+              {{ item.path }}
+            </span>
+          </button>
+          <mat-menu #pathMenu="matMenu">
+            <button
+              mat-menu-item
+              data-testid="path-copy-btn"
+              (click)="copyPath(item.path)"
+            >
+              Copy path
+            </button>
+            <button
+              mat-menu-item
+              data-testid="path-open-btn"
+              (click)="openPath(item.path)"
+            >
+              Open in Explorer
+            </button>
+          </mat-menu>
         </div>
         <div class="detail-row">
           <span class="detail-label">Reason</span>
-          <strong>{{ item.reason }}</strong>
+          <button
+            type="button"
+            class="detail-value reason-copy-btn"
+            data-testid="reason-copy-btn"
+            (click)="copyReason(item.reason)"
+          >
+            <strong>{{ item.reason }}</strong>
+          </button>
         </div>
         <div class="detail-row">
           <span class="detail-label">Extensions</span>
@@ -139,17 +184,25 @@
         </div>
       </div>
 
-      <div class="actions">
-        <button mat-stroked-button color="primary" (click)="setStatus(item.id, 'accepted')">Accept</button>
-        <button mat-stroked-button color="warn" (click)="setStatus(item.id, 'rejected')">Reject</button>
+      <div
+        class="actions"
+        *ngIf="(mode !== 'suggestions' || scope !== 'archive') || item.status === 'rejected'"
+      >
         <button
           mat-stroked-button
-          class="debug-copy-btn"
-          data-testid="debug-json-btn"
-          (click)="copyDebugJson(item.id)"
+          color="primary"
+          *ngIf="(mode !== 'suggestions' || scope !== 'archive') || item.status === 'rejected'"
+          (click)="setStatus(item.id, 'accepted')"
         >
-          <span class="copy-icon" aria-hidden="true"></span>
-          <span>Debug JSON</span>
+          Accept
+        </button>
+        <button
+          mat-stroked-button
+          color="warn"
+          *ngIf="mode !== 'suggestions' || scope !== 'archive'"
+          (click)="setStatus(item.id, 'rejected')"
+        >
+          Reject
         </button>
       </div>
     </div>

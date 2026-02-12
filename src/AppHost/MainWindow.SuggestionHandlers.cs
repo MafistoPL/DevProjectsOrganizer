@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Diagnostics;
+using System.IO;
 using AppHost.Persistence;
 using AppHost.Services;
 
@@ -155,6 +156,27 @@ public partial class MainWindow
         return Task.CompletedTask;
     }
 
+    private Task HandleSuggestionsOpenPathAsync(HostRequest request)
+    {
+        try
+        {
+            if (!TryGetPath(request.Payload, out var path))
+            {
+                SendError(request.Id, request.Type, "Missing path.");
+                return Task.CompletedTask;
+            }
+
+            OpenInExplorer(path);
+            SendResponse(request.Id, request.Type, new { path });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static bool TryGetSuggestionId(JsonElement? payload, out Guid suggestionId)
     {
         suggestionId = Guid.Empty;
@@ -193,6 +215,57 @@ public partial class MainWindow
         }
 
         return Enum.TryParse<ProjectSuggestionStatus>(raw, true, out status);
+    }
+
+    private static bool TryGetPath(JsonElement? payload, out string path)
+    {
+        path = string.Empty;
+        if (!payload.HasValue)
+        {
+            return false;
+        }
+
+        var element = payload.Value;
+        if (!element.TryGetProperty("path", out var pathElement))
+        {
+            return false;
+        }
+
+        var raw = pathElement.GetString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        path = raw.Trim();
+        return true;
+    }
+
+    private static void OpenInExplorer(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+            return;
+        }
+
+        if (File.Exists(path))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{path}\"",
+                UseShellExecute = true
+            });
+            return;
+        }
+
+        throw new InvalidOperationException("Path does not exist.");
     }
 
     private static ProjectSuggestionDto MapSuggestionDto(ProjectSuggestionEntity entity)

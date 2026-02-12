@@ -67,20 +67,16 @@ export class SuggestionsService {
     this.upsert(this.normalize(updated));
   }
 
-  async exportDebugJson(id: string): Promise<string> {
-    const response = await this.bridge.request<{ id: string; json: string }>(
-      'suggestions.exportDebug',
-      { id }
-    );
-    return response.json;
-  }
-
   async exportArchiveJson(): Promise<{ path: string; count: number }> {
     return await this.bridge.request<{ path: string; count: number }>('suggestions.exportArchive');
   }
 
   async openArchiveFolder(): Promise<{ path: string }> {
     return await this.bridge.request<{ path: string }>('suggestions.openArchiveFolder');
+  }
+
+  async openPath(path: string): Promise<{ path: string }> {
+    return await this.bridge.request<{ path: string }>('suggestions.openPath', { path });
   }
 
   private upsert(item: ProjectSuggestionItem): void {

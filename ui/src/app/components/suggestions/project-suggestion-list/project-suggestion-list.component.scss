@@ -1,5 +1,8 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .list-toolbar {
@@ -21,6 +24,18 @@
   height: 40px;
 }
 
+.grid-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.grid-size input[type='range'] {
+  width: 120px;
+}
+
 .spacer {
   flex: 1 1 auto;
 }
@@ -29,6 +44,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 420px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -36,9 +53,13 @@
   box-sizing: border-box;
 }
 
+:host-context(.page) .suggestion-list {
+  max-height: none;
+}
+
 .suggestion-list.layout-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(264px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(calc(264px * var(--grid-card-scale, 1)), 1fr));
   align-items: start;
 }
 
@@ -51,7 +72,7 @@
 }
 
 .suggestion-list.layout-grid .suggestion-card {
-  height: 286px;
+  height: calc(286px * var(--grid-card-scale, 1));
   display: flex;
   flex-direction: column;
 }
@@ -187,23 +208,63 @@
 
 .path-value {
   font-weight: 600;
+  text-align: right;
+}
+
+.path-value-text {
+  display: block;
+  width: 100%;
   overflow-x: auto;
   white-space: nowrap;
   padding-bottom: 2px;
   text-align: right;
 }
 
-.path-value::-webkit-scrollbar {
+.path-value-text::-webkit-scrollbar {
   height: 6px;
 }
 
-.path-value::-webkit-scrollbar-thumb {
+.path-value-text::-webkit-scrollbar-thumb {
   background: #cfd8dc;
   border-radius: 999px;
 }
 
-.path-value::-webkit-scrollbar-track {
+.path-value-text::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.path-menu-trigger {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 0;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.reason-copy-btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 0;
+  text-align: right;
+}
+
+.reason-copy-btn strong {
+  width: 100%;
 }
 
 .chip-row {
@@ -232,33 +293,4 @@
   flex-wrap: wrap;
   padding-top: 6px;
   border-top: 1px solid #eceff1;
-}
-
-.debug-copy-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.copy-icon {
-  position: relative;
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  border: 1.5px solid #5f6368;
-  border-radius: 2px;
-  box-sizing: border-box;
-}
-
-.copy-icon::before {
-  content: '';
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  border: 1.5px solid #5f6368;
-  border-radius: 2px;
-  box-sizing: border-box;
-  top: -4px;
-  left: -4px;
-  background: transparent;
 }

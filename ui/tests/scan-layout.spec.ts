@@ -113,3 +113,31 @@ test('Manage roots edit row keeps actions aligned with input', async ({ page }) 
 
   expect(Math.abs(editCenterY - saveCenterY)).toBeLessThanOrEqual(10);
 });
+
+test('completed scan does not show stop button', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-completed-1',
+          rootPath: 'D:\\code',
+          mode: 'roots',
+          state: 'Completed',
+          disk: 'D:',
+          currentPath: 'D:\\code\\project\\done.cpp',
+          filesScanned: 12,
+          totalFiles: 12,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-completed-1.json'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  const statusCard = page.getByTestId('status-card');
+  await expect(statusCard).toContainText('Completed');
+  await expect(page.getByTestId('scan-stop-btn-scan-completed-1')).toHaveCount(0);
+});

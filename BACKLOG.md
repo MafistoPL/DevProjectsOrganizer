@@ -30,6 +30,13 @@
 ## Done (recent)
 - Integration tests no longer clean global `%APPDATA%\\DevProjectsOrganizer\\scans`; scan snapshots in tests are now isolated to test-specific temp data directories.
 - Replay regression now compares user decisions against matching `scan-<id>.json` per `ScanSessionId` (instead of mixing root-wide history into latest snapshot).
+- UI: `Stop` action is now hidden for terminal scan states (e.g., `Completed`) and covered by Playwright test.
+- UI: removed `Debug JSON` button from suggestion cards; `Reason` is now click-to-copy and `Path` opens context menu (`Copy path`, `Open in Explorer`).
+- UI: project suggestions now support grid card-size slider (works in Scan + Suggestions views).
+- UI: `Suggestions` page panels now stretch with viewport height similarly to Scan layout.
+- UI: archive view actions are constrained (`Reject` hidden; `Accept` available for rejected entries to undo mistakes).
+- UI: pending suggestions view now deduplicates newest item by (`path`,`kind`) to avoid repeated entries after multiple scans.
+- IPC: added `suggestions.openPath` for opening selected suggestion path in Explorer.
 - UI `Live results` now loads real `ProjectSuggestion` rows from SQLite through IPC (`suggestions.list`).
 - `Accept` / `Reject` in UI now persist suggestion status in DB (`suggestions.setStatus`).
 - `Debug JSON` action now exports suggestion debug payload in-memory and copies it to clipboard with confirmation bubble.

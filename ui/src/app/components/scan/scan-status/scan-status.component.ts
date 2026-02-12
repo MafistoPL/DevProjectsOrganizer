@@ -21,6 +21,7 @@ import { Observable } from 'rxjs';
   styleUrl: './scan-status.component.scss'
 })
 export class ScanStatusComponent {
+  private static readonly terminalStates = new Set(['Completed', 'Failed', 'Stopped']);
   readonly scans$: Observable<ScanSessionView[]>;
 
   constructor(private readonly scanService: ScanService) {
@@ -41,5 +42,9 @@ export class ScanStatusComponent {
 
   async stop(scan: ScanSessionView): Promise<void> {
     await this.scanService.stop(scan.id);
+  }
+
+  canStop(scan: ScanSessionView): boolean {
+    return !ScanStatusComponent.terminalStates.has(scan.state);
   }
 }

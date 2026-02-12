@@ -33,12 +33,14 @@ Program lokalny do porządkowania projektów na dysku:
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
 - **Live Results:** lista sugestii jest już zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status, a `Debug JSON` kopiuje payload do schowka (bez zapisu pliku).
+- **Live Results / Suggestions cards:** `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`.
+- **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportDebug`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -96,6 +98,7 @@ Główne zakładki:
 - **Project Organizer**: lista projektów, filtry, szczegóły.
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
 - **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
+- **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
 - **Tags**: zarządzanie tagami i backfill.
 - **Recent**: last_viewed / last_opened.
 

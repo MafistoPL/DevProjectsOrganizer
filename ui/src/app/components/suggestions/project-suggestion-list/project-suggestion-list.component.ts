@@ -5,6 +5,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltip, MatTooltipModule } from '@angular/material/tooltip';
@@ -22,6 +23,7 @@ import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatMenuModule,
     MatSnackBarModule,
     MatSelectModule,
     MatTooltipModule
@@ -38,6 +40,7 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   sortKey: 'name' | 'score' | 'createdAt' = 'name';
   sortDir: 'asc' | 'desc' = 'asc';
   searchTerm = '';
+  gridCardSizePercent = 100;
   private readonly subscription: Subscription;
   private exportTooltipTimer: number | null = null;
 
@@ -56,7 +59,7 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   }
 
   get visibleItems(): ProjectSuggestionItem[] {
-    const byScope = this.items.filter((item) => {
+    const byScopeRaw = this.items.filter((item) => {
       if (this.mode === 'live') {
         return item.status === 'pending';
       }
@@ -67,6 +70,7 @@ export class ProjectSuggestionListComponent implements OnDestroy {
 
       return item.status === 'accepted' || item.status === 'rejected';
     });
+    const byScope = this.dedupeByPathAndKind(byScopeRaw);
 
     const term = this.searchTerm.trim().toLowerCase();
     const filtered = term
@@ -88,6 +92,10 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     return sorted;
   }
 
+  get gridScaleFactor(): string {
+    return (this.gridCardSizePercent / 100).toFixed(2);
+  }
+
   toggleDetails(id: string): void {
     this.openId = this.openId === id ? null : id;
   }
@@ -103,18 +111,32 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     await this.suggestionsService.setStatus(id, status);
   }
 
-  async copyDebugJson(id: string): Promise<void> {
-    try {
-      const json = await this.suggestionsService.exportDebugJson(id);
-      const copied = await this.writeClipboard(json);
-      if (!copied) {
-        this.snackBar.open('Copy failed', 'Close', { duration: 1500 });
-        return;
-      }
-
-      this.snackBar.open('Copied to clipboard', undefined, { duration: 1200 });
-    } catch {
+  async copyReason(reason: string): Promise<void> {
+    const copied = await this.writeClipboard(reason);
+    if (!copied) {
       this.snackBar.open('Copy failed', 'Close', { duration: 1500 });
+      return;
+    }
+
+    this.snackBar.open('Reason copied', undefined, { duration: 1200 });
+  }
+
+  async copyPath(path: string): Promise<void> {
+    const copied = await this.writeClipboard(path);
+    if (!copied) {
+      this.snackBar.open('Copy failed', 'Close', { duration: 1500 });
+      return;
+    }
+
+    this.snackBar.open('Path copied', undefined, { duration: 1200 });
+  }
+
+  async openPath(path: string): Promise<void> {
+    try {
+      await this.suggestionsService.openPath(path);
+      this.snackBar.open('Opened in Explorer', undefined, { duration: 1200 });
+    } catch {
+      this.snackBar.open('Open path failed', 'Close', { duration: 1500 });
     }
   }
 
@@ -172,5 +194,24 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     const copied = document.execCommand('copy');
     document.body.removeChild(area);
     return copied;
+  }
+
+  private dedupeByPathAndKind(items: ProjectSuggestionItem[]): ProjectSuggestionItem[] {
+    const newestFirst = [...items].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const seen = new Set<string>();
+    const deduped: ProjectSuggestionItem[] = [];
+
+    for (const item of newestFirst) {
+      const key = `${item.kind}::${item.path.toLowerCase()}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    return deduped;
   }
 }

@@ -53,6 +53,7 @@ export class AppHostBridgeService {
       });
     } else {
       this.loadMockRoots();
+      this.loadMockScans();
       this.loadMockSuggestions();
     }
   }
@@ -255,6 +256,14 @@ export class AppHostBridgeService {
           path: 'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\exports'
         } as T);
       }
+      case 'suggestions.openPath': {
+        const path = typeof payload?.path === 'string' ? payload.path : '';
+        if (!path) {
+          return Promise.reject(new Error('Missing path.'));
+        }
+
+        return Promise.resolve({ path } as T);
+      }
       default:
         return Promise.reject(new Error(`Unknown mock request: ${type}`));
     }
@@ -280,6 +289,19 @@ export class AppHostBridgeService {
   }
 
   private loadMockSuggestions(): void {
+    const stored = localStorage.getItem('mockSuggestions');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          this.mockSuggestions = parsed;
+          return;
+        }
+      } catch {
+        // Fallback to built-in fixtures.
+      }
+    }
+
     this.mockSuggestions = [
       {
         id: 's1',
@@ -432,6 +454,21 @@ export class AppHostBridgeService {
         status: 'Pending'
       }
     ];
+  }
+
+  private loadMockScans(): void {
+    const stored = localStorage.getItem('mockScans');
+    if (!stored) {
+      this.mockScans = [];
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      this.mockScans = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      this.mockScans = [];
+    }
   }
 
   private createId(): string {

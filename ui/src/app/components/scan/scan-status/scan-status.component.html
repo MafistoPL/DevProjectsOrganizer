@@ -41,7 +41,15 @@
         <button mat-stroked-button *ngIf="scan.state === 'Paused'" (click)="resume(scan)">
           Resume
         </button>
-        <button mat-stroked-button color="warn" (click)="stop(scan)">Stop</button>
+        <button
+          mat-stroked-button
+          color="warn"
+          *ngIf="canStop(scan)"
+          [attr.data-testid]="'scan-stop-btn-' + scan.id"
+          (click)="stop(scan)"
+        >
+          Stop
+        </button>
       </div>
     </div>
   </mat-card-content>
