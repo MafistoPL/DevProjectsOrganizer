@@ -259,6 +259,12 @@ public sealed class ScanCoordinator
 
             if (Directory.Exists(entry))
             {
+                var directoryName = Path.GetFileName(entry.TrimEnd(Path.DirectorySeparatorChar));
+                if (ScanIgnorePolicy.ShouldSkipDirectory(directoryName))
+                {
+                    continue;
+                }
+
                 if (runtime.HasDepthRemaining(depth))
                 {
                     count += await CountFilesAsync(entry, depth + 1, runtime);
@@ -266,6 +272,13 @@ public sealed class ScanCoordinator
             }
             else
             {
+                var fileName = Path.GetFileName(entry);
+                var extension = Path.GetExtension(entry);
+                if (ScanIgnorePolicy.ShouldSkipFile(fileName, extension))
+                {
+                    continue;
+                }
+
                 count++;
             }
         }
@@ -328,6 +341,12 @@ public sealed class ScanCoordinator
 
             if (Directory.Exists(entry))
             {
+                var directoryName = Path.GetFileName(entry.TrimEnd(Path.DirectorySeparatorChar));
+                if (ScanIgnorePolicy.ShouldSkipDirectory(directoryName))
+                {
+                    continue;
+                }
+
                 if (runtime.HasDepthRemaining(depth))
                 {
                     node.Directories.Add(await BuildDirectoryNodeAsync(entry, depth + 1, runtime));
@@ -340,6 +359,13 @@ public sealed class ScanCoordinator
                         Path = entry
                     });
                 }
+                continue;
+            }
+
+            var fileName = Path.GetFileName(entry);
+            var extension = Path.GetExtension(entry);
+            if (ScanIgnorePolicy.ShouldSkipFile(fileName, extension))
+            {
                 continue;
             }
 

@@ -45,7 +45,7 @@ Założenia:
 Snapshot JSON:
 - drzewo folderów + pliki,
 - próbki treści (limit linii i rozmiaru),
-- docelowo: ignorowanie artefaktów build/IDE.
+- ignorowanie artefaktów build/IDE jest już wdrożone.
 
 Uwaga: snapshot JSON to **feature debugowy** na czas dopracowania heurystyk.
 Docelowym produktem skanowania są **ProjectSuggestion** (i później projekty + tagi),

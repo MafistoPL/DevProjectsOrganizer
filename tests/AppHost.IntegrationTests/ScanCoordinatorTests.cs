@@ -22,6 +22,11 @@ public sealed class ScanCoordinatorTests
         Directory.CreateDirectory(sourceDir);
         await File.WriteAllTextAsync(Path.Combine(sourceDir, "Program.cs"), "line1\nline2\nline3\n");
         await File.WriteAllTextAsync(Path.Combine(fixtureRoot, "Makefile"), "all:\n\techo ok\n");
+        await File.WriteAllTextAsync(Path.Combine(fixtureRoot, "ignore-me.pdb"), "debug");
+
+        var binDir = Path.Combine(fixtureRoot, "bin");
+        Directory.CreateDirectory(binDir);
+        await File.WriteAllTextAsync(Path.Combine(binDir, "ignore-me.obj"), "artifact");
 
         var (options, db, path) = await RootStoreTests.CreateDbAsync();
         try
@@ -53,6 +58,11 @@ public sealed class ScanCoordinatorTests
             var json = await File.ReadAllTextAsync(session.OutputPath!);
             json.Should().Contain("Program.cs");
             json.Should().Contain("Makefile");
+            json.Should().NotContain("ignore-me.pdb");
+            json.Should().NotContain("ignore-me.obj");
+
+            session.TotalFiles.Should().Be(2);
+            session.FilesScanned.Should().Be(2);
         }
         finally
         {
