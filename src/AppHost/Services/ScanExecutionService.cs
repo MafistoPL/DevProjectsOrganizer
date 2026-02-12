@@ -1,19 +1,27 @@
 namespace AppHost.Services;
 
+public sealed record ScanExecutionResult(
+    string OutputPath,
+    IReadOnlyList<DetectedProjectSuggestion> Suggestions
+);
+
 public sealed class ScanExecutionService
 {
     private readonly ScanSnapshotBuilder _snapshotBuilder;
     private readonly ScanSnapshotWriter _snapshotWriter;
+    private readonly ProjectSuggestionHeuristicsService _heuristicsService;
 
     public ScanExecutionService(
         ScanSnapshotBuilder? snapshotBuilder = null,
-        ScanSnapshotWriter? snapshotWriter = null)
+        ScanSnapshotWriter? snapshotWriter = null,
+        ProjectSuggestionHeuristicsService? heuristicsService = null)
     {
         _snapshotBuilder = snapshotBuilder ?? new ScanSnapshotBuilder();
         _snapshotWriter = snapshotWriter ?? new ScanSnapshotWriter();
+        _heuristicsService = heuristicsService ?? new ProjectSuggestionHeuristicsService();
     }
 
-    public async Task<string> ExecuteAsync(
+    public async Task<ScanExecutionResult> ExecuteAsync(
         ScanRuntime runtime,
         Func<ScanRuntime, Task> reportStateAsync)
     {
@@ -29,6 +37,8 @@ public sealed class ScanExecutionService
         await reportStateAsync(runtime);
 
         var snapshot = await _snapshotBuilder.BuildSnapshotAsync(runtime, reportStateAsync);
-        return await _snapshotWriter.SaveAsync(snapshot, runtime.ScanId, runtime.StopToken);
+        var outputPath = await _snapshotWriter.SaveAsync(snapshot, runtime.ScanId, runtime.StopToken);
+        var suggestions = _heuristicsService.Detect(snapshot);
+        return new ScanExecutionResult(outputPath, suggestions);
     }
 }

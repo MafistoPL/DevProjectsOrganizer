@@ -151,11 +151,12 @@ public sealed class ScanCoordinator
             diskLockHeld = true;
             runtime.QueueReason = null;
 
-            var outputPath = await _executionService.ExecuteAsync(runtime, ReportStateAsync);
+            var executionResult = await _executionService.ExecuteAsync(runtime, ReportStateAsync);
+            await SaveSuggestionsAsync(runtime.ScanId, executionResult.Suggestions);
             runtime.SetState(ScanSessionStates.Completed);
-            runtime.OutputPath = outputPath;
+            runtime.OutputPath = executionResult.OutputPath;
             await UpdateStateAsync(runtime.ScanId, ScanSessionStates.Completed, runtime);
-            Emit(ScanEventTypes.Completed, new { id = runtime.ScanId, outputPath });
+            Emit(ScanEventTypes.Completed, new { id = runtime.ScanId, outputPath = executionResult.OutputPath });
         }
         catch (OperationCanceledException)
         {
@@ -244,6 +245,13 @@ public sealed class ScanCoordinator
 
         await db.SaveChangesAsync();
         EmitProgress(runtime.ToDto());
+    }
+
+    private async Task SaveSuggestionsAsync(Guid scanId, IReadOnlyList<DetectedProjectSuggestion> suggestions)
+    {
+        using var db = _dbFactory();
+        var store = new ProjectSuggestionStore(db);
+        await store.ReplaceForScanAsync(scanId, suggestions);
     }
 
     private async Task<(Guid? rootId, string rootPath, string diskKey)> ResolveRootAsync(

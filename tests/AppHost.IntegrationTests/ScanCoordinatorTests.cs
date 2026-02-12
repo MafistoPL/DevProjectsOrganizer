@@ -2,6 +2,7 @@ using AppHost.Persistence;
 using AppHost.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Xunit;
 
 namespace AppHost.IntegrationTests;
@@ -63,6 +64,22 @@ public sealed class ScanCoordinatorTests
 
             session.TotalFiles.Should().Be(2);
             session.FilesScanned.Should().Be(2);
+
+            var suggestions = await checkDb.ProjectSuggestions
+                .Where(item => item.ScanSessionId == session.Id)
+                .ToListAsync();
+            suggestions.Should().NotBeEmpty();
+
+            var makefileSuggestion = suggestions
+                .Single(item => string.Equals(item.Path, fixtureRoot, StringComparison.OrdinalIgnoreCase));
+            makefileSuggestion.Reason.Should().Contain("Makefile");
+            makefileSuggestion.Kind.Should().Be("ProjectRoot");
+            makefileSuggestion.Score.Should().BeGreaterThan(0.5);
+            makefileSuggestion.Status.Should().Be(ProjectSuggestionStatus.Pending);
+            makefileSuggestion.RootPath.Should().Be(fixtureRoot);
+
+            var markers = JsonSerializer.Deserialize<string[]>(makefileSuggestion.MarkersJson);
+            markers.Should().Contain("Makefile");
         }
         finally
         {

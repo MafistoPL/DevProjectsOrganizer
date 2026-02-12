@@ -3,6 +3,7 @@ using System;
 using AppHost.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AppHost.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260212172642_AddProjectSuggestions")]
+    partial class AddProjectSuggestions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -50,10 +53,6 @@ namespace AppHost.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("RootPath")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("ScanSessionId")
                         .HasColumnType("TEXT");
 
@@ -71,8 +70,6 @@ namespace AppHost.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Path");
-
-                    b.HasIndex("RootPath");
 
                     b.HasIndex("ScanSessionId");
 
