@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -27,12 +28,14 @@ public partial class MainWindow : Window
     private AppDbContext? _dbContext;
     private RootStore? _rootStore;
     private ScanCoordinator? _scanCoordinator;
+    private readonly Dictionary<string, Func<HostRequest, Task>> _messageHandlers;
 
     public MainWindow()
     {
         InitializeComponent();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        _messageHandlers = CreateMessageHandlers();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -58,254 +61,6 @@ public partial class MainWindow : Window
         _scanCoordinator.ScanEvent += OnScanEvent;
     }
 
-    private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        if (_rootStore == null)
-        {
-            return;
-        }
-
-        HostRequest? request;
-        try
-        {
-            request = JsonSerializer.Deserialize<HostRequest>(e.WebMessageAsJson, _jsonOptions);
-        }
-        catch
-        {
-            return;
-        }
-
-        if (request == null || string.IsNullOrWhiteSpace(request.Type))
-        {
-            return;
-        }
-
-        switch (request.Type)
-        {
-            case "roots.list":
-            {
-                var roots = await _rootStore.GetAllAsync();
-                SendResponse(request.Id, request.Type, roots);
-                break;
-            }
-            case "roots.add":
-            {
-                if (!request.Payload.HasValue
-                    || !request.Payload.Value.TryGetProperty("path", out var pathElement))
-                {
-                    SendError(request.Id, request.Type, "Missing root path.");
-                    return;
-                }
-
-                var path = pathElement.GetString();
-                if (string.IsNullOrWhiteSpace(path))
-                {
-                    SendError(request.Id, request.Type, "Root path cannot be empty.");
-                    return;
-                }
-
-                var root = await _rootStore.AddAsync(path);
-                SendResponse(request.Id, request.Type, root);
-                break;
-            }
-            case "roots.update":
-            {
-                if (!request.Payload.HasValue)
-                {
-                    SendError(request.Id, request.Type, "Missing payload.");
-                    return;
-                }
-
-                var payload = request.Payload.Value;
-                if (!payload.TryGetProperty("id", out var idElement))
-                {
-                    SendError(request.Id, request.Type, "Missing root id.");
-                    return;
-                }
-
-                if (!payload.TryGetProperty("path", out var pathElement))
-                {
-                    SendError(request.Id, request.Type, "Missing root path.");
-                    return;
-                }
-
-                var idValue = idElement.GetString();
-                if (!Guid.TryParse(idValue, out var rootId))
-                {
-                    SendError(request.Id, request.Type, "Invalid root id.");
-                    return;
-                }
-
-                var path = pathElement.GetString();
-                if (string.IsNullOrWhiteSpace(path))
-                {
-                    SendError(request.Id, request.Type, "Root path cannot be empty.");
-                    return;
-                }
-
-                try
-                {
-                    var root = await _rootStore.UpdateAsync(rootId, path);
-                    SendResponse(request.Id, request.Type, root);
-                }
-                catch (Exception ex)
-                {
-                    SendError(request.Id, request.Type, ex.Message);
-                }
-                break;
-            }
-            case "roots.delete":
-            {
-                if (!request.Payload.HasValue)
-                {
-                    SendError(request.Id, request.Type, "Missing payload.");
-                    return;
-                }
-
-                var payload = request.Payload.Value;
-                if (!payload.TryGetProperty("id", out var idElement))
-                {
-                    SendError(request.Id, request.Type, "Missing root id.");
-                    return;
-                }
-
-                var idValue = idElement.GetString();
-                if (!Guid.TryParse(idValue, out var rootId))
-                {
-                    SendError(request.Id, request.Type, "Invalid root id.");
-                    return;
-                }
-
-                var deleted = await _rootStore.DeleteAsync(rootId);
-                SendResponse(request.Id, request.Type, new { id = rootId, deleted });
-                break;
-            }
-            case "scan.list":
-            {
-                if (_scanCoordinator == null)
-                {
-                    SendError(request.Id, request.Type, "Scan coordinator not ready.");
-                    return;
-                }
-
-                var scans = await _scanCoordinator.ListActiveAsync(CancellationToken.None);
-                SendResponse(request.Id, request.Type, scans);
-                break;
-            }
-            case "scan.start":
-            {
-                if (_scanCoordinator == null)
-                {
-                    SendError(request.Id, request.Type, "Scan coordinator not ready.");
-                    return;
-                }
-
-                if (!request.Payload.HasValue)
-                {
-                    SendError(request.Id, request.Type, "Missing payload.");
-                    return;
-                }
-
-                var payload = request.Payload.Value;
-                if (!payload.TryGetProperty("mode", out var modeElement))
-                {
-                    SendError(request.Id, request.Type, "Missing scan mode.");
-                    return;
-                }
-
-                var mode = modeElement.GetString() ?? "roots";
-                Guid? rootId = null;
-                if (payload.TryGetProperty("rootId", out var rootIdElement))
-                {
-                    var idValue = rootIdElement.GetString();
-                    if (Guid.TryParse(idValue, out var parsed))
-                    {
-                        rootId = parsed;
-                    }
-                }
-
-                int? depthLimit = null;
-                if (payload.TryGetProperty("depthLimit", out var depthElement)
-                    && depthElement.TryGetInt32(out var parsedDepth))
-                {
-                    depthLimit = parsedDepth > 0 ? parsedDepth : null;
-                }
-
-                try
-                {
-                    var session = await _scanCoordinator.StartAsync(
-                        new ScanStartRequest(mode, rootId, depthLimit),
-                        CancellationToken.None);
-                    SendResponse(request.Id, request.Type, session);
-                }
-                catch (Exception ex)
-                {
-                    SendError(request.Id, request.Type, ex.Message);
-                }
-                break;
-            }
-            case "scan.pause":
-            {
-                if (_scanCoordinator == null)
-                {
-                    SendError(request.Id, request.Type, "Scan coordinator not ready.");
-                    return;
-                }
-
-                if (!TryGetScanId(request.Payload, out var scanId))
-                {
-                    SendError(request.Id, request.Type, "Missing scan id.");
-                    return;
-                }
-
-                await _scanCoordinator.PauseAsync(scanId);
-                SendResponse(request.Id, request.Type, new { id = scanId });
-                break;
-            }
-            case "scan.resume":
-            {
-                if (_scanCoordinator == null)
-                {
-                    SendError(request.Id, request.Type, "Scan coordinator not ready.");
-                    return;
-                }
-
-                if (!TryGetScanId(request.Payload, out var scanId))
-                {
-                    SendError(request.Id, request.Type, "Missing scan id.");
-                    return;
-                }
-
-                await _scanCoordinator.ResumeAsync(scanId);
-                SendResponse(request.Id, request.Type, new { id = scanId });
-                break;
-            }
-            case "scan.stop":
-            {
-                if (_scanCoordinator == null)
-                {
-                    SendError(request.Id, request.Type, "Scan coordinator not ready.");
-                    return;
-                }
-
-                if (!TryGetScanId(request.Payload, out var scanId))
-                {
-                    SendError(request.Id, request.Type, "Missing scan id.");
-                    return;
-                }
-
-                await _scanCoordinator.StopAsync(scanId);
-                SendResponse(request.Id, request.Type, new { id = scanId });
-                break;
-            }
-            default:
-            {
-                SendError(request.Id, request.Type, $"Unknown message: {request.Type}");
-                break;
-            }
-        }
-    }
-
     private void SendResponse(string id, string type, object? data)
     {
         if (WebView.CoreWebView2 == null)
@@ -328,41 +83,6 @@ public partial class MainWindow : Window
         var response = new HostResponse(id, type, false, null, error);
         var json = JsonSerializer.Serialize(response, _jsonOptions);
         WebView.CoreWebView2.PostWebMessageAsJson(json);
-    }
-
-    private void OnScanEvent(string type, object? data)
-    {
-        Dispatcher.Invoke(() => SendEvent(type, data));
-    }
-
-    private void SendEvent(string type, object? data)
-    {
-        if (WebView.CoreWebView2 == null)
-        {
-            return;
-        }
-
-        var message = new { type, data };
-        var json = JsonSerializer.Serialize(message, _jsonOptions);
-        WebView.CoreWebView2.PostWebMessageAsJson(json);
-    }
-
-    private static bool TryGetScanId(JsonElement? payload, out Guid scanId)
-    {
-        scanId = Guid.Empty;
-        if (!payload.HasValue)
-        {
-            return false;
-        }
-
-        var element = payload.Value;
-        if (!element.TryGetProperty("id", out var idElement))
-        {
-            return false;
-        }
-
-        var idValue = idElement.GetString();
-        return Guid.TryParse(idValue, out scanId);
     }
 
     private Uri ResolveUiUri()

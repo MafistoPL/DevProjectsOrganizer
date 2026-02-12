@@ -18,6 +18,8 @@
 - Better ranking and filtering of suggestions (score, language, age).
 - Incremental scan based on `last_modified_at` + cache.
 - Configurable heuristics (GUI or YAML) + parser and runtime.
+- Consider full extraction of scan run flow from `ScanCoordinator` to dedicated execution service.
+- Align `Engine/Scanning` interfaces with real runtime implementation in AppHost (remove duplicated scan contracts over time).
 
 ## Later
 - AI for "one project vs many" with bounded context.
@@ -26,6 +28,8 @@
 
 ## Done (recent)
 - Ignore build/IDE artifacts in scan (`bin/`, `obj/`, `.vs/`, `.idea/`, `node_modules/`, `*.pdb`, `*.obj`, `*.tlog`, `*.exe`, `*.suo`).
+- Split `MainWindow` request handling into dedicated partial files for web message dispatch, roots handlers, and scan handlers.
+- Extracted `ScanRuntime` and snapshot building/writing into dedicated classes (`ScanRuntime`, `ScanSnapshotBuilder`, `ScanSnapshotWriter`).
 - IPC for scans (start/stop/pause/resume) + `ScanSession` in SQLite.
 - Per-disk lock and whole-scan blocking.
 - Scan snapshot to JSON with content samples.
