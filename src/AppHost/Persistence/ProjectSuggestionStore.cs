@@ -58,4 +58,30 @@ public sealed class ProjectSuggestionStore
         _db.ProjectSuggestions.AddRange(entities);
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<ProjectSuggestionEntity>> GetByScanAsync(
+        Guid scanSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.ProjectSuggestions
+            .Where(item => item.ScanSessionId == scanSessionId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ProjectSuggestionEntity> SetStatusAsync(
+        Guid suggestionId,
+        ProjectSuggestionStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.ProjectSuggestions
+            .FirstOrDefaultAsync(item => item.Id == suggestionId, cancellationToken);
+        if (entity == null)
+        {
+            throw new InvalidOperationException("Project suggestion not found.");
+        }
+
+        entity.Status = status;
+        await _db.SaveChangesAsync(cancellationToken);
+        return entity;
+    }
 }

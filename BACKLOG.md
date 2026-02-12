@@ -12,6 +12,7 @@
 - Queue visibility in Scan UI with `queue reason` (if still incomplete).
 - Hide `Stop` button after scan is finished (confirm UX and close).
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
+- UI: expose action to run/export regression report against historical user decisions.
 
 ## Soon (1-3 months)
 - Tag suggestions (heuristics first, no AI by default).
@@ -31,6 +32,7 @@
 - `ProjectSuggestion` status moved from free `string` to enum (`Pending`/`Accepted`/`Rejected`).
 - EF entity mapping moved to dedicated configuration classes + `ApplyConfigurationsFromAssembly`.
 - Heuristics regression analyzer (integration-level) comparing current run vs historical accepted/rejected suggestions per root.
+- User-data replay regression test (`Category=UserDataRegression`) reads real `%APPDATA%` DB + historical scan JSON snapshots (no mocks/seeding).
 - Historical suggestions persisted per scan (`project_suggestions` includes `RootPath`) for regression and audit.
 - Pre-commit script exists in `.githooks/pre-commit` and blocks commit on test failures when `core.hooksPath` is configured.
 - Ignore build/IDE artifacts in scan (`bin/`, `obj/`, `.vs/`, `.idea/`, `node_modules/`, `*.pdb`, `*.obj`, `*.tlog`, `*.exe`, `*.suo`).

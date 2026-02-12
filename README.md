@@ -54,3 +54,15 @@ dotnet run --project src/AppHost/AppHost.csproj
 **Notes**
 - WebView2 uses the Edge (Chromium) runtime bundled with Windows.
 - Angular Material theme is `indigo-pink` (see `ui/src/styles.scss`).
+
+**Tests**
+- Full automated set:
+  ```powershell
+  dotnet test DevProjectsOrganizer.slnx
+  cd ui
+  npm run test:pw
+  ```
+- User-data replay regression (reads real `%APPDATA%\DevProjectsOrganizer\data.db` + historical `scan-*.json`):
+  ```powershell
+  dotnet test tests/AppHost.IntegrationTests/AppHost.IntegrationTests.csproj --filter "Category=UserDataRegression"
+  ```

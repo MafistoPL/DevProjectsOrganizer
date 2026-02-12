@@ -1,5 +1,7 @@
 using AppHost.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
+using System.Text.Json;
 
 namespace AppHost.Services;
 
@@ -15,9 +17,37 @@ public sealed record ProjectSuggestionRegressionReport(
     IReadOnlyList<string> RejectedMissingPaths
 );
 
+public sealed record ProjectSuggestionReplayRegressionRootReport(
+    string RootPath,
+    Guid SnapshotScanSessionId,
+    string SnapshotPath,
+    int BaselineAcceptedCount,
+    int BaselineRejectedCount,
+    int AcceptedMissingCount,
+    int RejectedMissingCount,
+    int AddedCount,
+    IReadOnlyList<string> AcceptedMissingPaths,
+    IReadOnlyList<string> RejectedMissingPaths
+);
+
+public sealed record ProjectSuggestionReplayRegressionReport(
+    int RootsAnalyzed,
+    int BaselineAcceptedCount,
+    int BaselineRejectedCount,
+    int AcceptedMissingCount,
+    int RejectedMissingCount,
+    int AddedCount,
+    IReadOnlyList<ProjectSuggestionReplayRegressionRootReport> Roots
+);
+
 public sealed class ProjectSuggestionRegressionService
 {
     private readonly Func<AppDbContext> _dbFactory;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+    private readonly ProjectSuggestionHeuristicsService _heuristics = new();
 
     public ProjectSuggestionRegressionService(Func<AppDbContext> dbFactory)
     {
@@ -93,5 +123,123 @@ public sealed class ProjectSuggestionRegressionService
             addedCount,
             acceptedMissing,
             rejectedMissing);
+    }
+
+    public async Task<ProjectSuggestionReplayRegressionReport> AnalyzeReplayFromHistoryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var db = _dbFactory();
+
+        var historicalDecisions = await db.ProjectSuggestions
+            .AsNoTracking()
+            .Where(item => item.Status != ProjectSuggestionStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        if (historicalDecisions.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No accepted/rejected suggestions found in database. Build baseline via UI decisions first.");
+        }
+
+        var decisionsByRoot = historicalDecisions
+            .OrderByDescending(item => item.CreatedAt)
+            .GroupBy(item => item.RootPath, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var rootReports = new List<ProjectSuggestionReplayRegressionRootReport>();
+        foreach (var rootGroup in decisionsByRoot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var rootPath = rootGroup.Key;
+            var latestByPath = rootGroup
+                .GroupBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
+
+            var latestScan = await db.ScanSessions
+                .AsNoTracking()
+                .Where(item => item.RootPath == rootPath && item.OutputPath != null)
+                .OrderByDescending(item => item.FinishedAt ?? item.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestScan == null || string.IsNullOrWhiteSpace(latestScan.OutputPath))
+            {
+                continue;
+            }
+
+            var snapshotPath = latestScan.OutputPath;
+            if (!File.Exists(snapshotPath))
+            {
+                continue;
+            }
+
+            var snapshot = await LoadSnapshotAsync(snapshotPath, cancellationToken);
+            var recomputedPaths = _heuristics.Detect(snapshot)
+                .Select(item => item.Path)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var acceptedMissing = latestByPath
+                .Where(item =>
+                    item.Status == ProjectSuggestionStatus.Accepted
+                    && !recomputedPaths.Contains(item.Path))
+                .Select(item => item.Path)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var rejectedMissing = latestByPath
+                .Where(item =>
+                    item.Status == ProjectSuggestionStatus.Rejected
+                    && !recomputedPaths.Contains(item.Path))
+                .Select(item => item.Path)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var baselinePathSet = latestByPath
+                .Select(item => item.Path)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var addedCount = recomputedPaths.Count(path => !baselinePathSet.Contains(path));
+
+            rootReports.Add(new ProjectSuggestionReplayRegressionRootReport(
+                rootPath,
+                latestScan.Id,
+                snapshotPath,
+                latestByPath.Count(item => item.Status == ProjectSuggestionStatus.Accepted),
+                latestByPath.Count(item => item.Status == ProjectSuggestionStatus.Rejected),
+                acceptedMissing.Count,
+                rejectedMissing.Count,
+                addedCount,
+                acceptedMissing,
+                rejectedMissing));
+        }
+
+        if (rootReports.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No historical scan snapshots were found for roots with user decisions.");
+        }
+
+        return new ProjectSuggestionReplayRegressionReport(
+            rootReports.Count,
+            rootReports.Sum(item => item.BaselineAcceptedCount),
+            rootReports.Sum(item => item.BaselineRejectedCount),
+            rootReports.Sum(item => item.AcceptedMissingCount),
+            rootReports.Sum(item => item.RejectedMissingCount),
+            rootReports.Sum(item => item.AddedCount),
+            rootReports);
+    }
+
+    private async Task<ScanSnapshot> LoadSnapshotAsync(string path, CancellationToken cancellationToken)
+    {
+        var json = await File.ReadAllTextAsync(path, cancellationToken);
+        var snapshot = JsonSerializer.Deserialize<ScanSnapshot>(json, _jsonOptions);
+        if (snapshot == null)
+        {
+            throw new InvalidOperationException($"Cannot deserialize scan snapshot: {path}");
+        }
+
+        return snapshot;
     }
 }

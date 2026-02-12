@@ -106,6 +106,7 @@ Piramida testów:
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 
 Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).
+User-data replay regression jest osobną kategorią testów (`Category=UserDataRegression`) i jest uruchamiany ręcznie na realnej bazie użytkownika.
 
 ## 10. Roadmapa
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:

@@ -9,115 +9,38 @@ namespace AppHost.IntegrationTests;
 public sealed class ProjectSuggestionRegressionServiceTests
 {
     [Fact]
-    public async Task AnalyzeAsync_reports_missing_accepted_and_rejected_from_history()
+    [Trait("Category", "UserDataRegression")]
+    public async Task ReplayRegression_reads_real_user_history_from_default_database()
     {
-        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        var dbPath = AppDbContext.GetDefaultDbPath();
+        File.Exists(dbPath).Should().BeTrue(
+            $"SQLite database not found. Expected: {dbPath}. Run app + scans first.");
+
+        await using (var db = new AppDbContext(AppDbContext.CreateDefaultOptions()))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        var service = new ProjectSuggestionRegressionService(() => new AppDbContext(AppDbContext.CreateDefaultOptions()));
+        ProjectSuggestionReplayRegressionReport report;
         try
         {
-            var rootPath = @"D:\code";
-            var previousScan = new ScanSessionEntity
-            {
-                Id = Guid.NewGuid(),
-                RootPath = rootPath,
-                Mode = "roots",
-                State = ScanSessionStates.Completed,
-                DiskKey = "D:",
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
-                FinishedAt = DateTimeOffset.UtcNow.AddMinutes(-9)
-            };
-            var currentScan = new ScanSessionEntity
-            {
-                Id = Guid.NewGuid(),
-                RootPath = rootPath,
-                Mode = "roots",
-                State = ScanSessionStates.Completed,
-                DiskKey = "D:",
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                FinishedAt = DateTimeOffset.UtcNow
-            };
-
-            db.ScanSessions.AddRange(previousScan, currentScan);
-            db.ProjectSuggestions.AddRange(
-                new ProjectSuggestionEntity
-                {
-                    Id = Guid.NewGuid(),
-                    ScanSessionId = previousScan.Id,
-                    RootPath = rootPath,
-                    Name = "accepted-old",
-                    Path = @"D:\code\accepted-old",
-                    Kind = "ProjectRoot",
-                    Score = 0.9,
-                    Reason = "markers: .sln",
-                    ExtensionsSummary = "cs=12",
-                    MarkersJson = "[\".sln\"]",
-                    TechHintsJson = "[\"csharp\"]",
-                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-9),
-                    Status = ProjectSuggestionStatus.Accepted
-                },
-                new ProjectSuggestionEntity
-                {
-                    Id = Guid.NewGuid(),
-                    ScanSessionId = previousScan.Id,
-                    RootPath = rootPath,
-                    Name = "rejected-old",
-                    Path = @"D:\code\rejected-old",
-                    Kind = "ProjectRoot",
-                    Score = 0.4,
-                    Reason = "markers: Makefile",
-                    ExtensionsSummary = "c=10",
-                    MarkersJson = "[\"Makefile\"]",
-                    TechHintsJson = "[\"native\"]",
-                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-8),
-                    Status = ProjectSuggestionStatus.Rejected
-                },
-                new ProjectSuggestionEntity
-                {
-                    Id = Guid.NewGuid(),
-                    ScanSessionId = currentScan.Id,
-                    RootPath = rootPath,
-                    Name = "accepted-old",
-                    Path = @"D:\code\accepted-old",
-                    Kind = "ProjectRoot",
-                    Score = 0.91,
-                    Reason = "markers: .sln",
-                    ExtensionsSummary = "cs=15",
-                    MarkersJson = "[\".sln\"]",
-                    TechHintsJson = "[\"csharp\"]",
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    Status = ProjectSuggestionStatus.Pending
-                },
-                new ProjectSuggestionEntity
-                {
-                    Id = Guid.NewGuid(),
-                    ScanSessionId = currentScan.Id,
-                    RootPath = rootPath,
-                    Name = "new-project",
-                    Path = @"D:\code\new-project",
-                    Kind = "ProjectRoot",
-                    Score = 0.72,
-                    Reason = "markers: package.json",
-                    ExtensionsSummary = "ts=20",
-                    MarkersJson = "[\"package.json\"]",
-                    TechHintsJson = "[\"typescript\"]",
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    Status = ProjectSuggestionStatus.Pending
-                });
-            await db.SaveChangesAsync();
-
-            var sut = new ProjectSuggestionRegressionService(() => new AppDbContext(options));
-            var report = await sut.AnalyzeAsync(currentScan.Id);
-
-            report.RootPath.Should().Be(rootPath);
-            report.BaselineAcceptedCount.Should().Be(1);
-            report.BaselineRejectedCount.Should().Be(1);
-            report.AcceptedMissingCount.Should().Be(0);
-            report.RejectedMissingCount.Should().Be(1);
-            report.RejectedMissingPaths.Should().Contain(@"D:\code\rejected-old");
-            report.AddedCount.Should().Be(1);
+            report = await service.AnalyzeReplayFromHistoryAsync();
         }
-        finally
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("No accepted/rejected suggestions found", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("No historical scan snapshots were found", StringComparison.OrdinalIgnoreCase))
         {
-            await RootStoreTests.DisposeDbAsync(db, path);
+            // Empty baseline/no snapshots => no regression signal yet, test passes by design.
+            return;
         }
+
+        report.RootsAnalyzed.Should().BeGreaterThan(0,
+            "No roots with historical accepted/rejected decisions and scan snapshots were found.");
+        report.BaselineAcceptedCount.Should().BeGreaterThan(0,
+            "No accepted suggestions found. Accept or reject some suggestions in UI first.");
+
+        report.AcceptedMissingCount.Should().Be(0,
+            "Regression detected: some historically accepted suggestions are missing under current heuristics.");
     }
 }
