@@ -18,6 +18,7 @@ public sealed class ScanCoordinatorTests
             "test-fixtures",
             $"scan-{Guid.NewGuid():N}");
         Directory.CreateDirectory(fixtureRoot);
+        var testDataDir = Path.Combine(fixtureRoot, "dpo-data");
 
         var sourceDir = Path.Combine(fixtureRoot, "src");
         Directory.CreateDirectory(sourceDir);
@@ -35,7 +36,9 @@ public sealed class ScanCoordinatorTests
             var store = new RootStore(db);
             var root = await store.AddAsync(fixtureRoot);
 
-            var coordinator = new ScanCoordinator(() => new AppDbContext(options));
+            var executionService = new ScanExecutionService(
+                snapshotWriter: new ScanSnapshotWriter(testDataDir));
+            var coordinator = new ScanCoordinator(() => new AppDbContext(options), executionService);
             var completed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             coordinator.ScanEvent += (type, data) =>
             {
@@ -84,37 +87,10 @@ public sealed class ScanCoordinatorTests
         finally
         {
             await RootStoreTests.DisposeDbAsync(db, path);
-            await DeleteScanOutputAsync();
             if (Directory.Exists(fixtureRoot))
             {
                 Directory.Delete(fixtureRoot, true);
             }
         }
-    }
-
-    private static Task DeleteScanOutputAsync()
-    {
-        var dataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DevProjectsOrganizer",
-            "scans");
-        if (!Directory.Exists(dataDir))
-        {
-            return Task.CompletedTask;
-        }
-
-        foreach (var file in Directory.EnumerateFiles(dataDir, "scan-*.json"))
-        {
-            try
-            {
-                File.Delete(file);
-            }
-            catch
-            {
-                // ignore cleanup issues
-            }
-        }
-
-        return Task.CompletedTask;
     }
 }

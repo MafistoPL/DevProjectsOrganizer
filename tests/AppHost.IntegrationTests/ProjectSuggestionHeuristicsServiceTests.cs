@@ -67,4 +67,152 @@ public sealed class ProjectSuggestionHeuristicsServiceTests
 
         results.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Detect_includes_vcxproj_marker_as_project()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "CppTree",
+                    Path = @"D:\old\CppTree\CppTree",
+                    Files =
+                    {
+                        new FileNode { Name = "CppTree.sln", Extension = ".sln" },
+                        new FileNode { Name = "CppTree.vcxproj", Extension = ".vcxproj" },
+                        new FileNode { Name = "Tree.cpp", Extension = ".cpp" }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Should().ContainSingle();
+        results[0].Markers.Should().Contain(".vcxproj");
+    }
+
+    [Fact]
+    public void Detect_creates_single_file_candidate_for_cpp_or_c()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "Chapter_01",
+                    Path = @"D:\old\Beginning_C 1\Chapter_01",
+                    Files =
+                    {
+                        new FileNode { Name = "simple.cpp", Extension = ".cpp" }
+                    }
+                },
+                new DirectoryNode
+                {
+                    Name = "my_tests",
+                    Path = @"D:\old\Beginning_C 1\my_tests",
+                    Files =
+                    {
+                        new FileNode { Name = "test.c", Extension = ".c" }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Should().HaveCount(2);
+        results.Should().OnlyContain(item => item.Kind == "SingleFileMiniProject");
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Beginning_C 1\Chapter_01");
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Beginning_C 1\my_tests");
+    }
+
+    [Fact]
+    public void Detect_creates_native_project_for_main_cpp_and_headers()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "Linked_List",
+                    Path = @"D:\old\Simple_Data_Structures\Linked_List",
+                    Files =
+                    {
+                        new FileNode { Name = "main.cpp", Extension = ".cpp" },
+                        new FileNode { Name = "LinkedList.h", Extension = ".h" }
+                    }
+                },
+                new DirectoryNode
+                {
+                    Name = "Tree",
+                    Path = @"D:\old\Simple_Data_Structures\Tree",
+                    Files =
+                    {
+                        new FileNode { Name = "drzewo.c", Extension = ".c" },
+                        new FileNode { Name = "drzewo.h", Extension = ".h" },
+                        new FileNode { Name = "klub.c", Extension = ".c" }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Simple_Data_Structures\Linked_List");
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Simple_Data_Structures\Tree");
+    }
+
+    [Fact]
+    public void Detect_creates_static_site_for_index_with_css_js_and_skips_underscored_copy()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "aleksandra-wiejaczka-strona",
+                    Path = @"D:\old\aleksandra-wiejaczka-strona",
+                    Directories =
+                    {
+                        new DirectoryNode { Name = "css", Path = @"D:\old\aleksandra-wiejaczka-strona\css" },
+                        new DirectoryNode { Name = "js", Path = @"D:\old\aleksandra-wiejaczka-strona\js" },
+                        new DirectoryNode
+                        {
+                            Name = "_strona-oli",
+                            Path = @"D:\old\aleksandra-wiejaczka-strona\_strona-oli",
+                            Files =
+                            {
+                                new FileNode { Name = "index.html", Extension = ".html" }
+                            }
+                        }
+                    },
+                    Files =
+                    {
+                        new FileNode { Name = "index.html", Extension = ".html" },
+                        new FileNode { Name = "kontakt.html", Extension = ".html" }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Select(item => item.Path).Should().Contain(@"D:\old\aleksandra-wiejaczka-strona");
+        results.Select(item => item.Path).Should().NotContain(@"D:\old\aleksandra-wiejaczka-strona\_strona-oli");
+    }
 }

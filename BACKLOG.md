@@ -28,6 +28,7 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Integration tests no longer clean global `%APPDATA%\\DevProjectsOrganizer\\scans`; scan snapshots in tests are now isolated to test-specific temp data directories.
 - UI `Live results` now loads real `ProjectSuggestion` rows from SQLite through IPC (`suggestions.list`).
 - `Accept` / `Reject` in UI now persist suggestion status in DB (`suggestions.setStatus`).
 - `Debug JSON` action now exports suggestion debug payload in-memory and copies it to clipboard with confirmation bubble.

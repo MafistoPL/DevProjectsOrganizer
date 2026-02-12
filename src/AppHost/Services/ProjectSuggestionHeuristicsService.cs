@@ -17,6 +17,8 @@ public sealed record DetectedProjectSuggestion(
 
 public sealed class ProjectSuggestionHeuristicsService
 {
+    private sealed record SourceFileInfo(FileNode File, string Ext);
+
     private static readonly HashSet<string> MarkerNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "package.json",
@@ -24,6 +26,18 @@ public sealed class ProjectSuggestionHeuristicsService
         "Makefile",
         "pom.xml",
         "build.gradle"
+    };
+    private static readonly HashSet<string> SingleFileProjectExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "c", "cpp", "cc", "cxx", "cs", "py", "js", "ts", "java", "go", "rs", "ps1"
+    };
+    private static readonly HashSet<string> NativeSourceExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "c", "cpp", "cc", "cxx"
+    };
+    private static readonly HashSet<string> NativeHeaderExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "h", "hpp", "hh", "hxx"
     };
 
     public IReadOnlyList<DetectedProjectSuggestion> Detect(ScanSnapshot snapshot)
@@ -72,6 +86,18 @@ public sealed class ProjectSuggestionHeuristicsService
         if (markers.Count > 0)
         {
             suggestions.Add(BuildSuggestion(node, markers, histogram));
+            return histogram;
+        }
+
+        if (ShouldSkipHeuristicCandidate(node))
+        {
+            return histogram;
+        }
+
+        var heuristicSuggestion = BuildHeuristicSuggestion(node, histogram);
+        if (heuristicSuggestion != null)
+        {
+            suggestions.Add(heuristicSuggestion);
         }
 
         return histogram;
@@ -104,6 +130,16 @@ public sealed class ProjectSuggestionHeuristicsService
             if (file.Name.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             {
                 markers.Add(".csproj");
+            }
+
+            if (file.Name.EndsWith(".vcxproj", StringComparison.OrdinalIgnoreCase))
+            {
+                markers.Add(".vcxproj");
+            }
+
+            if (file.Name.EndsWith(".vcproj", StringComparison.OrdinalIgnoreCase))
+            {
+                markers.Add(".vcproj");
             }
         }
 
@@ -162,11 +198,16 @@ public sealed class ProjectSuggestionHeuristicsService
             {
                 ".sln" => 0.2,
                 ".csproj" => 0.18,
+                ".vcxproj" => 0.18,
+                ".vcproj" => 0.18,
                 "package.json" => 0.16,
                 "CMakeLists.txt" => 0.15,
                 "Makefile" => 0.1,
                 "pom.xml" => 0.16,
                 "build.gradle" => 0.16,
+                "index.html" => 0.08,
+                "main-source" => 0.12,
+                "single-source-file" => 0.1,
                 ".git" => 0.06,
                 _ => 0.04
             };
@@ -185,10 +226,14 @@ public sealed class ProjectSuggestionHeuristicsService
         {
             switch (marker)
             {
-                case ".sln":
                 case ".csproj":
                     hints.Add("csharp");
                     hints.Add(".net");
+                    break;
+                case ".vcxproj":
+                case ".vcproj":
+                    hints.Add("cpp");
+                    hints.Add("native");
                     break;
                 case "package.json":
                     hints.Add("node");
@@ -231,6 +276,145 @@ public sealed class ProjectSuggestionHeuristicsService
         return hints
             .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static DetectedProjectSuggestion? BuildHeuristicSuggestion(
+        DirectoryNode node,
+        Dictionary<string, int> histogram)
+    {
+        var files = node.Files;
+        var sourceFiles = files
+            .Where(file => !string.IsNullOrWhiteSpace(file.Extension))
+            .Select(file => new SourceFileInfo(file, file.Extension!.TrimStart('.').ToLowerInvariant()))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Ext))
+            .ToList();
+
+        var extensionSummary = string.Join(
+            ", ",
+            histogram
+                .OrderByDescending(pair => pair.Value)
+                .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .Select(pair => $"{pair.Key}={pair.Value}"));
+
+        var normalizedName = NormalizeName(node.Name, node.Path);
+
+        if (IsSingleFileCandidate(node, sourceFiles))
+        {
+            var source = sourceFiles[0];
+            var markers = new[] { "single-source-file" };
+            var reason = $"single file candidate: {source.File.Name}";
+            return new DetectedProjectSuggestion(
+                normalizedName,
+                node.Path,
+                "SingleFileMiniProject",
+                CalculateScore(markers),
+                reason,
+                extensionSummary,
+                markers,
+                BuildTechHints(markers, histogram),
+                DateTimeOffset.UtcNow);
+        }
+
+        if (IsNativeProjectCandidate(node, sourceFiles))
+        {
+            var markers = new[] { "main-source" };
+            var reason = "native sources with entry/header layout";
+            return new DetectedProjectSuggestion(
+                normalizedName,
+                node.Path,
+                "ProjectRoot",
+                CalculateScore(markers),
+                reason,
+                extensionSummary,
+                markers,
+                BuildTechHints(markers, histogram),
+                DateTimeOffset.UtcNow);
+        }
+
+        if (IsStaticSiteCandidate(node, files))
+        {
+            var markers = new[] { "index.html" };
+            var reason = "static site layout";
+            return new DetectedProjectSuggestion(
+                normalizedName,
+                node.Path,
+                "ProjectRoot",
+                CalculateScore(markers),
+                reason,
+                extensionSummary,
+                markers,
+                BuildTechHints(markers, histogram),
+                DateTimeOffset.UtcNow);
+        }
+
+        return null;
+    }
+
+    private static bool ShouldSkipHeuristicCandidate(DirectoryNode node)
+    {
+        if (string.IsNullOrWhiteSpace(node.Name))
+        {
+            return false;
+        }
+
+        if (node.Name.StartsWith("_", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return string.Equals(node.Name, ".history", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSingleFileCandidate(
+        DirectoryNode node,
+        IReadOnlyList<SourceFileInfo> sourceFiles)
+    {
+        if (node.Directories.Count != 0 || node.Files.Count != 1 || sourceFiles.Count != 1)
+        {
+            return false;
+        }
+
+        return SingleFileProjectExtensions.Contains(sourceFiles[0].Ext);
+    }
+
+    private static bool IsNativeProjectCandidate(
+        DirectoryNode node,
+        IReadOnlyList<SourceFileInfo> sourceFiles)
+    {
+        if (sourceFiles.Count == 0)
+        {
+            return false;
+        }
+
+        var nativeSources = sourceFiles.Where(item => NativeSourceExtensions.Contains(item.Ext)).ToList();
+        if (nativeSources.Count == 0)
+        {
+            return false;
+        }
+
+        var hasMain = nativeSources.Any(item => item.File.Name.StartsWith("main.", StringComparison.OrdinalIgnoreCase));
+        var hasHeader = sourceFiles.Any(item => NativeHeaderExtensions.Contains(item.Ext));
+
+        return hasMain || (hasHeader && nativeSources.Count >= 1);
+    }
+
+    private static bool IsStaticSiteCandidate(
+        DirectoryNode node,
+        IReadOnlyList<FileNode> files)
+    {
+        var htmlFiles = files
+            .Count(file => file.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase));
+        if (htmlFiles == 0)
+        {
+            return false;
+        }
+
+        var hasIndex = files.Any(file => string.Equals(file.Name, "index.html", StringComparison.OrdinalIgnoreCase));
+        var hasCssDir = node.Directories.Any(dir => string.Equals(dir.Name, "css", StringComparison.OrdinalIgnoreCase));
+        var hasJsDir = node.Directories.Any(dir => string.Equals(dir.Name, "js", StringComparison.OrdinalIgnoreCase));
+
+        return hasIndex && (hasCssDir || hasJsDir || htmlFiles >= 2);
     }
 
     private static void Merge(Dictionary<string, int> target, Dictionary<string, int> source)
