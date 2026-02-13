@@ -28,6 +28,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Skanowanie:** uruchamiane z UI, zapisuje `ScanSession` w DB i generuje JSON
   (`%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`).
 - **Sugestie projektów:** marker heuristics działają po skanie i zapisują `ProjectSuggestion` do SQLite.
+- **Heurystyki solution/module:** katalog z `.sln` jest traktowany jako jeden projekt; `*.csproj/*.vcxproj/*.vcproj` pod nim są modułami (nie osobnymi sugestiami), z wyjątkiem zagnieżdżonych `.sln` (osobny projekt).
 - **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
 - **Persistencja decyzji:** sugestia ma fingerprint; odrzucone (`Rejected`) wpisy z tym samym (`path`,`kind`,`fingerprint`) są automatycznie pomijane przy kolejnych skanach.
 - **Kasowanie archiwum:** usunięcie wpisu z archiwum zdejmuje baseline odrzucenia (sugestia może wrócić przy kolejnym skanie).

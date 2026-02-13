@@ -3,9 +3,6 @@
 ## Now (next 2-4 weeks)
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
 - UI: expose action to run/export regression report against historical user decisions.
-- Heurystyka: `solution = projekt`, a `*.csproj/*.vcxproj/*.vcproj` pod `.sln` traktować jako moduły (suppress/merge child suggestions).
-- Heurystyka: wyjątek dla zagnieżdżonych `.sln` (nested solution = osobny projekt).
-- Testy regresyjne heurystyk dla przypadku wrappera solution (`X\\` + `X\\X\\*.vcxproj`) oraz przypadku nested `.sln`.
 
 ## Soon (1-3 months)
 - Tag suggestions (heuristics first, no AI by default).
@@ -24,6 +21,9 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Heurystyki: `solution = projekt` jest wdrożone; `*.csproj/*.vcxproj/*.vcproj` pod `.sln` są traktowane jako moduły (suppress child + merge marker hints do sugestii solution).
+- Heurystyki: wyjątek dla zagnieżdżonych `.sln` jest wdrożony (nested solution pozostaje osobnym projektem).
+- Testy regresyjne heurystyk dodane dla wrappera solution (`X\\` + `X\\X\\*.vcxproj`) i dla nested `.sln`.
 - Suggestions: archived `Rejected` now suppresses re-adding the same candidate on future scans when (`path`,`kind`,`fingerprint`) is unchanged.
 - Suggestions: archive supports explicit `Delete` (removes suppression baseline for that suggestion and allows re-adding on future scans).
 - Persistence: `project_suggestions` now stores `Fingerprint` and uses latest non-pending decision per key for reinsert filtering.

@@ -21,6 +21,17 @@ public sealed record DetectedProjectSuggestion(
 public sealed class ProjectSuggestionHeuristicsService
 {
     private sealed record SourceFileInfo(FileNode File, string Ext);
+    private sealed class CollectResult
+    {
+        public Dictionary<string, int> Histogram { get; }
+        public HashSet<string> SolutionModuleMarkers { get; }
+
+        public CollectResult(Dictionary<string, int> histogram, HashSet<string> solutionModuleMarkers)
+        {
+            Histogram = histogram;
+            SolutionModuleMarkers = solutionModuleMarkers;
+        }
+    }
 
     private static readonly HashSet<string> MarkerNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -29,6 +40,12 @@ public sealed class ProjectSuggestionHeuristicsService
         "Makefile",
         "pom.xml",
         "build.gradle"
+    };
+    private static readonly HashSet<string> SolutionModuleMarkers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csproj",
+        ".vcxproj",
+        ".vcproj"
     };
     private static readonly HashSet<string> SingleFileProjectExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -48,7 +65,7 @@ public sealed class ProjectSuggestionHeuristicsService
         var suggestions = new List<DetectedProjectSuggestion>();
         foreach (var root in snapshot.Roots)
         {
-            Collect(root, suggestions);
+            Collect(root, suggestions, activeSolutionRootPath: null);
         }
 
         return suggestions
@@ -57,16 +74,22 @@ public sealed class ProjectSuggestionHeuristicsService
             .ToList();
     }
 
-    private static Dictionary<string, int> Collect(
+    private static CollectResult Collect(
         DirectoryNode node,
-        List<DetectedProjectSuggestion> suggestions)
+        List<DetectedProjectSuggestion> suggestions,
+        string? activeSolutionRootPath)
     {
         var histogram = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var nodeMarkers = DetectMarkers(node);
+        var hasSolutionMarker = nodeMarkers.Contains(".sln", StringComparer.OrdinalIgnoreCase);
+        var currentSolutionRootPath = hasSolutionMarker ? node.Path : activeSolutionRootPath;
+        var mergedModuleMarkers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var child in node.Directories)
         {
-            var childHistogram = Collect(child, suggestions);
-            Merge(histogram, childHistogram);
+            var childResult = Collect(child, suggestions, currentSolutionRootPath);
+            Merge(histogram, childResult.Histogram);
+            mergedModuleMarkers.UnionWith(childResult.SolutionModuleMarkers);
         }
 
         foreach (var file in node.Files)
@@ -85,16 +108,51 @@ public sealed class ProjectSuggestionHeuristicsService
             histogram[normalized] = histogram.GetValueOrDefault(normalized) + 1;
         }
 
-        var markers = DetectMarkers(node);
-        if (markers.Count > 0)
+        if (!hasSolutionMarker && !string.IsNullOrWhiteSpace(currentSolutionRootPath))
         {
-            suggestions.Add(BuildSuggestion(node, markers, histogram));
-            return histogram;
+            mergedModuleMarkers.UnionWith(
+                nodeMarkers.Where(marker => SolutionModuleMarkers.Contains(marker)));
+        }
+
+        if (nodeMarkers.Count > 0)
+        {
+            if (ShouldSuppressSolutionModuleCandidate(node, nodeMarkers, currentSolutionRootPath))
+            {
+                return CreateCollectResult(
+                    histogram,
+                    mergedModuleMarkers,
+                    hasSolutionMarker,
+                    activeSolutionRootPath,
+                    currentSolutionRootPath);
+            }
+
+            var markersForSuggestion = nodeMarkers;
+            if (hasSolutionMarker && mergedModuleMarkers.Count > 0)
+            {
+                markersForSuggestion = nodeMarkers
+                    .Concat(mergedModuleMarkers)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(marker => marker, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            suggestions.Add(BuildSuggestion(node, markersForSuggestion, histogram));
+            return CreateCollectResult(
+                histogram,
+                mergedModuleMarkers,
+                hasSolutionMarker,
+                activeSolutionRootPath,
+                currentSolutionRootPath);
         }
 
         if (ShouldSkipHeuristicCandidate(node))
         {
-            return histogram;
+            return CreateCollectResult(
+                histogram,
+                mergedModuleMarkers,
+                hasSolutionMarker,
+                activeSolutionRootPath,
+                currentSolutionRootPath);
         }
 
         var heuristicSuggestion = BuildHeuristicSuggestion(node, histogram);
@@ -103,7 +161,61 @@ public sealed class ProjectSuggestionHeuristicsService
             suggestions.Add(heuristicSuggestion);
         }
 
-        return histogram;
+        return CreateCollectResult(
+            histogram,
+            mergedModuleMarkers,
+            hasSolutionMarker,
+            activeSolutionRootPath,
+            currentSolutionRootPath);
+    }
+
+    private static CollectResult CreateCollectResult(
+        Dictionary<string, int> histogram,
+        HashSet<string> mergedModuleMarkers,
+        bool hasSolutionMarker,
+        string? parentSolutionRootPath,
+        string? currentSolutionRootPath)
+    {
+        // Nested `.sln` starts a new project boundary. Its module markers should not bubble up
+        // to the parent solution.
+        if (hasSolutionMarker &&
+            !string.IsNullOrWhiteSpace(parentSolutionRootPath) &&
+            !string.Equals(parentSolutionRootPath, currentSolutionRootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return new CollectResult(histogram, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        return new CollectResult(histogram, mergedModuleMarkers);
+    }
+
+    private static bool ShouldSuppressSolutionModuleCandidate(
+        DirectoryNode node,
+        IReadOnlyList<string> markers,
+        string? activeSolutionRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(activeSolutionRootPath))
+        {
+            return false;
+        }
+
+        if (string.Equals(node.Path, activeSolutionRootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (markers.Contains(".sln", StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var hasModuleMarker = markers.Any(marker => SolutionModuleMarkers.Contains(marker));
+        if (!hasModuleMarker)
+        {
+            return false;
+        }
+
+        var hasIndependentMarker = markers.Any(marker => !SolutionModuleMarkers.Contains(marker));
+        return !hasIndependentMarker;
     }
 
     private static IReadOnlyList<string> DetectMarkers(DirectoryNode node)

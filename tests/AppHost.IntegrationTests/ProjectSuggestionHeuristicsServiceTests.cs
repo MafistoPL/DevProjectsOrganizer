@@ -244,4 +244,96 @@ public sealed class ProjectSuggestionHeuristicsServiceTests
 
         first.Fingerprint.Should().Be(second.Fingerprint);
     }
+
+    [Fact]
+    public void Detect_treats_solution_wrapper_as_single_project_and_suppresses_child_vcxproj_module()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "2Dsource",
+                    Path = @"D:\old\2Dsource",
+                    Files =
+                    {
+                        new FileNode { Name = "2Dsource.sln", Extension = ".sln" }
+                    },
+                    Directories =
+                    {
+                        new DirectoryNode
+                        {
+                            Name = "2Dsource",
+                            Path = @"D:\old\2Dsource\2Dsource",
+                            Files =
+                            {
+                                new FileNode { Name = "2Dsource.vcxproj", Extension = ".vcxproj" },
+                                new FileNode { Name = "Source.cpp", Extension = ".cpp" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Should().ContainSingle();
+        results[0].Path.Should().Be(@"D:\old\2Dsource");
+        results[0].Markers.Should().Contain(".sln");
+        results[0].Markers.Should().Contain(".vcxproj");
+    }
+
+    [Fact]
+    public void Detect_keeps_nested_solution_as_separate_project_boundary()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "Workspace",
+                    Path = @"D:\old\Workspace",
+                    Files =
+                    {
+                        new FileNode { Name = "Workspace.sln", Extension = ".sln" }
+                    },
+                    Directories =
+                    {
+                        new DirectoryNode
+                        {
+                            Name = "MainApp",
+                            Path = @"D:\old\Workspace\MainApp",
+                            Files =
+                            {
+                                new FileNode { Name = "MainApp.csproj", Extension = ".csproj" }
+                            }
+                        },
+                        new DirectoryNode
+                        {
+                            Name = "Tools",
+                            Path = @"D:\old\Workspace\Tools",
+                            Files =
+                            {
+                                new FileNode { Name = "Tools.sln", Extension = ".sln" },
+                                new FileNode { Name = "Tools.vcxproj", Extension = ".vcxproj" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Workspace");
+        results.Select(item => item.Path).Should().Contain(@"D:\old\Workspace\Tools");
+        results.Select(item => item.Path).Should().NotContain(@"D:\old\Workspace\MainApp");
+    }
 }
