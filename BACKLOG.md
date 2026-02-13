@@ -1,16 +1,24 @@
 # Backlog
 
-## Now (next 2-4 weeks)
+## Now (next 1 week)
+1. `ProjectSuggestion -> Project` on `Accept`.
+     * BE: persistent `Project` + mapping from suggestion.
+     * IPC/UI: remove from pending and refresh `Project Organizer`.
+2. Tags dictionary CRUD (minimum working).
+     * BE: `Tag` add/edit/delete + duplicate validation.
+     * UI: `Tags` tab with basic list + form.
+3. Post-accept project dialog.
+     * UI: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
+     * BE: IPC handlers for running selected action on a project.
+4. Tag suggestions v1 (heuristics first).
+     * BE: `AssignExisting` + `CreateNew`, status flow, fingerprint dedupe.
+     * UI: tag suggestions list + `Accept/Reject`.
+5. Backfill after creating a new tag.
+     * BE: async and idempotent, heuristics always, AI optional.
+     * UI: lightweight status feedback (toast/status).
+
+## Soon (2-4 weeks)
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
-- `ProjectSuggestion -> Project` on `Accept` (remove from pending list, show in `Project Organizer`).
-- Tags dictionary CRUD (manual add/edit/delete) as baseline for heuristics/AI.
-- Post-accept dialog for project: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
-- Same tag actions available from `Project Organizer` for existing projects.
-- Tag suggestion pipeline v1:
-  - `AssignExisting` (to existing tags),
-  - `CreateNew` (proposal of new tags),
-  - status lifecycle (`Pending`/`Accepted`/`Rejected`) + fingerprint dedupe.
-- Backfill flow after creating a new tag (manual or AI-accepted): heuristics always, AI optional.
 
 ## Soon (1-3 months)
 - AI tag suggestions using: existing tags + optional history of rejected new-tag proposals.
