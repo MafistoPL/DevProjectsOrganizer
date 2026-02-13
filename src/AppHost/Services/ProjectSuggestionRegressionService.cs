@@ -40,18 +40,22 @@ public sealed record ProjectSuggestionReplayRegressionReport(
     IReadOnlyList<ProjectSuggestionReplayRegressionRootReport> Roots
 );
 
+public sealed record ProjectSuggestionReplayRegressionExportResult(string Path, int RootsAnalyzed);
+
 public sealed class ProjectSuggestionRegressionService
 {
     private readonly Func<AppDbContext> _dbFactory;
+    private readonly string _exportDirectory;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
     private readonly ProjectSuggestionHeuristicsService _heuristics = new();
 
-    public ProjectSuggestionRegressionService(Func<AppDbContext> dbFactory)
+    public ProjectSuggestionRegressionService(Func<AppDbContext> dbFactory, string? exportDirectory = null)
     {
         _dbFactory = dbFactory;
+        _exportDirectory = exportDirectory ?? GetDefaultExportDirectory();
     }
 
     public async Task<ProjectSuggestionRegressionReport> AnalyzeAsync(
@@ -228,6 +232,43 @@ public sealed class ProjectSuggestionRegressionService
             rootReports.Sum(item => item.RejectedMissingCount),
             rootReports.Sum(item => item.AddedCount),
             rootReports);
+    }
+
+    public string EnsureExportDirectory()
+    {
+        Directory.CreateDirectory(_exportDirectory);
+        return _exportDirectory;
+    }
+
+    public async Task<ProjectSuggestionReplayRegressionExportResult> ExportReplayFromHistoryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var report = await AnalyzeReplayFromHistoryAsync(cancellationToken);
+        Directory.CreateDirectory(_exportDirectory);
+
+        var payload = new
+        {
+            exportedAt = DateTimeOffset.UtcNow,
+            report
+        };
+
+        var path = Path.Combine(
+            _exportDirectory,
+            $"suggestions-regression-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.json");
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+        await File.WriteAllTextAsync(path, json, cancellationToken);
+
+        return new ProjectSuggestionReplayRegressionExportResult(path, report.RootsAnalyzed);
+    }
+
+    public static string GetDefaultExportDirectory()
+    {
+        var appDir = Path.GetDirectoryName(AppDbContext.GetDefaultDbPath())!;
+        return Path.Combine(appDir, "exports");
     }
 
     private async Task<ScanSnapshot> LoadSnapshotAsync(string path, CancellationToken cancellationToken)

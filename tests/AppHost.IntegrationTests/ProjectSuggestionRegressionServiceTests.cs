@@ -111,6 +111,86 @@ public sealed class ProjectSuggestionRegressionServiceTests
     }
 
     [Fact]
+    public async Task ReplayRegression_export_writes_json_file_with_report_payload()
+    {
+        var (options, db, dbPath) = await RootStoreTests.CreateDbAsync();
+        var snapshotDir = Path.Combine(Path.GetTempPath(), $"dpo-replay-export-{Guid.NewGuid():N}");
+        var exportDir = Path.Combine(Path.GetTempPath(), $"dpo-replay-export-out-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(snapshotDir);
+        Directory.CreateDirectory(exportDir);
+
+        try
+        {
+            var rootPath = @"D:\same-root";
+            var scanId = Guid.NewGuid();
+            var snapshotPath = Path.Combine(snapshotDir, $"scan-{scanId}.json");
+
+            await File.WriteAllTextAsync(snapshotPath, JsonSerializer.Serialize(
+                BuildSnapshot(scanId, rootPath, @"D:\same-root\A", "Makefile")));
+
+            db.ScanSessions.Add(
+                new ScanSessionEntity
+                {
+                    Id = scanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
+                    FinishedAt = DateTimeOffset.UtcNow.AddMinutes(-9),
+                    OutputPath = snapshotPath
+                });
+
+            db.ProjectSuggestions.Add(
+                new ProjectSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ScanSessionId = scanId,
+                    RootPath = rootPath,
+                    Name = "A",
+                    Path = @"D:\same-root\A",
+                    Kind = "ProjectRoot",
+                    Score = 0.7,
+                    Reason = "markers: Makefile",
+                    ExtensionsSummary = "c=1",
+                    MarkersJson = "[\"Makefile\"]",
+                    TechHintsJson = "[\"native\"]",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-9),
+                    Status = ProjectSuggestionStatus.Accepted
+                });
+
+            await db.SaveChangesAsync();
+
+            var service = new ProjectSuggestionRegressionService(
+                () => new AppDbContext(options),
+                exportDirectory: exportDir);
+
+            var result = await service.ExportReplayFromHistoryAsync();
+
+            result.RootsAnalyzed.Should().Be(1);
+            File.Exists(result.Path).Should().BeTrue();
+            result.Path.StartsWith(exportDir, StringComparison.OrdinalIgnoreCase).Should().BeTrue();
+
+            var json = await File.ReadAllTextAsync(result.Path);
+            json.Should().Contain("\"report\"");
+            json.Should().Contain("\"RootsAnalyzed\": 1");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, dbPath);
+            if (Directory.Exists(snapshotDir))
+            {
+                Directory.Delete(snapshotDir, true);
+            }
+
+            if (Directory.Exists(exportDir))
+            {
+                Directory.Delete(exportDir, true);
+            }
+        }
+    }
+
+    [Fact]
     [Trait("Category", "UserDataRegression")]
     public async Task ReplayRegression_reads_real_user_history_from_default_database()
     {

@@ -284,6 +284,50 @@ export class AppHostBridgeService {
           count: archive.length
         } as T);
       }
+      case 'suggestions.regressionReport': {
+        return Promise.resolve({
+          rootsAnalyzed: 2,
+          baselineAcceptedCount: 3,
+          baselineRejectedCount: 2,
+          acceptedMissingCount: 0,
+          rejectedMissingCount: 1,
+          addedCount: 2,
+          roots: [
+            {
+              rootPath: 'D:\\code',
+              snapshotScanSessionId: 'scan-a',
+              snapshotPath:
+                'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-a.json',
+              baselineAcceptedCount: 2,
+              baselineRejectedCount: 1,
+              acceptedMissingCount: 0,
+              rejectedMissingCount: 1,
+              addedCount: 1,
+              acceptedMissingPaths: [],
+              rejectedMissingPaths: ['D:\\code\\old-bad-hit']
+            },
+            {
+              rootPath: 'C:\\src',
+              snapshotScanSessionId: 'scan-b',
+              snapshotPath:
+                'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-b.json',
+              baselineAcceptedCount: 1,
+              baselineRejectedCount: 1,
+              acceptedMissingCount: 0,
+              rejectedMissingCount: 0,
+              addedCount: 1,
+              acceptedMissingPaths: [],
+              rejectedMissingPaths: []
+            }
+          ]
+        } as T);
+      }
+      case 'suggestions.exportRegressionReport': {
+        return Promise.resolve({
+          path: 'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\exports\\suggestions-regression-mock.json',
+          rootsAnalyzed: 2
+        } as T);
+      }
       case 'suggestions.openArchiveFolder': {
         return Promise.resolve({
           path: 'C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\exports'

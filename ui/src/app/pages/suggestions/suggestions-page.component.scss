@@ -42,6 +42,48 @@
   min-height: 0;
 }
 
+.regression-panel {
+  margin-top: 4px;
+}
+
+.regression-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.regression-roots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.regression-root {
+  border: 1px solid #e6e8ec;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.regression-root-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.regression-root-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.regression-error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 @media (max-width: 1200px) {
   .card-grid {
     grid-template-columns: 1fr;

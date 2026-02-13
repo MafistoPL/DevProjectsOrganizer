@@ -357,3 +357,14 @@ test('suggestions page panels expand with viewport height', async ({ page }) => 
 
   expect(after.height).toBeGreaterThan(before.height + 80);
 });
+
+test('suggestions regression actions show summary and allow export', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  await page.getByTestId('suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+  await expect(page.getByTestId('regression-report-roots').locator('.regression-root')).toHaveCount(2);
+
+  await page.getByTestId('suggestions-export-regression-btn').click();
+  await expect(page.getByText(/Exported:/)).toBeVisible();
+});

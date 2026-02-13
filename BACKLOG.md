@@ -2,7 +2,6 @@
 
 ## Now (next 2-4 weeks)
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
-- UI: expose action to run/export regression report against historical user decisions.
 
 ## Soon (1-3 months)
 - Tag suggestions (heuristics first, no AI by default).
@@ -21,6 +20,7 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- UI: Suggestions now exposes `Run regression report` and `Export regression JSON` actions based on historical user decisions + scan snapshots.
 - Heurystyki: `solution = projekt` jest wdrożone; `*.csproj/*.vcxproj/*.vcproj` pod `.sln` są traktowane jako moduły (suppress child + merge marker hints do sugestii solution).
 - Heurystyki: wyjątek dla zagnieżdżonych `.sln` jest wdrożony (nested solution pozostaje osobnym projektem).
 - Testy regresyjne heurystyk dodane dla wrappera solution (`X\\` + `X\\X\\*.vcxproj`) i dla nested `.sln`.

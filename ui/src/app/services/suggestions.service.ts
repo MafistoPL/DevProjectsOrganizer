@@ -38,6 +38,29 @@ type HostSuggestionDto = {
   status: string;
 };
 
+export type SuggestionsRegressionRootReport = {
+  rootPath: string;
+  snapshotScanSessionId: string;
+  snapshotPath: string;
+  baselineAcceptedCount: number;
+  baselineRejectedCount: number;
+  acceptedMissingCount: number;
+  rejectedMissingCount: number;
+  addedCount: number;
+  acceptedMissingPaths: string[];
+  rejectedMissingPaths: string[];
+};
+
+export type SuggestionsRegressionReport = {
+  rootsAnalyzed: number;
+  baselineAcceptedCount: number;
+  baselineRejectedCount: number;
+  acceptedMissingCount: number;
+  rejectedMissingCount: number;
+  addedCount: number;
+  roots: SuggestionsRegressionRootReport[];
+};
+
 @Injectable({ providedIn: 'root' })
 export class SuggestionsService {
   private readonly itemsSubject = new BehaviorSubject<ProjectSuggestionItem[]>([]);
@@ -83,6 +106,16 @@ export class SuggestionsService {
 
   async openPath(path: string): Promise<{ path: string }> {
     return await this.bridge.request<{ path: string }>('suggestions.openPath', { path });
+  }
+
+  async runRegressionReport(): Promise<SuggestionsRegressionReport> {
+    return await this.bridge.request<SuggestionsRegressionReport>('suggestions.regressionReport');
+  }
+
+  async exportRegressionReport(): Promise<{ path: string; rootsAnalyzed: number }> {
+    return await this.bridge.request<{ path: string; rootsAnalyzed: number }>(
+      'suggestions.exportRegressionReport'
+    );
   }
 
   private upsert(item: ProjectSuggestionItem): void {

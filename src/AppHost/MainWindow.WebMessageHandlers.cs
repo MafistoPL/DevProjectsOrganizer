@@ -25,6 +25,8 @@ public partial class MainWindow
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
             ["suggestions.delete"] = HandleSuggestionsDeleteAsync,
             ["suggestions.exportDebug"] = HandleSuggestionsExportDebugAsync,
+            ["suggestions.regressionReport"] = HandleSuggestionsRegressionReportAsync,
+            ["suggestions.exportRegressionReport"] = HandleSuggestionsExportRegressionReportAsync,
             ["suggestions.exportArchive"] = HandleSuggestionsExportArchiveAsync,
             ["suggestions.openArchiveFolder"] = HandleSuggestionsOpenArchiveFolderAsync,
             ["suggestions.openPath"] = HandleSuggestionsOpenPathAsync

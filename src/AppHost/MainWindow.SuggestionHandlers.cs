@@ -147,6 +147,42 @@ public partial class MainWindow
         });
     }
 
+    private async Task HandleSuggestionsRegressionReportAsync(HostRequest request)
+    {
+        try
+        {
+            var regression = new ProjectSuggestionRegressionService(
+                () => new AppDbContext(AppDbContext.CreateDefaultOptions()));
+            var report = await regression.AnalyzeReplayFromHistoryAsync(CancellationToken.None);
+
+            SendResponse(request.Id, request.Type, report);
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
+    private async Task HandleSuggestionsExportRegressionReportAsync(HostRequest request)
+    {
+        try
+        {
+            var regression = new ProjectSuggestionRegressionService(
+                () => new AppDbContext(AppDbContext.CreateDefaultOptions()));
+            var result = await regression.ExportReplayFromHistoryAsync(CancellationToken.None);
+
+            SendResponse(request.Id, request.Type, new
+            {
+                path = result.Path,
+                rootsAnalyzed = result.RootsAnalyzed
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task HandleSuggestionsExportArchiveAsync(HostRequest request)
     {
         var exporter = new ProjectSuggestionArchiveService(() => new AppDbContext(AppDbContext.CreateDefaultOptions()));

@@ -5,6 +5,22 @@
       <p class="page-subtitle">Review project and tag suggestions.</p>
     </div>
     <div class="actions">
+      <button
+        mat-stroked-button
+        data-testid="suggestions-run-regression-btn"
+        [disabled]="isRegressionBusy"
+        (click)="runRegressionReport()"
+      >
+        Run regression report
+      </button>
+      <button
+        mat-stroked-button
+        data-testid="suggestions-export-regression-btn"
+        [disabled]="isRegressionBusy"
+        (click)="exportRegressionReport()"
+      >
+        Export regression JSON
+      </button>
       <button mat-raised-button color="primary">Accept all</button>
       <button mat-stroked-button>Reject all</button>
     </div>
@@ -24,4 +40,35 @@
       </mat-card-content>
     </mat-card>
   </div>
+
+  <mat-card class="panel regression-panel" *ngIf="regressionReport || regressionError">
+    <mat-card-title>Heuristics regression report</mat-card-title>
+    <mat-card-content>
+      <p class="regression-error" *ngIf="regressionError" data-testid="regression-report-error">
+        {{ regressionError }}
+      </p>
+
+      <div *ngIf="regressionReport" data-testid="regression-report-summary">
+        <div class="regression-summary-grid">
+          <div><strong>Roots analyzed:</strong> {{ regressionReport.rootsAnalyzed }}</div>
+          <div><strong>Baseline accepted:</strong> {{ regressionReport.baselineAcceptedCount }}</div>
+          <div><strong>Baseline rejected:</strong> {{ regressionReport.baselineRejectedCount }}</div>
+          <div><strong>Accepted missing:</strong> {{ regressionReport.acceptedMissingCount }}</div>
+          <div><strong>Rejected missing:</strong> {{ regressionReport.rejectedMissingCount }}</div>
+          <div><strong>Added:</strong> {{ regressionReport.addedCount }}</div>
+        </div>
+
+        <div class="regression-roots" data-testid="regression-report-roots">
+          <div class="regression-root" *ngFor="let root of regressionReport.roots">
+            <div class="regression-root-title">{{ root.rootPath }}</div>
+            <div class="regression-root-row">
+              <span>Accepted missing: {{ root.acceptedMissingCount }}</span>
+              <span>Rejected missing: {{ root.rejectedMissingCount }}</span>
+              <span>Added: {{ root.addedCount }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </section>
