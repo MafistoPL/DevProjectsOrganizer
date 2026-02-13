@@ -20,6 +20,7 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- FE tests: added unit coverage for `SuggestionsService.setPendingStatusForAll` and component-level integration tests for project bulk confirm flows in `SuggestionsPage`.
 - Suggestions UI: actions were moved from page-level header into per-panel toolbars (`Project suggestions`, `Tag suggestions`).
 - Bulk actions `Accept all` / `Reject all` now require confirmation dialogs before execution.
 - UI: Suggestions now exposes `Run regression report` and `Export regression JSON` actions based on historical user decisions + scan snapshots.

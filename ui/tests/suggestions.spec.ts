@@ -372,6 +372,7 @@ test('suggestions regression actions show summary and allow export', async ({ pa
 test('project suggestions accept all and reject all require confirmation dialog', async ({ page }) => {
   await gotoSuggestions(page);
 
+  await expect(page.getByTestId('project-suggestions-actions')).toBeVisible();
   const list = page.getByTestId('project-suggest-list');
   await expect(list.locator('.suggestion-card')).toHaveCount(10);
 
