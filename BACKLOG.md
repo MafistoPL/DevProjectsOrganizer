@@ -20,6 +20,8 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Suggestions UI: actions were moved from page-level header into per-panel toolbars (`Project suggestions`, `Tag suggestions`).
+- Bulk actions `Accept all` / `Reject all` now require confirmation dialogs before execution.
 - UI: Suggestions now exposes `Run regression report` and `Export regression JSON` actions based on historical user decisions + scan snapshots.
 - Heurystyki: `solution = projekt` jest wdrożone; `*.csproj/*.vcxproj/*.vcproj` pod `.sln` są traktowane jako moduły (suppress child + merge marker hints do sugestii solution).
 - Heurystyki: wyjątek dla zagnieżdżonych `.sln` jest wdrożony (nested solution pozostaje osobnym projektem).

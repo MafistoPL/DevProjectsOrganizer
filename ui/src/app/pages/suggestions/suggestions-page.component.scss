@@ -42,6 +42,13 @@
   min-height: 0;
 }
 
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .regression-panel {
   margin-top: 4px;
 }

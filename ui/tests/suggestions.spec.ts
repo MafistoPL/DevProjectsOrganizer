@@ -361,10 +361,48 @@ test('suggestions page panels expand with viewport height', async ({ page }) => 
 test('suggestions regression actions show summary and allow export', async ({ page }) => {
   await gotoSuggestions(page);
 
-  await page.getByTestId('suggestions-run-regression-btn').click();
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
   await expect(page.getByTestId('regression-report-summary')).toBeVisible();
   await expect(page.getByTestId('regression-report-roots').locator('.regression-root')).toHaveCount(2);
 
-  await page.getByTestId('suggestions-export-regression-btn').click();
+  await page.getByTestId('project-suggestions-export-regression-btn').click();
   await expect(page.getByText(/Exported:/)).toBeVisible();
+});
+
+test('project suggestions accept all and reject all require confirmation dialog', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  await expect(list.locator('.suggestion-card')).toHaveCount(10);
+
+  await page.getByTestId('project-suggestions-accept-all-btn').click();
+  const acceptProjectDialog = page.locator('mat-dialog-container');
+  await expect(acceptProjectDialog.getByRole('heading', { name: 'Accept all project suggestions' })).toBeVisible();
+  await acceptProjectDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(10);
+
+  await page.getByTestId('project-suggestions-reject-all-btn').click();
+  const rejectProjectDialog = page.locator('mat-dialog-container');
+  await expect(rejectProjectDialog.getByRole('heading', { name: 'Reject all project suggestions' })).toBeVisible();
+  await rejectProjectDialog.getByRole('button', { name: 'Reject' }).click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(0);
+});
+
+test('tag suggestions accept all requires confirmation dialog', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const tagScope = page.locator('app-tag-suggestion-list');
+  await expect(tagScope.locator('.status[data-status="pending"]')).toHaveCount(4);
+
+  await page.getByTestId('tag-suggestions-accept-all-btn').click();
+  const firstTagDialog = page.locator('mat-dialog-container').last();
+  await expect(firstTagDialog.getByRole('heading', { name: 'Accept all tag suggestions' })).toBeVisible();
+  await firstTagDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(tagScope.locator('.status[data-status="pending"]')).toHaveCount(4);
+
+  await page.getByTestId('tag-suggestions-accept-all-btn').click();
+  const secondTagDialog = page.locator('mat-dialog-container').last();
+  await expect(secondTagDialog.getByRole('heading', { name: 'Accept all tag suggestions' })).toBeVisible();
+  await secondTagDialog.getByRole('button', { name: 'Accept' }).click();
+  await expect(page.locator('mat-dialog-container')).toHaveCount(0);
 });

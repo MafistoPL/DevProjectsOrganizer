@@ -4,8 +4,17 @@
 
 .layout-toggle {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.layout-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .suggestion-list {

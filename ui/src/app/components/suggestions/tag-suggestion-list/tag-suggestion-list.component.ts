@@ -2,7 +2,10 @@ import { NgFor } from '@angular/common';
 import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { firstValueFrom } from 'rxjs';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 type TagSuggestionItem = {
   id: string;
@@ -23,7 +26,7 @@ type TagSuggestionItem = {
 })
 export class TagSuggestionListComponent {
   layout: 'list' | 'grid' = 'list';
-  readonly items: TagSuggestionItem[] = [
+  items: TagSuggestionItem[] = [
     {
       id: 't1',
       project: 'dotnet-api',
@@ -65,4 +68,59 @@ export class TagSuggestionListComponent {
       status: 'pending'
     }
   ];
+
+  constructor(private readonly dialog: MatDialog) {}
+
+  async acceptAll(): Promise<void> {
+    const confirmed = await this.confirmBulkAction(
+      'Accept all tag suggestions',
+      'Are you sure you want to accept all pending tag suggestions?',
+      'Accept',
+      'primary'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.items = this.items.map((item) =>
+      item.status === 'pending' ? { ...item, status: 'accepted' } : item
+    );
+  }
+
+  async rejectAll(): Promise<void> {
+    const confirmed = await this.confirmBulkAction(
+      'Reject all tag suggestions',
+      'Are you sure you want to reject all pending tag suggestions?',
+      'Reject',
+      'warn'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.items = this.items.map((item) =>
+      item.status === 'pending' ? { ...item, status: 'rejected' } : item
+    );
+  }
+
+  private async confirmBulkAction(
+    title: string,
+    message: string,
+    confirmText: string,
+    confirmColor: 'primary' | 'accent' | 'warn'
+  ): Promise<boolean> {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title,
+        message,
+        confirmText,
+        cancelText: 'Cancel',
+        confirmColor
+      }
+    });
+
+    const result = await firstValueFrom(ref.afterClosed());
+    return result === true;
+  }
 }

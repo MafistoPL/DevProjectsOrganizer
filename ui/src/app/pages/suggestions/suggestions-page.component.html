@@ -4,32 +4,46 @@
       <h1 class="page-title">Suggestions</h1>
       <p class="page-subtitle">Review project and tag suggestions.</p>
     </div>
-    <div class="actions">
-      <button
-        mat-stroked-button
-        data-testid="suggestions-run-regression-btn"
-        [disabled]="isRegressionBusy"
-        (click)="runRegressionReport()"
-      >
-        Run regression report
-      </button>
-      <button
-        mat-stroked-button
-        data-testid="suggestions-export-regression-btn"
-        [disabled]="isRegressionBusy"
-        (click)="exportRegressionReport()"
-      >
-        Export regression JSON
-      </button>
-      <button mat-raised-button color="primary">Accept all</button>
-      <button mat-stroked-button>Reject all</button>
-    </div>
   </header>
 
   <div class="card-grid">
     <mat-card class="panel">
       <mat-card-title>Project suggestions</mat-card-title>
       <mat-card-content>
+        <div class="panel-actions" data-testid="project-suggestions-actions">
+          <button
+            mat-stroked-button
+            data-testid="project-suggestions-run-regression-btn"
+            [disabled]="isRegressionBusy"
+            (click)="runRegressionReport()"
+          >
+            Run regression report
+          </button>
+          <button
+            mat-stroked-button
+            data-testid="project-suggestions-export-regression-btn"
+            [disabled]="isRegressionBusy"
+            (click)="exportRegressionReport()"
+          >
+            Export regression JSON
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            data-testid="project-suggestions-accept-all-btn"
+            (click)="acceptAllProjects()"
+          >
+            Accept all
+          </button>
+          <button
+            mat-stroked-button
+            color="warn"
+            data-testid="project-suggestions-reject-all-btn"
+            (click)="rejectAllProjects()"
+          >
+            Reject all
+          </button>
+        </div>
         <app-project-suggestion-list mode="suggestions" />
       </mat-card-content>
     </mat-card>

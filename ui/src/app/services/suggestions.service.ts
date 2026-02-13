@@ -90,6 +90,23 @@ export class SuggestionsService {
     this.upsert(this.normalize(updated));
   }
 
+  async setPendingStatusForAll(status: 'accepted' | 'rejected'): Promise<number> {
+    const pendingIds = this.itemsSubject
+      .getValue()
+      .filter((item) => item.status === 'pending')
+      .map((item) => item.id);
+
+    if (pendingIds.length === 0) {
+      return 0;
+    }
+
+    for (const id of pendingIds) {
+      await this.setStatus(id, status);
+    }
+
+    return pendingIds.length;
+  }
+
   async deleteSuggestion(id: string): Promise<void> {
     await this.bridge.request<{ id: string; deleted: boolean }>('suggestions.delete', { id });
     const current = this.itemsSubject.getValue();

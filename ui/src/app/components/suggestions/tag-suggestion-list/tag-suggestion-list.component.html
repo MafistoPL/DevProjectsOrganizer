@@ -1,4 +1,22 @@
 <div class="layout-toggle">
+  <div class="layout-actions" data-testid="tag-suggestions-actions">
+    <button
+      mat-raised-button
+      color="primary"
+      data-testid="tag-suggestions-accept-all-btn"
+      (click)="acceptAll()"
+    >
+      Accept all
+    </button>
+    <button
+      mat-stroked-button
+      color="warn"
+      data-testid="tag-suggestions-reject-all-btn"
+      (click)="rejectAll()"
+    >
+      Reject all
+    </button>
+  </div>
   <mat-button-toggle-group
     [value]="layout"
     (change)="layout = $event.value"

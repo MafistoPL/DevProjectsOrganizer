@@ -111,6 +111,7 @@ Główne zakładki:
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
 - **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
+- **Suggestions / panel actions**: akcje działają per panel (Project vs Tag), a bulk `Accept all` / `Reject all` są zabezpieczone dialogiem potwierdzenia.
 - **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
 - **Tags**: zarządzanie tagami i backfill.
 - **Recent**: last_viewed / last_opened.
