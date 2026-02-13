@@ -21,6 +21,7 @@ public partial class MainWindow
             ["scan.pause"] = HandleScanPauseAsync,
             ["scan.resume"] = HandleScanResumeAsync,
             ["scan.stop"] = HandleScanStopAsync,
+            ["projects.list"] = HandleProjectsListAsync,
             ["suggestions.list"] = HandleSuggestionsListAsync,
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
             ["suggestions.delete"] = HandleSuggestionsDeleteAsync,

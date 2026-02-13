@@ -28,6 +28,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Skanowanie:** uruchamiane z UI, zapisuje `ScanSession` w DB i generuje JSON
   (`%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`).
 - **Sugestie projektów:** marker heuristics działają po skanie i zapisują `ProjectSuggestion` do SQLite.
+- **Materializacja projektu:** `ProjectSuggestion` po `Accept` jest materializowany do trwałego `Project` (upsert po `path+kind`).
 - **Heurystyki solution/module:** katalog z `.sln` jest traktowany jako jeden projekt; `*.csproj/*.vcxproj/*.vcproj` pod nim są modułami (nie osobnymi sugestiami), z wyjątkiem zagnieżdżonych `.sln` (osobny projekt).
 - **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
 - **Persistencja decyzji:** sugestia ma fingerprint; odrzucone (`Rejected`) wpisy z tym samym (`path`,`kind`,`fingerprint`) są automatycznie pomijane przy kolejnych skanach.
@@ -37,12 +38,14 @@ Program lokalny do porządkowania projektów na dysku:
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
+- **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
+- **IPC projects:** `projects.list`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -157,7 +160,7 @@ User-data replay regression jest osobną kategorią testów (`Category=UserDataR
 ## 10. Roadmapa
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
 - **Near Term (kolejność wdrożenia tagów):**
-  1. `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
+  1. (Done) `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
   2. CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
   3. Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   4. Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.

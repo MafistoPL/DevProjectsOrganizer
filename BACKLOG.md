@@ -1,19 +1,16 @@
 # Backlog
 
 ## Now (next 1 week)
-1. `ProjectSuggestion -> Project` on `Accept`.
-     * BE: persistent `Project` + mapping from suggestion.
-     * IPC/UI: remove from pending and refresh `Project Organizer`.
-2. Tags dictionary CRUD (minimum working).
+1. Tags dictionary CRUD (minimum working).
      * BE: `Tag` add/edit/delete + duplicate validation.
      * UI: `Tags` tab with basic list + form.
-3. Post-accept project dialog.
+2. Post-accept project dialog.
      * UI: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
      * BE: IPC handlers for running selected action on a project.
-4. Tag suggestions v1 (heuristics first).
+3. Tag suggestions v1 (heuristics first).
      * BE: `AssignExisting` + `CreateNew`, status flow, fingerprint dedupe.
      * UI: tag suggestions list + `Accept/Reject`.
-5. Backfill after creating a new tag.
+4. Backfill after creating a new tag.
      * BE: async and idempotent, heuristics always, AI optional.
      * UI: lightweight status feedback (toast/status).
 
@@ -37,6 +34,11 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- `ProjectSuggestion -> Project` on `Accept` is implemented:
+  - BE: new `projects` table + `ProjectStore.UpsertFromSuggestionAsync`.
+  - IPC: new `projects.list`.
+  - UI: `Project Organizer` now renders real accepted projects from DB.
+  - UI refresh: accepting suggestion triggers projects refresh (`projects.changed` + service reload).
 - FE tests: added unit coverage for `SuggestionsService.setPendingStatusForAll` and component-level integration tests for project bulk confirm flows in `SuggestionsPage`.
 - Suggestions UI: actions were moved from page-level header into per-panel toolbars (`Project suggestions`, `Tag suggestions`).
 - Bulk actions `Accept all` / `Reject all` now require confirmation dialogs before execution.

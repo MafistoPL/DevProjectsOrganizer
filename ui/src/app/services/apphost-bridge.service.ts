@@ -30,6 +30,23 @@ type MockRoot = {
   lastScanFiles: number | null;
 };
 
+type MockProject = {
+  id: string;
+  sourceSuggestionId: string;
+  lastScanSessionId: string;
+  rootPath: string;
+  name: string;
+  score: number;
+  kind: string;
+  path: string;
+  reason: string;
+  extensionsSummary: string;
+  markers: string[];
+  techHints: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
@@ -37,6 +54,7 @@ export class AppHostBridgeService {
   private mockRoots: MockRoot[] = [];
   private mockScans: Array<any> = [];
   private mockSuggestions: Array<any> = [];
+  private mockProjects: MockProject[] = [];
   private readonly eventSubject = new Subject<HostEvent>();
   readonly events$ = this.eventSubject.asObservable();
 
@@ -70,6 +88,7 @@ export class AppHostBridgeService {
       this.loadMockRoots();
       this.loadMockScans();
       this.loadMockSuggestions();
+      this.loadMockProjects();
     }
   }
 
@@ -202,6 +221,12 @@ export class AppHostBridgeService {
         this.eventSubject.next({ type: 'scan.completed', data: { id } });
         return Promise.resolve({ id } as T);
       }
+      case 'projects.list': {
+        const projects = [...this.mockProjects].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        return Promise.resolve(projects as T);
+      }
       case 'suggestions.list': {
         const items = [...this.mockSuggestions].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -233,6 +258,15 @@ export class AppHostBridgeService {
           updated,
           ...this.mockSuggestions.slice(index + 1)
         ];
+
+        if (normalized === 'Accepted') {
+          this.upsertMockProjectFromSuggestion(updated);
+          this.eventSubject.next({
+            type: 'projects.changed',
+            data: { reason: 'suggestion.accepted', suggestionId: updated.id }
+          });
+        }
+
         return Promise.resolve(updated as T);
       }
       case 'suggestions.delete': {
@@ -583,6 +617,68 @@ export class AppHostBridgeService {
     } catch {
       this.mockScans = [];
     }
+  }
+
+  private loadMockProjects(): void {
+    const now = new Date().toISOString();
+    this.mockProjects = this.mockSuggestions
+      .filter((item) => String(item.status).toLowerCase() === 'accepted')
+      .map((item) => ({
+        id: this.createId(),
+        sourceSuggestionId: item.id,
+        lastScanSessionId: item.scanSessionId,
+        rootPath: item.rootPath,
+        name: item.name,
+        score: item.score,
+        kind: item.kind,
+        path: item.path,
+        reason: item.reason,
+        extensionsSummary: item.extensionsSummary,
+        markers: item.markers ?? [],
+        techHints: item.techHints ?? [],
+        createdAt: now,
+        updatedAt: now
+      }));
+  }
+
+  private upsertMockProjectFromSuggestion(suggestion: any): void {
+    const key = this.createMockProjectKey(suggestion.path, suggestion.kind);
+    const now = new Date().toISOString();
+    const index = this.mockProjects.findIndex(
+      (item) => this.createMockProjectKey(item.path, item.kind) === key
+    );
+
+    const mapped: MockProject = {
+      id: index >= 0 ? this.mockProjects[index].id : this.createId(),
+      sourceSuggestionId: suggestion.id,
+      lastScanSessionId: suggestion.scanSessionId,
+      rootPath: suggestion.rootPath,
+      name: suggestion.name,
+      score: suggestion.score,
+      kind: suggestion.kind,
+      path: suggestion.path,
+      reason: suggestion.reason,
+      extensionsSummary: suggestion.extensionsSummary,
+      markers: suggestion.markers ?? [],
+      techHints: suggestion.techHints ?? [],
+      createdAt: index >= 0 ? this.mockProjects[index].createdAt : now,
+      updatedAt: now
+    };
+
+    if (index < 0) {
+      this.mockProjects = [mapped, ...this.mockProjects];
+      return;
+    }
+
+    this.mockProjects = [
+      ...this.mockProjects.slice(0, index),
+      mapped,
+      ...this.mockProjects.slice(index + 1)
+    ];
+  }
+
+  private createMockProjectKey(path: string, kind: string): string {
+    return `${(kind ?? '').trim().toLowerCase()}::${(path ?? '').trim().toLowerCase()}`;
   }
 
   private createId(): string {

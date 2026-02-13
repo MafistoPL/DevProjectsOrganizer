@@ -46,6 +46,12 @@ public partial class MainWindow
         {
             var store = new ProjectSuggestionStore(_dbContext);
             var updated = await store.SetStatusAsync(suggestionId, status);
+            if (status == ProjectSuggestionStatus.Accepted)
+            {
+                var projectStore = new ProjectStore(_dbContext);
+                await projectStore.UpsertFromSuggestionAsync(updated);
+                SendEvent("projects.changed", new { reason = "suggestion.accepted", suggestionId = updated.Id });
+            }
             SendResponse(request.Id, request.Type, MapSuggestionDto(updated));
         }
         catch (Exception ex)

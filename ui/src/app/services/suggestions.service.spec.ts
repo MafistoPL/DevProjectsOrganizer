@@ -76,10 +76,19 @@ class BridgeMock {
   }
 }
 
+class ProjectsServiceMock {
+  loadCalls = 0;
+
+  async load(): Promise<void> {
+    this.loadCalls += 1;
+  }
+}
+
 describe('SuggestionsService', () => {
   it('setPendingStatusForAll updates only pending suggestions and returns updated count', async () => {
     const bridge = new BridgeMock();
-    const sut = new SuggestionsService(bridge as any);
+    const projects = new ProjectsServiceMock();
+    const sut = new SuggestionsService(bridge as any, projects as any);
     await sut.load();
 
     const updated = await sut.setPendingStatusForAll('accepted');
@@ -88,21 +97,35 @@ describe('SuggestionsService', () => {
     const setStatusCalls = bridge.requests.filter((item) => item.type === 'suggestions.setStatus');
     expect(setStatusCalls).toHaveLength(2);
     expect(setStatusCalls.map((item) => (item.payload as any).id).sort()).toEqual(['p1', 'p2']);
+    expect(projects.loadCalls).toBe(2);
   });
 
   it('setPendingStatusForAll returns 0 and does not call setStatus when no pending exists', async () => {
     const bridge = new BridgeMock();
+    const projects = new ProjectsServiceMock();
     // Pre-accept all pending in fixture.
     await bridge.request('suggestions.setStatus', { id: 'p1', status: 'Accepted' });
     await bridge.request('suggestions.setStatus', { id: 'p2', status: 'Accepted' });
     bridge.requests.length = 0;
 
-    const sut = new SuggestionsService(bridge as any);
+    const sut = new SuggestionsService(bridge as any, projects as any);
     await sut.load();
     const updated = await sut.setPendingStatusForAll('rejected');
 
     expect(updated).toBe(0);
     const setStatusCalls = bridge.requests.filter((item) => item.type === 'suggestions.setStatus');
     expect(setStatusCalls).toHaveLength(0);
+    expect(projects.loadCalls).toBe(0);
+  });
+
+  it('setStatus accepted refreshes projects list once', async () => {
+    const bridge = new BridgeMock();
+    const projects = new ProjectsServiceMock();
+    const sut = new SuggestionsService(bridge as any, projects as any);
+    await sut.load();
+
+    await sut.setStatus('p1', 'accepted');
+
+    expect(projects.loadCalls).toBe(1);
   });
 });

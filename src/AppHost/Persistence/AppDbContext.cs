@@ -13,6 +13,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<RootEntity> Roots => Set<RootEntity>();
     public DbSet<ScanSessionEntity> ScanSessions => Set<ScanSessionEntity>();
     public DbSet<ProjectSuggestionEntity> ProjectSuggestions => Set<ProjectSuggestionEntity>();
+    public DbSet<ProjectEntity> Projects => Set<ProjectEntity>();
 
     public static string GetDefaultDbPath()
     {

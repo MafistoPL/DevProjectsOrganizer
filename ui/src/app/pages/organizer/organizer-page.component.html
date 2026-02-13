@@ -2,26 +2,39 @@
   <header class="page-header">
     <div>
       <h1 class="page-title">Project Organizer</h1>
-      <p class="page-subtitle">Browse and manage accepted projects.</p>
-    </div>
-    <div class="actions">
-      <button mat-raised-button color="primary">New project</button>
-      <button mat-stroked-button>Import</button>
+      <p class="page-subtitle">Browse accepted projects.</p>
     </div>
   </header>
 
-  <div class="card-grid">
-    <mat-card>
-      <mat-card-title>Filters</mat-card-title>
-      <mat-card-content>Tags · Status · Location · Score</mat-card-content>
+  <div class="list-wrap">
+    <mat-card *ngIf="projects().length === 0" class="empty-card">
+      <mat-card-content>No accepted projects yet.</mat-card-content>
     </mat-card>
-    <mat-card>
-      <mat-card-title>Project list</mat-card-title>
-      <mat-card-content>Search, sort, and quick actions.</mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-title>Details</mat-card-title>
-      <mat-card-content>Markers, tech hints, paths, and activity.</mat-card-content>
+
+    <mat-card *ngFor="let project of projects()" class="project-card">
+      <div class="header-row">
+        <div class="title-block">
+          <h2 class="project-name">{{ project.name }}</h2>
+          <span class="project-kind">{{ project.kind }}</span>
+        </div>
+        <div class="meta">
+          <span>Score {{ project.score }}</span>
+          <span>Updated {{ project.updatedAt | date:'short' }}</span>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="label">Path</span>
+        <strong>{{ project.path }}</strong>
+      </div>
+      <div class="detail-row">
+        <span class="label">Reason</span>
+        <strong>{{ project.reason }}</strong>
+      </div>
+      <div class="detail-row">
+        <span class="label">Extensions</span>
+        <strong>{{ project.extensionsSummary }}</strong>
+      </div>
     </mat-card>
   </div>
 </section>

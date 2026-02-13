@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AppHostBridgeService } from './apphost-bridge.service';
+import { ProjectsService } from './projects.service';
 
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
 
@@ -66,7 +67,10 @@ export class SuggestionsService {
   private readonly itemsSubject = new BehaviorSubject<ProjectSuggestionItem[]>([]);
   readonly items$ = this.itemsSubject.asObservable();
 
-  constructor(private readonly bridge: AppHostBridgeService) {
+  constructor(
+    private readonly bridge: AppHostBridgeService,
+    private readonly projectsService: ProjectsService
+  ) {
     void this.load();
     this.bridge.events$.subscribe((event) => {
       if (event?.type === 'scan.completed') {
@@ -88,6 +92,9 @@ export class SuggestionsService {
       status: payloadStatus
     });
     this.upsert(this.normalize(updated));
+    if (payloadStatus === 'Accepted') {
+      void this.projectsService.load();
+    }
   }
 
   async setPendingStatusForAll(status: 'accepted' | 'rejected'): Promise<number> {
