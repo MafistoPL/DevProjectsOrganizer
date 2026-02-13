@@ -2,26 +2,64 @@
   <header class="page-header">
     <div>
       <h1 class="page-title">Tags</h1>
-      <p class="page-subtitle">Create, edit, and backfill tags.</p>
-    </div>
-    <div class="actions">
-      <button mat-raised-button color="primary">New tag</button>
-      <button mat-stroked-button>Run backfill</button>
+      <p class="page-subtitle">Create and manage tag dictionary.</p>
     </div>
   </header>
 
-  <div class="card-grid">
-    <mat-card>
-      <mat-card-title>Tag list</mat-card-title>
-      <mat-card-content>Counts, categories, aliases.</mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-title>Tag details</mat-card-title>
-      <mat-card-content>Description, aliases, usage.</mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-title>Backfill</mat-card-title>
-      <mat-card-content>Generate suggestions for existing projects.</mat-card-content>
-    </mat-card>
-  </div>
+  <mat-card class="add-card">
+    <mat-card-title>Add tag</mat-card-title>
+    <mat-card-content class="add-row">
+      <mat-form-field appearance="outline" class="add-input">
+        <mat-label>Tag name</mat-label>
+        <input
+          matInput
+          [value]="newTagName"
+          (input)="newTagName = $any($event.target).value"
+          data-testid="tag-add-input"
+        />
+      </mat-form-field>
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="addTag()"
+        data-testid="tag-add-btn"
+      >
+        Add
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="list-card">
+    <mat-card-title>Tag list</mat-card-title>
+    <mat-card-content>
+      <div class="empty" *ngIf="tags().length === 0">No tags yet.</div>
+
+      <div class="tag-row" *ngFor="let tag of tags()" data-testid="tag-row">
+        <ng-container *ngIf="editTagId !== tag.id; else editRow">
+          <div class="name">{{ tag.name }}</div>
+          <div class="meta">Updated {{ tag.updatedAt | date:'short' }}</div>
+          <div class="actions">
+            <button mat-stroked-button (click)="beginEdit(tag)" data-testid="tag-edit-btn">Edit</button>
+            <button mat-stroked-button color="warn" (click)="deleteTag(tag.id)" data-testid="tag-delete-btn">Delete</button>
+          </div>
+        </ng-container>
+
+        <ng-template #editRow>
+          <mat-form-field appearance="outline" class="edit-input">
+            <mat-label>Edit tag</mat-label>
+            <input
+              matInput
+              [value]="editTagName"
+              (input)="editTagName = $any($event.target).value"
+              data-testid="tag-edit-input"
+            />
+          </mat-form-field>
+          <div class="actions">
+            <button mat-stroked-button color="primary" (click)="saveEdit(tag.id)" data-testid="tag-save-btn">Save</button>
+            <button mat-stroked-button (click)="cancelEdit()" data-testid="tag-cancel-btn">Cancel</button>
+          </div>
+        </ng-template>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </section>

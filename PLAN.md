@@ -39,6 +39,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
+- **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
@@ -46,6 +47,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
 - **IPC projects:** `projects.list`.
+- **IPC tags:** `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -142,6 +144,7 @@ Główne zakładki:
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
 - **Tags**: zarządzanie tagami i backfill.
+- **Tags**: działające CRUD (lista + add/edit/delete); backfill i sugestie tagów w kolejnych krokach.
 - **Recent**: last_viewed / last_opened.
 
 Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.
@@ -161,7 +164,7 @@ User-data replay regression jest osobną kategorią testów (`Category=UserDataR
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
 - **Near Term (kolejność wdrożenia tagów):**
   1. (Done) `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
-  2. CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
+  2. (Done) CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
   3. Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   4. Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
   5. `TagSuggestion` dla istniejących tagów (`AssignExisting`) i nowych propozycji (`CreateNew`), ze statusem i fingerprintem.

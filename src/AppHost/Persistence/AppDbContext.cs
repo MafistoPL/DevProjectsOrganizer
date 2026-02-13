@@ -14,6 +14,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<ScanSessionEntity> ScanSessions => Set<ScanSessionEntity>();
     public DbSet<ProjectSuggestionEntity> ProjectSuggestions => Set<ProjectSuggestionEntity>();
     public DbSet<ProjectEntity> Projects => Set<ProjectEntity>();
+    public DbSet<TagEntity> Tags => Set<TagEntity>();
 
     public static string GetDefaultDbPath()
     {

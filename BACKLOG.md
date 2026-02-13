@@ -1,16 +1,13 @@
 # Backlog
 
 ## Now (next 1 week)
-1. Tags dictionary CRUD (minimum working).
-     * BE: `Tag` add/edit/delete + duplicate validation.
-     * UI: `Tags` tab with basic list + form.
-2. Post-accept project dialog.
+1. Post-accept project dialog.
      * UI: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
      * BE: IPC handlers for running selected action on a project.
-3. Tag suggestions v1 (heuristics first).
+2. Tag suggestions v1 (heuristics first).
      * BE: `AssignExisting` + `CreateNew`, status flow, fingerprint dedupe.
      * UI: tag suggestions list + `Accept/Reject`.
-4. Backfill after creating a new tag.
+3. Backfill after creating a new tag.
      * BE: async and idempotent, heuristics always, AI optional.
      * UI: lightweight status feedback (toast/status).
 
@@ -34,6 +31,11 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Tags CRUD (minimum working) is implemented:
+  - BE: `TagEntity` + `TagStore` (`list/add/update/delete`) with duplicate validation by normalized name.
+  - IPC: `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
+  - UI: `Tags` page now has real list + add/edit/delete form actions.
+  - Tests: new integration tests (`TagStoreTests`), FE unit tests (`TagsService`, `TagsPage`), and Playwright CRUD flow (`ui/tests/tags.spec.ts`).
 - `ProjectSuggestion -> Project` on `Accept` is implemented:
   - BE: new `projects` table + `ProjectStore.UpsertFromSuggestionAsync`.
   - IPC: new `projects.list`.

@@ -47,6 +47,13 @@ type MockProject = {
   updatedAt: string;
 };
 
+type MockTag = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
@@ -55,6 +62,7 @@ export class AppHostBridgeService {
   private mockScans: Array<any> = [];
   private mockSuggestions: Array<any> = [];
   private mockProjects: MockProject[] = [];
+  private mockTags: MockTag[] = [];
   private readonly eventSubject = new Subject<HostEvent>();
   readonly events$ = this.eventSubject.asObservable();
 
@@ -89,6 +97,7 @@ export class AppHostBridgeService {
       this.loadMockScans();
       this.loadMockSuggestions();
       this.loadMockProjects();
+      this.loadMockTags();
     }
   }
 
@@ -226,6 +235,83 @@ export class AppHostBridgeService {
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
         return Promise.resolve(projects as T);
+      }
+      case 'tags.list': {
+        const tags = [...this.mockTags].sort((a, b) => a.name.localeCompare(b.name));
+        return Promise.resolve(tags as T);
+      }
+      case 'tags.add': {
+        const rawName = typeof payload?.name === 'string' ? payload.name.trim() : '';
+        if (!rawName) {
+          return Promise.reject(new Error('Tag name cannot be empty.'));
+        }
+
+        const normalized = rawName.toLowerCase();
+        const duplicate = this.mockTags.some((tag) => tag.name.trim().toLowerCase() === normalized);
+        if (duplicate) {
+          return Promise.reject(new Error('Tag already exists.'));
+        }
+
+        const now = new Date().toISOString();
+        const tag: MockTag = {
+          id: this.createId(),
+          name: rawName,
+          createdAt: now,
+          updatedAt: now
+        };
+        this.mockTags = [...this.mockTags, tag];
+        this.saveMockTags();
+        return Promise.resolve(tag as T);
+      }
+      case 'tags.update': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        const rawName = typeof payload?.name === 'string' ? payload.name.trim() : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing tag id.'));
+        }
+        if (!rawName) {
+          return Promise.reject(new Error('Tag name cannot be empty.'));
+        }
+
+        const index = this.mockTags.findIndex((tag) => tag.id === id);
+        if (index < 0) {
+          return Promise.reject(new Error('Tag not found.'));
+        }
+
+        const normalized = rawName.toLowerCase();
+        const duplicate = this.mockTags.some(
+          (tag) => tag.id !== id && tag.name.trim().toLowerCase() === normalized
+        );
+        if (duplicate) {
+          return Promise.reject(new Error('Tag already exists.'));
+        }
+
+        const updated: MockTag = {
+          ...this.mockTags[index],
+          name: rawName,
+          updatedAt: new Date().toISOString()
+        };
+        this.mockTags = [
+          ...this.mockTags.slice(0, index),
+          updated,
+          ...this.mockTags.slice(index + 1)
+        ];
+        this.saveMockTags();
+        return Promise.resolve(updated as T);
+      }
+      case 'tags.delete': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing tag id.'));
+        }
+
+        const exists = this.mockTags.some((tag) => tag.id === id);
+        if (exists) {
+          this.mockTags = this.mockTags.filter((tag) => tag.id !== id);
+          this.saveMockTags();
+        }
+
+        return Promise.resolve({ id, deleted: exists } as T);
       }
       case 'suggestions.list': {
         const items = [...this.mockSuggestions].sort(
@@ -617,6 +703,48 @@ export class AppHostBridgeService {
     } catch {
       this.mockScans = [];
     }
+  }
+
+  private loadMockTags(): void {
+    const stored = localStorage.getItem('mockTags');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          this.mockTags = parsed;
+          return;
+        }
+      } catch {
+        // Fallback below.
+      }
+    }
+
+    const now = new Date().toISOString();
+    this.mockTags = [
+      {
+        id: this.createId(),
+        name: 'csharp',
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        id: this.createId(),
+        name: 'cpp',
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        id: this.createId(),
+        name: 'web',
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+    this.saveMockTags();
+  }
+
+  private saveMockTags(): void {
+    localStorage.setItem('mockTags', JSON.stringify(this.mockTags));
   }
 
   private loadMockProjects(): void {
