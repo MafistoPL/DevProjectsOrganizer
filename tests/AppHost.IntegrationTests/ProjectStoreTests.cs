@@ -8,6 +8,38 @@ namespace AppHost.IntegrationTests;
 public sealed class ProjectStoreTests
 {
     [Fact]
+    public async Task ListAllAsync_smoke_returns_projects_without_sqlite_datetimeoffset_orderby_crash()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var store = new ProjectStore(db);
+            var first = await AddSuggestionAsync(
+                db,
+                scanSessionId: Guid.NewGuid(),
+                name: "alpha",
+                path: @"D:\code\alpha");
+            await store.UpsertFromSuggestionAsync(first);
+
+            var second = await AddSuggestionAsync(
+                db,
+                scanSessionId: Guid.NewGuid(),
+                name: "beta",
+                path: @"D:\code\beta");
+            await store.UpsertFromSuggestionAsync(second);
+
+            var list = await store.ListAllAsync();
+
+            list.Should().HaveCount(2);
+            list.Select(item => item.Name).Should().Contain(new[] { "alpha", "beta" });
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
     public async Task UpsertFromSuggestionAsync_creates_project_for_new_key()
     {
         var (options, db, path) = await RootStoreTests.CreateDbAsync();
@@ -72,6 +104,7 @@ public sealed class ProjectStoreTests
         AppDbContext db,
         Guid scanSessionId,
         string name,
+        string path = @"D:\code\2Dsource",
         double score = 0.7,
         string reason = "markers: .vcxproj")
     {
@@ -92,7 +125,7 @@ public sealed class ProjectStoreTests
             ScanSessionId = scanSessionId,
             RootPath = @"D:\code",
             Name = name,
-            Path = @"D:\code\2Dsource",
+            Path = path,
             Kind = "ProjectRoot",
             Score = score,
             Reason = reason,

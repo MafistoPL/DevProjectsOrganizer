@@ -13,11 +13,14 @@ public sealed class ProjectStore
 
     public async Task<IReadOnlyList<ProjectEntity>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _db.Projects
+        var items = await _db.Projects
             .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return items
             .OrderByDescending(project => project.UpdatedAt)
             .ThenBy(project => project.Name)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<ProjectEntity> UpsertFromSuggestionAsync(
