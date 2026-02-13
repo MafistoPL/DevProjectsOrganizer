@@ -2,9 +2,18 @@
 
 ## Now (next 2-4 weeks)
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
+- `ProjectSuggestion -> Project` on `Accept` (remove from pending list, show in `Project Organizer`).
+- Tags dictionary CRUD (manual add/edit/delete) as baseline for heuristics/AI.
+- Post-accept dialog for project: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
+- Same tag actions available from `Project Organizer` for existing projects.
+- Tag suggestion pipeline v1:
+  - `AssignExisting` (to existing tags),
+  - `CreateNew` (proposal of new tags),
+  - status lifecycle (`Pending`/`Accepted`/`Rejected`) + fingerprint dedupe.
+- Backfill flow after creating a new tag (manual or AI-accepted): heuristics always, AI optional.
 
 ## Soon (1-3 months)
-- Tag suggestions (heuristics first, no AI by default).
+- AI tag suggestions using: existing tags + optional history of rejected new-tag proposals.
 - Manual split/merge of detected projects inside a root.
 - Better ranking and filtering of suggestions (score, language, age).
 - Incremental scan based on `last_modified_at` + cache.

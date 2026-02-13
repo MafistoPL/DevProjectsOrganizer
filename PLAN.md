@@ -85,9 +85,26 @@ Heurystyki tagów (v1):
 - nazwy katalogów (np. `course`, `tutorial`, `katas`),
 - struktura (`src/`, `tests/`).
 
+Lifecycle (docelowy):
+- `ProjectSuggestion` po `Accept` materializuje się jako `Project`.
+- Po akceptacji projektu pojawia się dialog z akcjami:
+  - `Run tag heuristics` (domyślna ścieżka),
+  - `Run AI tag suggestions` (opcjonalna),
+  - `Skip for now`.
+- Te same akcje muszą być dostępne z poziomu `Project Organizer` dla już istniejącego projektu.
+
 AI (opcjonalnie, później):
 - tylko `TagSuggestion` (bez auto‑aplikacji),
+- AI dostaje listę istniejących tagów i ma preferować ich użycie,
+- AI może zaproponować nowe tagi jako `CreateNewTagSuggestion`,
+- AI może dostać historię odrzuconych sugestii tagów jako sygnał negatywny,
 - limitowany kontekst (drzewo + krótkie próbki).
+
+Backfill:
+- po dodaniu nowego taga (manualnie lub po akceptacji AI) uruchamiamy backfill:
+  - heurystyczny zawsze,
+  - AI opcjonalnie.
+- backfill ma być asynchroniczny i idempotentny (bez duplikatów sugestii).
 
 Konfigurowalność:
 - rozważamy GUI/YAML dla reguł heurystyk (wymaga parsera + runtime).
@@ -100,6 +117,12 @@ Minimalny zestaw:
 - **ProjectSuggestion.Fingerprint**: deterministyczny podpis heurystyki dla konkretnego kandydata (używany do suppress/restore po `Reject/Delete`).
 - **Project**: zaakceptowany projekt.
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
+- **ProjectTag**: relacja N:M między `Project` i `Tag`.
+- **TagSuggestion** powinien mieć:
+  - typ: `AssignExisting` / `CreateNew`,
+  - źródło: `Heuristic` / `AI`,
+  - status: `Pending` / `Accepted` / `Rejected`,
+  - fingerprint do suppress powtórek.
 
 Uwagi modelowe:
 - Dla sugestii opartych o `.sln` planujemy przechowywać także metadane modułów (np. liczba/ścieżki), ale nadal jako jeden wpis projektu.
@@ -113,6 +136,8 @@ Główne zakładki:
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
 - **Suggestions / panel actions**: akcje działają per panel (Project vs Tag), a bulk `Accept all` / `Reject all` są zabezpieczone dialogiem potwierdzenia.
 - **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
+- **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
+- **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
 - **Tags**: zarządzanie tagami i backfill.
 - **Recent**: last_viewed / last_opened.
 
@@ -131,8 +156,14 @@ User-data replay regression jest osobną kategorią testów (`Category=UserDataR
 
 ## 10. Roadmapa
 Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
-- **Near Term:** UI pod realne sugestie z DB, akcje Accept/Reject, raport regresji w UI.
-- **Mid Term:** tag suggestions, split/merge projektów, incremental scan.
+- **Near Term (kolejność wdrożenia tagów):**
+  1. `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
+  2. CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
+  3. Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
+  4. Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
+  5. `TagSuggestion` dla istniejących tagów (`AssignExisting`) i nowych propozycji (`CreateNew`), ze statusem i fingerprintem.
+  6. Backfill po dodaniu nowego taga (manualnie lub po akceptacji AI): heurystyki zawsze, AI opcjonalnie.
+- **Mid Term:** AI tag suggestions z wykorzystaniem historii odrzuceń, split/merge projektów, incremental scan.
 - **Later:** AI do „one project vs many”, sync z backendem.
 
 ## 11. Zasady aktualizacji dokumentów
