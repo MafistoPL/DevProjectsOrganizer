@@ -1,12 +1,31 @@
 # Backlog
 
 ## Now (next 1 week)
-1. Tag suggestions v1 (heuristics first).
-     * BE: `AssignExisting` + `CreateNew`, status flow, fingerprint dedupe.
+1. Define tag taxonomy + ownership (heuristics vs AI) before coding tag heuristics.
+     * Bootstrap candidate tags from current signals: markers/tech hints (e.g. `cpp`, `native`, `.net`, `.sln`).
+     * Define normalized tag set and naming policy (avoid duplicates like `vs-project` vs `vs-solution` unless both are intentional).
+     * Classify tags by source:
+       - Heuristics-first candidates: `html`, `angular`, `react`, `node`, `json`, `git`, `vs-project`, `vs-solution`, `low-level`, `native`, `cpp`.
+       - AI-only / advanced semantic candidates (for now): e.g. `SingleResponsibilityPrinciple`, deeper architecture/pattern tags.
+     * Add mapping rules draft (marker/ext/path/file-name -> tag suggestion) and confidence tiers.
+     * Decide which tags are inferred from project metadata only vs requiring source/content analysis.
+     * Draft v1 canonical set to validate on scan data:
+       `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`.
+     * Validation notes from current scan snapshots:
+       - strong and stable: `vs-solution`, `vs-project`, `cpp`, `native`, `java`, `single-file`.
+       - useful path/content hints: `design-patterns`, `gui` (`Swing`), `winapi` (`windows.h` in sample lines).
+       - noise to control: `json` appears often from tooling files and should require stronger co-signal or be disabled in v1.
+2. Tag suggestions v1 (heuristics first).
+     * BE: `AssignExisting` only (from heuristics), status flow, fingerprint dedupe.
      * UI: tag suggestions list + `Accept/Reject`.
-2. Backfill after creating a new tag.
+3. Backfill after creating a new tag.
      * BE: async and idempotent, heuristics always, AI optional.
      * UI: lightweight status feedback (toast/status).
+4. Tag governance model.
+     * Seed system tags used by heuristics.
+     * System tags are not deletable.
+     * User-created / AI-created tags are deletable.
+     * `CreateNew` tag suggestions are AI-only; accepting one creates the tag and attaches it.
 
 ## Soon (2-4 weeks)
 - Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.

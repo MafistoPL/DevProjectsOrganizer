@@ -90,6 +90,27 @@ Heurystyki tagów (v1):
 - markery i histogram rozszerzeń,
 - nazwy katalogów (np. `course`, `tutorial`, `katas`),
 - struktura (`src/`, `tests/`).
+- heurystyki **nie tworzą nowych tagów**; generują tylko sugestie przypięcia istniejących tagów (`AssignExisting`).
+
+Tag taxonomy v1 (draft):
+- Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`.
+- Naming policy:
+  - lowercase kebab-case tags,
+  - one canonical form per concept (no alias duplicates in DB),
+  - aliases kept only as input-mapping (not stored as final tag names).
+- Heuristics input sources:
+  - marker files (`.sln`, `*.csproj`, `*.vcxproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`),
+  - extension histogram (`*.ts`, `*.tsx`, `*.jsx`, `*.cpp`, `*.h`, `*.ps1`, etc.),
+  - path/name hints (`winapi`, `gui`, `console`, `katas`, `tutorial`).
+- AI-first (not heuristics v1): semantic architecture/pattern tags such as `single-responsibility-principle`, deeper design-pattern tags, and advanced domain inference.
+- Confidence policy (v1):
+  - strong: direct marker match (e.g. `package.json` -> `node`),
+  - medium: combined extension/path hints,
+  - weak: path-only or single weak signal.
+- Validation from current user scans (latest snapshot set):
+  - high-confidence signals: `vs-solution`, `vs-project`, `cpp`, `native`, `java`, `single-file`,
+  - good secondary signals: `design-patterns` (from path), `gui` (e.g. `Swing`), `winapi` (`windows.h` in sample lines),
+  - noisy signal to gate in v1: `json` (tooling/config files produce false positives on native projects).
 
 Lifecycle (docelowy):
 - `ProjectSuggestion` po `Accept` materializuje się jako `Project`.
@@ -105,6 +126,12 @@ AI (opcjonalnie, później):
 - AI może zaproponować nowe tagi jako `CreateNewTagSuggestion`,
 - AI może dostać historię odrzuconych sugestii tagów jako sygnał negatywny,
 - limitowany kontekst (drzewo + krótkie próbki).
+- akceptacja `CreateNewTagSuggestion` tworzy nowy tag i przypina go do projektu.
+
+Tag governance (docelowo):
+- `System tags` (seedowane pod heurystyki): niedeletowalne w UI.
+- `Custom tags` (dodane ręcznie lub utworzone po akceptacji sugestii AI): deletowalne.
+- Heurystyki działają na słowniku tagów systemowych + istniejących tagach użytkownika, ale `CreateNew` pozostaje domeną AI.
 
 Backfill:
 - po dodaniu nowego taga (manualnie lub po akceptacji AI) uruchamiamy backfill:
@@ -124,8 +151,9 @@ Minimalny zestaw:
 - **Project**: zaakceptowany projekt.
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
 - **ProjectTag**: relacja N:M między `Project` i `Tag`.
+- **Tag** ma mieć klasyfikację źródła/typu (np. `System` vs `Custom`) i regułę usuwalności.
 - **TagSuggestion** powinien mieć:
-  - typ: `AssignExisting` / `CreateNew`,
+  - typ: `AssignExisting` / `CreateNew` (`CreateNew` zarezerwowane dla AI),
   - źródło: `Heuristic` / `AI`,
   - status: `Pending` / `Accepted` / `Rejected`,
   - fingerprint do suppress powtórek.
