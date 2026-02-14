@@ -236,6 +236,28 @@ export class AppHostBridgeService {
         );
         return Promise.resolve(projects as T);
       }
+      case 'projects.runTagHeuristics': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+        return Promise.resolve({
+          projectId,
+          action: 'TagHeuristicsQueued',
+          queuedAt: new Date().toISOString()
+        } as T);
+      }
+      case 'projects.runAiTagSuggestions': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+        return Promise.resolve({
+          projectId,
+          action: 'AiTagSuggestionsQueued',
+          queuedAt: new Date().toISOString()
+        } as T);
+      }
       case 'tags.list': {
         const tags = [...this.mockTags].sort((a, b) => a.name.localeCompare(b.name));
         return Promise.resolve(tags as T);

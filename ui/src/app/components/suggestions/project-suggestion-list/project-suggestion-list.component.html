@@ -189,7 +189,7 @@
           mat-stroked-button
           color="primary"
           *ngIf="canAccept(item)"
-          (click)="setStatus(item.id, 'accepted')"
+          (click)="setStatus(item.id, 'accepted', item)"
         >
           Accept
         </button>
@@ -197,7 +197,7 @@
           mat-stroked-button
           color="warn"
           *ngIf="canReject()"
-          (click)="setStatus(item.id, 'rejected')"
+          (click)="setStatus(item.id, 'rejected', item)"
         >
           Reject
         </button>

@@ -4,13 +4,20 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltip, MatTooltipModule } from '@angular/material/tooltip';
+import { firstValueFrom } from 'rxjs';
+import { ProjectsService } from '../../../services/projects.service';
 import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from '../../../services/suggestions.service';
+import {
+  ProjectAcceptAction,
+  ProjectAcceptActionDialogComponent
+} from '../project-accept-action-dialog/project-accept-action-dialog.component';
 
 
 @Component({
@@ -35,7 +42,9 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   @Input() mode: 'live' | 'suggestions' = 'live';
 
   private readonly suggestionsService = inject(SuggestionsService);
+  private readonly projectsService = inject(ProjectsService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   layout: 'list' | 'grid' = 'list';
   scope: 'pending' | 'archive' = 'pending';
@@ -108,8 +117,34 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     return el.scrollWidth > el.clientWidth;
   }
 
-  async setStatus(id: string, status: SuggestionStatus): Promise<void> {
+  async setStatus(id: string, status: SuggestionStatus, item?: ProjectSuggestionItem): Promise<void> {
     await this.suggestionsService.setStatus(id, status);
+    if (status !== 'accepted') {
+      return;
+    }
+
+    const project = this.projectsService.findBySourceSuggestionId(id);
+    if (!project) {
+      this.snackBar.open('Project created, but action dialog is unavailable.', 'Close', { duration: 1800 });
+      return;
+    }
+
+    const selectedAction = await this.promptPostAcceptAction(item?.name ?? project.name);
+    if (selectedAction === 'skip') {
+      return;
+    }
+
+    try {
+      if (selectedAction === 'heuristics') {
+        await this.projectsService.runTagHeuristics(project.id);
+        this.snackBar.open('Tag heuristics queued', undefined, { duration: 1400 });
+      } else {
+        await this.projectsService.runAiTagSuggestions(project.id);
+        this.snackBar.open('AI tag suggestions queued', undefined, { duration: 1400 });
+      }
+    } catch {
+      this.snackBar.open('Post-accept action failed', 'Close', { duration: 1800 });
+    }
   }
 
   shouldShowActions(item: ProjectSuggestionItem): boolean {
@@ -223,6 +258,18 @@ export class ProjectSuggestionListComponent implements OnDestroy {
 
   private isArchiveScope(): boolean {
     return this.mode === 'suggestions' && this.scope === 'archive';
+  }
+
+  private async promptPostAcceptAction(projectName: string): Promise<ProjectAcceptAction> {
+    const ref = this.dialog.open(ProjectAcceptActionDialogComponent, {
+      width: '520px',
+      data: {
+        projectName
+      }
+    });
+
+    const selectedAction = await firstValueFrom(ref.afterClosed());
+    return selectedAction ?? 'skip';
   }
 
   private dedupeByPathAndKind(items: ProjectSuggestionItem[]): ProjectSuggestionItem[] {

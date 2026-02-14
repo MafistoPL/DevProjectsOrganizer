@@ -37,4 +37,18 @@ export class ProjectsService {
     const projects = await this.bridge.request<ProjectItem[]>('projects.list');
     this.projectsSubject.next(projects);
   }
+
+  findBySourceSuggestionId(sourceSuggestionId: string): ProjectItem | null {
+    const project =
+      this.projectsSubject.getValue().find((item) => item.sourceSuggestionId === sourceSuggestionId) ?? null;
+    return project;
+  }
+
+  async runTagHeuristics(projectId: string): Promise<void> {
+    await this.bridge.request('projects.runTagHeuristics', { projectId });
+  }
+
+  async runAiTagSuggestions(projectId: string): Promise<void> {
+    await this.bridge.request('projects.runAiTagSuggestions', { projectId });
+  }
 }

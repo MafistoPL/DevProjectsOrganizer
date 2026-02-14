@@ -1,0 +1,37 @@
+<h2 mat-dialog-title>Project accepted</h2>
+
+<mat-dialog-content>
+  <p>
+    <strong>{{ data.projectName }}</strong> was moved to Project Organizer.
+  </p>
+  <p>Choose what to run next for tags:</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button
+    mat-stroked-button
+    type="button"
+    data-testid="project-accept-action-skip-btn"
+    (click)="choose('skip')"
+  >
+    Skip
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    data-testid="project-accept-action-heuristics-btn"
+    (click)="choose('heuristics')"
+  >
+    Run tag heuristics
+  </button>
+  <button
+    mat-raised-button
+    color="accent"
+    type="button"
+    data-testid="project-accept-action-ai-btn"
+    (click)="choose('ai')"
+  >
+    Run AI tag suggestions
+  </button>
+</mat-dialog-actions>

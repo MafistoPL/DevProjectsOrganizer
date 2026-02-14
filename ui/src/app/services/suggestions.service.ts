@@ -84,17 +84,19 @@ export class SuggestionsService {
     this.itemsSubject.next(response.map((item) => this.normalize(item)));
   }
 
-  async setStatus(id: string, status: SuggestionStatus): Promise<void> {
+  async setStatus(id: string, status: SuggestionStatus): Promise<ProjectSuggestionItem> {
     const payloadStatus: SuggestionStatusPayload =
       status === 'accepted' ? 'Accepted' : status === 'rejected' ? 'Rejected' : 'Pending';
     const updated = await this.bridge.request<HostSuggestionDto>('suggestions.setStatus', {
       id,
       status: payloadStatus
     });
-    this.upsert(this.normalize(updated));
+    const normalized = this.normalize(updated);
+    this.upsert(normalized);
     if (payloadStatus === 'Accepted') {
-      void this.projectsService.load();
+      await this.projectsService.load();
     }
+    return normalized;
   }
 
   async setPendingStatusForAll(status: 'accepted' | 'rejected'): Promise<number> {

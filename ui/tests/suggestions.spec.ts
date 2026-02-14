@@ -32,6 +32,23 @@ const getNames = async (page: Page) => {
   return page.getByTestId('project-suggest-list').locator('[data-testid="project-name"]').allTextContents();
 };
 
+const handleProjectAcceptDialog = async (
+  page: Page,
+  action: 'skip' | 'heuristics' | 'ai' = 'skip'
+) => {
+  const dialog = page.locator('mat-dialog-container').last();
+  await expect(dialog.getByRole('heading', { name: 'Project accepted' })).toBeVisible();
+
+  const buttonMap: Record<typeof action, string> = {
+    skip: 'project-accept-action-skip-btn',
+    heuristics: 'project-accept-action-heuristics-btn',
+    ai: 'project-accept-action-ai-btn'
+  };
+
+  await dialog.getByTestId(buttonMap[action]).click();
+  await expect(dialog).toBeHidden();
+};
+
 test('project suggestions layout toggles between list and grid', async ({ page }) => {
   await gotoScan(page);
 
@@ -144,6 +161,7 @@ test('project suggestion accept/reject removes items from live pending list', as
   await firstCard.locator('.header-row').click();
 
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'skip');
   await expect(list.locator('.suggestion-card')).toHaveCount(9);
 
   const nextCard = list.locator('.suggestion-card').first();
@@ -206,6 +224,7 @@ test('suggestions scope shows pending from all scans and archive with accepted+r
   const firstCard = list.locator('.suggestion-card').first();
   await firstCard.locator('.header-row').click();
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'skip');
 
   const nextCard = list.locator('.suggestion-card').first();
   await nextCard.locator('.header-row').click();
@@ -227,6 +246,7 @@ test('archive scope allows fixing rejected item and hides reject action', async 
   const firstCard = list.locator('.suggestion-card').first();
   await firstCard.locator('.header-row').click();
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'skip');
 
   const nextCard = list.locator('.suggestion-card').first();
   await nextCard.locator('.header-row').click();
@@ -254,6 +274,7 @@ test('archive scope allows deleting archived suggestion', async ({ page }) => {
   const firstCard = list.locator('.suggestion-card').first();
   await firstCard.locator('.header-row').click();
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'skip');
 
   await page.getByTestId('project-suggest-scope').getByText('Archive').click();
   await expect(list.locator('.suggestion-card')).toHaveCount(1);
@@ -387,6 +408,23 @@ test('project suggestions accept all and reject all require confirmation dialog'
   await expect(rejectProjectDialog.getByRole('heading', { name: 'Reject all project suggestions' })).toBeVisible();
   await rejectProjectDialog.getByRole('button', { name: 'Reject' }).click();
   await expect(list.locator('.suggestion-card')).toHaveCount(0);
+});
+
+test('project accept dialog allows choosing heuristics or AI action', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  const firstCard = list.locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'heuristics');
+  await expect(page.getByText('Tag heuristics queued')).toBeVisible();
+
+  const nextCard = list.locator('.suggestion-card').first();
+  await nextCard.locator('.header-row').click();
+  await nextCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'ai');
+  await expect(page.getByText('AI tag suggestions queued')).toBeVisible();
 });
 
 test('tag suggestions accept all requires confirmation dialog', async ({ page }) => {

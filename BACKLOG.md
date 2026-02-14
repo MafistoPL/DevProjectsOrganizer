@@ -1,13 +1,10 @@
 # Backlog
 
 ## Now (next 1 week)
-1. Post-accept project dialog.
-     * UI: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
-     * BE: IPC handlers for running selected action on a project.
-2. Tag suggestions v1 (heuristics first).
+1. Tag suggestions v1 (heuristics first).
      * BE: `AssignExisting` + `CreateNew`, status flow, fingerprint dedupe.
      * UI: tag suggestions list + `Accept/Reject`.
-3. Backfill after creating a new tag.
+2. Backfill after creating a new tag.
      * BE: async and idempotent, heuristics always, AI optional.
      * UI: lightweight status feedback (toast/status).
 
@@ -31,6 +28,10 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Post-accept project dialog is implemented:
+  - UI: after project suggestion `Accept`, dialog offers `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
+  - BE IPC: `projects.runTagHeuristics`, `projects.runAiTagSuggestions` (validated and queued response).
+  - FE: actions wired through `ProjectsService` and covered by unit + Playwright tests.
 - Tags CRUD (minimum working) is implemented:
   - BE: `TagEntity` + `TagStore` (`list/add/update/delete`) with duplicate validation by normalized name.
   - IPC: `tags.list`, `tags.add`, `tags.update`, `tags.delete`.

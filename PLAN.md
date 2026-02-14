@@ -39,6 +39,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
+- **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 
 ## 3. Architektura (FE/BE)
@@ -46,7 +47,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
-- **IPC projects:** `projects.list`.
+- **IPC projects:** `projects.list`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
 - **IPC tags:** `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
@@ -165,7 +166,7 @@ Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
 - **Near Term (kolejność wdrożenia tagów):**
   1. (Done) `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
   2. (Done) CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
-  3. Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
+  3. (Done) Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   4. Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
   5. `TagSuggestion` dla istniejących tagów (`AssignExisting`) i nowych propozycji (`CreateNew`), ze statusem i fingerprintem.
   6. Backfill po dodaniu nowego taga (manualnie lub po akceptacji AI): heurystyki zawsze, AI opcjonalnie.

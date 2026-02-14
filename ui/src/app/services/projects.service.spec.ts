@@ -23,12 +23,17 @@ class BridgeMock {
     }
   ];
 
-  async request<T>(type: string): Promise<T> {
-    this.requests.push({ type });
-    if (type !== 'projects.list') {
-      throw new Error(`Unexpected request: ${type}`);
+  async request<T>(type: string, payload?: unknown): Promise<T> {
+    this.requests.push({ type, payload });
+    if (type === 'projects.list') {
+      return this.projects as T;
     }
-    return this.projects as T;
+
+    if (type === 'projects.runTagHeuristics' || type === 'projects.runAiTagSuggestions') {
+      return {} as T;
+    }
+
+    throw new Error(`Unexpected request: ${type}`);
   }
 }
 
@@ -44,5 +49,35 @@ describe('ProjectsService', () => {
     await Promise.resolve();
 
     expect(bridge.requests.filter((item) => item.type === 'projects.list')).toHaveLength(2);
+  });
+
+  it('can find project by source suggestion id', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+
+    const project = sut.findBySourceSuggestionId('s1');
+    expect(project?.id).toBe('proj-1');
+
+    const missing = sut.findBySourceSuggestionId('missing');
+    expect(missing).toBeNull();
+  });
+
+  it('calls host for post-accept actions', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+
+    await sut.runTagHeuristics('proj-1');
+    await sut.runAiTagSuggestions('proj-1');
+
+    expect(bridge.requests).toContainEqual({
+      type: 'projects.runTagHeuristics',
+      payload: { projectId: 'proj-1' }
+    });
+    expect(bridge.requests).toContainEqual({
+      type: 'projects.runAiTagSuggestions',
+      payload: { projectId: 'proj-1' }
+    });
   });
 });
