@@ -36,7 +36,6 @@ public partial class MainWindow
         }
 
         var project = await _dbContext.Projects
-            .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Id == projectId);
         if (project == null)
         {
@@ -44,11 +43,28 @@ public partial class MainWindow
             return;
         }
 
+        var tags = await _dbContext.Tags
+            .AsNoTracking()
+            .ToListAsync();
+        var heuristics = new TagSuggestionHeuristicsService();
+        var detected = heuristics.Detect(project, tags);
+
+        var store = new TagSuggestionStore(_dbContext);
+        var generated = await store.ReplaceForProjectAsync(project.Id, detected);
+
+        SendEvent("tagSuggestions.changed", new
+        {
+            reason = "project.tagHeuristics",
+            projectId = project.Id,
+            generatedCount = generated
+        });
+
         SendResponse(request.Id, request.Type, new
         {
             projectId = project.Id,
-            action = "TagHeuristicsQueued",
-            queuedAt = DateTimeOffset.UtcNow
+            action = "TagHeuristicsCompleted",
+            generatedCount = generated,
+            finishedAt = DateTimeOffset.UtcNow
         });
     }
 
@@ -67,7 +83,6 @@ public partial class MainWindow
         }
 
         var project = await _dbContext.Projects
-            .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Id == projectId);
         if (project == null)
         {

@@ -136,8 +136,8 @@ export class ProjectSuggestionListComponent implements OnDestroy {
 
     try {
       if (selectedAction === 'heuristics') {
-        await this.projectsService.runTagHeuristics(project.id);
-        this.snackBar.open('Tag heuristics queued', undefined, { duration: 1400 });
+        const result = await this.projectsService.runTagHeuristics(project.id);
+        this.snackBar.open(`Tag heuristics generated ${result.generatedCount}`, undefined, { duration: 1400 });
       } else {
         await this.projectsService.runAiTagSuggestions(project.id);
         this.snackBar.open('AI tag suggestions queued', undefined, { duration: 1400 });

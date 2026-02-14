@@ -41,6 +41,8 @@ Program lokalny do porządkowania projektów na dysku:
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
+- **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
+- **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
@@ -49,6 +51,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
 - **IPC projects:** `projects.list`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
 - **IPC tags:** `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
+- **IPC tag suggestions:** `tagSuggestions.list`, `tagSuggestions.setStatus`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
 
@@ -91,6 +94,8 @@ Heurystyki tagów (v1):
 - nazwy katalogów (np. `course`, `tutorial`, `katas`),
 - struktura (`src/`, `tests/`).
 - heurystyki **nie tworzą nowych tagów**; generują tylko sugestie przypięcia istniejących tagów (`AssignExisting`).
+- status flow sugestii tagów: `Pending` -> `Accepted`/`Rejected`; `Accepted` podpina tag do projektu.
+- deduplikacja: ten sam kandydat (`project + tag + fingerprint`) nie jest dublowany; historycznie odrzucony fingerprint jest tłumiony przy kolejnych runach heurystyk.
 
 Tag taxonomy v1 (draft):
 - Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`.
@@ -169,6 +174,7 @@ Główne zakładki:
 - **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
 - **Suggestions / panel actions**: akcje działają per panel (Project vs Tag), a bulk `Accept all` / `Reject all` są zabezpieczone dialogiem potwierdzenia.
+- **Tag suggestions panel:** działa na realnych danych z DB (bez mocków), wspiera `Accept/Reject` per wpis i bulk.
 - **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
@@ -195,9 +201,10 @@ Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
   1. (Done) `ProjectSuggestion -> Project` po `Accept` (znika z `Pending`, jest widoczny w `Project Organizer`).
   2. (Done) CRUD tagów (manualne dodawanie/edycja/usuwanie), aby istniał słownik tagów dla heurystyk i AI.
   3. (Done) Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
-  4. Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
-  5. `TagSuggestion` dla istniejących tagów (`AssignExisting`) i nowych propozycji (`CreateNew`), ze statusem i fingerprintem.
+  4. (Done) Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
+  5. (Done v1) `TagSuggestion` dla istniejących tagów (`AssignExisting`) ze statusem i fingerprintem.
   6. Backfill po dodaniu nowego taga (manualnie lub po akceptacji AI): heurystyki zawsze, AI opcjonalnie.
+  7. `CreateNew` sugestie tagów (AI) + akceptacja tworząca nowy tag.
 - **Mid Term:** AI tag suggestions z wykorzystaniem historii odrzuceń, split/merge projektów, incremental scan.
 - **Later:** AI do „one project vs many”, sync z backendem.
 

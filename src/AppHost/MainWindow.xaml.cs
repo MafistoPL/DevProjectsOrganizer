@@ -57,6 +57,8 @@ public partial class MainWindow : Window
         await _dbContext.Database.MigrateAsync();
         _rootStore = new RootStore(_dbContext);
         await _rootStore.SeedDefaultsAsync();
+        var tagStore = new TagStore(_dbContext);
+        await tagStore.SeedDefaultTagsAsync();
         _scanCoordinator = new ScanCoordinator(() => new AppDbContext(AppDbContext.CreateDefaultOptions()));
         _scanCoordinator.ScanEvent += OnScanEvent;
     }

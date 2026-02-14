@@ -15,13 +15,10 @@
        - strong and stable: `vs-solution`, `vs-project`, `cpp`, `native`, `java`, `single-file`.
        - useful path/content hints: `design-patterns`, `gui` (`Swing`), `winapi` (`windows.h` in sample lines).
        - noise to control: `json` appears often from tooling files and should require stronger co-signal or be disabled in v1.
-2. Tag suggestions v1 (heuristics first).
-     * BE: `AssignExisting` only (from heuristics), status flow, fingerprint dedupe.
-     * UI: tag suggestions list + `Accept/Reject`.
-3. Backfill after creating a new tag.
+2. Backfill after creating a new tag.
      * BE: async and idempotent, heuristics always, AI optional.
      * UI: lightweight status feedback (toast/status).
-4. Tag governance model.
+3. Tag governance model.
      * Seed system tags used by heuristics.
      * System tags are not deletable.
      * User-created / AI-created tags are deletable.
@@ -47,6 +44,12 @@
 - Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+- Tag suggestions v1 (heuristics first) is implemented:
+  - BE: `TagSuggestionHeuristicsService` generates `AssignExisting` suggestions for existing tags only.
+  - Persistence: new `tag_suggestions` + `project_tags` tables with status (`Pending/Accepted/Rejected`), source/type, fingerprint and dedupe/suppress flow.
+  - IPC: `tagSuggestions.list` and `tagSuggestions.setStatus` handlers; accepting attaches tag to project.
+  - UI: `Tag suggestions` panel is wired to real DB-backed data and supports per-item + bulk `Accept/Reject` with confirmation.
+  - Tests: added AppHost integration coverage (`TagSuggestionHeuristicsService`, `TagSuggestionStore`, `ProjectTagStore`) and FE unit tests for tag suggestions service/component.
 - Post-accept project dialog is implemented:
   - UI: after project suggestion `Accept`, dialog offers `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   - BE IPC: `projects.runTagHeuristics`, `projects.runAiTagSuggestions` (validated and queued response).

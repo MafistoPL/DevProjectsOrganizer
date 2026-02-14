@@ -41,8 +41,8 @@ describe('ProjectSuggestionListComponent', () => {
         id: 'project-1',
         name: 'dotnet-api'
       }),
-      runTagHeuristics: vi.fn().mockResolvedValue(undefined),
-      runAiTagSuggestions: vi.fn().mockResolvedValue(undefined)
+      runTagHeuristics: vi.fn().mockResolvedValue({ generatedCount: 1 }),
+      runAiTagSuggestions: vi.fn().mockResolvedValue({ action: 'AiTagSuggestionsQueued' })
     };
 
     const matDialogMock = {

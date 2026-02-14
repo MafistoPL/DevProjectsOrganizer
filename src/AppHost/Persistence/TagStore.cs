@@ -4,6 +4,36 @@ namespace AppHost.Persistence;
 
 public sealed class TagStore
 {
+    private static readonly string[] DefaultTags =
+    [
+        "csharp",
+        "dotnet",
+        "cpp",
+        "c",
+        "native",
+        "vs-solution",
+        "vs-project",
+        "node",
+        "react",
+        "angular",
+        "html",
+        "json",
+        "git",
+        "cmake",
+        "makefile",
+        "java",
+        "gradle",
+        "maven",
+        "python",
+        "rust",
+        "go",
+        "powershell",
+        "low-level",
+        "console",
+        "winapi",
+        "gui"
+    ];
+
     private readonly AppDbContext _db;
 
     public TagStore(AppDbContext db)
@@ -17,6 +47,32 @@ public sealed class TagStore
             .AsNoTracking()
             .OrderBy(tag => tag.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> SeedDefaultTagsAsync(CancellationToken cancellationToken = default)
+    {
+        var existingCount = await _db.Tags.CountAsync(cancellationToken);
+        if (existingCount > 0)
+        {
+            return 0;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var name in DefaultTags)
+        {
+            var (raw, normalized) = NormalizeName(name);
+            _db.Tags.Add(new TagEntity
+            {
+                Id = Guid.NewGuid(),
+                Name = raw,
+                NormalizedName = normalized,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return DefaultTags.Length;
     }
 
     public async Task<TagEntity> AddAsync(string name, CancellationToken cancellationToken = default)

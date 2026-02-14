@@ -44,11 +44,11 @@ export class ProjectsService {
     return project;
   }
 
-  async runTagHeuristics(projectId: string): Promise<void> {
-    await this.bridge.request('projects.runTagHeuristics', { projectId });
+  async runTagHeuristics(projectId: string): Promise<{ generatedCount: number }> {
+    return await this.bridge.request<{ generatedCount: number }>('projects.runTagHeuristics', { projectId });
   }
 
-  async runAiTagSuggestions(projectId: string): Promise<void> {
-    await this.bridge.request('projects.runAiTagSuggestions', { projectId });
+  async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {
+    return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
   }
 }

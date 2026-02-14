@@ -418,7 +418,7 @@ test('project accept dialog allows choosing heuristics or AI action', async ({ p
   await firstCard.locator('.header-row').click();
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
   await handleProjectAcceptDialog(page, 'heuristics');
-  await expect(page.getByText('Tag heuristics queued')).toBeVisible();
+  await expect(page.getByText(/Tag heuristics generated/)).toBeVisible();
 
   const nextCard = list.locator('.suggestion-card').first();
   await nextCard.locator('.header-row').click();

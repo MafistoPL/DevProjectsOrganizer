@@ -54,6 +54,20 @@ type MockTag = {
   updatedAt: string;
 };
 
+type MockTagSuggestion = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  tagId: string | null;
+  tagName: string;
+  type: string;
+  source: string;
+  confidence: number;
+  reason: string;
+  createdAt: string;
+  status: string;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
@@ -63,6 +77,7 @@ export class AppHostBridgeService {
   private mockSuggestions: Array<any> = [];
   private mockProjects: MockProject[] = [];
   private mockTags: MockTag[] = [];
+  private mockTagSuggestions: MockTagSuggestion[] = [];
   private readonly eventSubject = new Subject<HostEvent>();
   readonly events$ = this.eventSubject.asObservable();
 
@@ -98,6 +113,7 @@ export class AppHostBridgeService {
       this.loadMockSuggestions();
       this.loadMockProjects();
       this.loadMockTags();
+      this.loadMockTagSuggestions();
     }
   }
 
@@ -241,10 +257,25 @@ export class AppHostBridgeService {
         if (!projectId) {
           return Promise.reject(new Error('Missing project id.'));
         }
+
+        const project = this.mockProjects.find((item) => item.id === projectId);
+        if (!project) {
+          return Promise.reject(new Error('Project not found.'));
+        }
+
+        const generated = this.generateMockTagSuggestionsForProject(project);
+        if (generated > 0) {
+          this.eventSubject.next({
+            type: 'tagSuggestions.changed',
+            data: { reason: 'project.tagHeuristics', projectId, generatedCount: generated }
+          });
+        }
+
         return Promise.resolve({
           projectId,
-          action: 'TagHeuristicsQueued',
-          queuedAt: new Date().toISOString()
+          action: 'TagHeuristicsCompleted',
+          generatedCount: generated,
+          finishedAt: new Date().toISOString()
         } as T);
       }
       case 'projects.runAiTagSuggestions': {
@@ -334,6 +365,45 @@ export class AppHostBridgeService {
         }
 
         return Promise.resolve({ id, deleted: exists } as T);
+      }
+      case 'tagSuggestions.list': {
+        const items = [...this.mockTagSuggestions].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        return Promise.resolve(items as T);
+      }
+      case 'tagSuggestions.setStatus': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        const statusRaw = typeof payload?.status === 'string' ? payload.status : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing tag suggestion id.'));
+        }
+
+        const index = this.mockTagSuggestions.findIndex((item) => item.id === id);
+        if (index < 0) {
+          return Promise.reject(new Error('Tag suggestion not found.'));
+        }
+
+        const normalized =
+          statusRaw.toLowerCase() === 'accepted'
+            ? 'Accepted'
+            : statusRaw.toLowerCase() === 'rejected'
+              ? 'Rejected'
+              : 'Pending';
+
+        const updated = { ...this.mockTagSuggestions[index], status: normalized };
+        this.mockTagSuggestions = [
+          ...this.mockTagSuggestions.slice(0, index),
+          updated,
+          ...this.mockTagSuggestions.slice(index + 1)
+        ];
+        this.saveMockTagSuggestions();
+        this.eventSubject.next({
+          type: 'tagSuggestions.changed',
+          data: { id, status: normalized }
+        });
+
+        return Promise.resolve(updated as T);
       }
       case 'suggestions.list': {
         const items = [...this.mockSuggestions].sort(
@@ -765,8 +835,84 @@ export class AppHostBridgeService {
     this.saveMockTags();
   }
 
+  private loadMockTagSuggestions(): void {
+    const stored = localStorage.getItem('mockTagSuggestions');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          this.mockTagSuggestions = parsed;
+          return;
+        }
+      } catch {
+        // Fallback below.
+      }
+    }
+
+    const now = Date.now();
+    this.mockTagSuggestions = [
+      {
+        id: 't1',
+        projectId: 'project-dotnet-api',
+        projectName: 'dotnet-api',
+        tagId: null,
+        tagName: 'csharp',
+        type: 'AssignExisting',
+        source: 'Heuristic',
+        confidence: 0.86,
+        reason: 'marker:.csproj, hint:csharp',
+        createdAt: new Date(now - 60_000).toISOString(),
+        status: 'Pending'
+      },
+      {
+        id: 't2',
+        projectId: 'project-notes-parser',
+        projectName: 'notes-parser',
+        tagId: null,
+        tagName: 'node',
+        type: 'AssignExisting',
+        source: 'Heuristic',
+        confidence: 0.74,
+        reason: 'marker:package.json',
+        createdAt: new Date(now - 50_000).toISOString(),
+        status: 'Pending'
+      },
+      {
+        id: 't3',
+        projectId: 'project-course-js-2023',
+        projectName: 'course-js-2023',
+        tagId: null,
+        tagName: 'html',
+        type: 'AssignExisting',
+        source: 'Heuristic',
+        confidence: 0.58,
+        reason: 'marker:index.html',
+        createdAt: new Date(now - 40_000).toISOString(),
+        status: 'Pending'
+      },
+      {
+        id: 't4',
+        projectId: 'project-rust-playground',
+        projectName: 'rust-playground',
+        tagId: null,
+        tagName: 'rust',
+        type: 'AssignExisting',
+        source: 'Heuristic',
+        confidence: 0.72,
+        reason: 'hint:rust',
+        createdAt: new Date(now - 30_000).toISOString(),
+        status: 'Pending'
+      }
+    ];
+    this.saveMockTagSuggestions();
+  }
+
   private saveMockTags(): void {
     localStorage.setItem('mockTags', JSON.stringify(this.mockTags));
+  }
+
+  private saveMockTagSuggestions(): void {
+    localStorage.setItem('mockTagSuggestions', JSON.stringify(this.mockTagSuggestions));
   }
 
   private loadMockProjects(): void {
@@ -825,6 +971,85 @@ export class AppHostBridgeService {
       mapped,
       ...this.mockProjects.slice(index + 1)
     ];
+  }
+
+  private generateMockTagSuggestionsForProject(project: MockProject): number {
+    const candidates = this.mockTags.map((tag) => tag.name.toLowerCase());
+    const derived: Array<{ tagName: string; confidence: number; reason: string }> = [];
+
+    const normalizedPath = project.path.toLowerCase();
+    const normalizedReason = project.reason.toLowerCase();
+    const markers = (project.markers ?? []).map((item) => String(item).toLowerCase());
+    const hints = (project.techHints ?? []).map((item) => String(item).toLowerCase());
+
+    const tryAdd = (tagName: string, confidence: number, reason: string) => {
+      if (!candidates.includes(tagName)) {
+        return;
+      }
+      if (derived.some((item) => item.tagName === tagName)) {
+        return;
+      }
+      derived.push({ tagName, confidence, reason });
+    };
+
+    if (markers.includes('.sln')) {
+      tryAdd('vs-solution', 0.9, 'marker:.sln');
+    }
+    if (markers.includes('.vcxproj') || markers.includes('.vcproj') || hints.includes('cpp')) {
+      tryAdd('cpp', 0.84, 'marker/hint:cpp');
+      tryAdd('native', 0.78, 'marker/hint:native');
+    }
+    if (markers.includes('.csproj') || hints.includes('csharp')) {
+      tryAdd('csharp', 0.84, 'marker/hint:csharp');
+      tryAdd('dotnet', 0.8, 'marker/hint:dotnet');
+    }
+    if (markers.includes('package.json') || hints.includes('node')) {
+      tryAdd('node', 0.82, 'marker/hint:node');
+    }
+    if (markers.includes('index.html')) {
+      tryAdd('html', 0.76, 'marker:index.html');
+      tryAdd('gui', 0.62, 'marker:index.html');
+    }
+    if (normalizedPath.includes('winapi') || normalizedReason.includes('windows.h')) {
+      tryAdd('winapi', 0.74, 'path/reason:winapi');
+    }
+
+    for (const item of derived) {
+      const tag = this.mockTags.find((entry) => entry.name.toLowerCase() === item.tagName);
+      if (!tag) {
+        continue;
+      }
+
+      const duplicate = this.mockTagSuggestions.some(
+        (entry) =>
+          entry.projectId === project.id &&
+          entry.tagId === tag.id &&
+          entry.status.toLowerCase() === 'pending'
+      );
+      if (duplicate) {
+        continue;
+      }
+
+      this.mockTagSuggestions = [
+        {
+          id: this.createId(),
+          projectId: project.id,
+          projectName: project.name,
+          tagId: tag.id,
+          tagName: tag.name,
+          type: 'AssignExisting',
+          source: 'Heuristic',
+          confidence: item.confidence,
+          reason: item.reason,
+          createdAt: new Date().toISOString(),
+          status: 'Pending'
+        },
+        ...this.mockTagSuggestions
+      ];
+    }
+
+    this.saveMockTagSuggestions();
+    return derived.length;
   }
 
   private createMockProjectKey(path: string, kind: string): string {
