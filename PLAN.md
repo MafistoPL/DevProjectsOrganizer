@@ -39,6 +39,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
+- **Project Organizer (tag filter):** lista projektów wspiera podstawowe filtrowanie po wielu tagach (AND / iloczyn).
 - **Project Organizer (description):** projekt ma pole opisu; opis można dodać podczas `Accept` sugestii i edytować później na zakładce `Project Organizer`.
 - **Project Organizer (manual tags):** można ręcznie podpinać istniejące tagi do projektu i odpinać tagi z projektu (bez usuwania taga globalnie).
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
@@ -202,6 +203,7 @@ Uwagi modelowe:
 Główne zakładki:
 - **Scan**: rooty, start skanu, kolejka, postęp.
 - **Project Organizer**: lista projektów, filtry, szczegóły.
+- **Project Organizer**: filtr tagów działa jako iloczyn (projekt musi mieć wszystkie wybrane tagi).
 - **Project Organizer**: usuwanie projektu wymaga wpisania pełnej nazwy w modalu potwierdzenia (check FE + walidacja BE).
 - **Project Organizer**: karta projektu pokazuje również przypięte tagi (chipy).
 - **Project Organizer**: przy tagach dostępne są ręczne akcje `Attach tag` / `Detach` dla istniejących tagów.

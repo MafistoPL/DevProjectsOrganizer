@@ -5,6 +5,25 @@
   min-height: 60vh;
 }
 
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  width: min(360px, 100%);
+}
+
 .list-wrap {
   display: flex;
   flex-direction: column;
@@ -168,6 +187,19 @@
 }
 
 @media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .filters {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
   .header-row {
     flex-direction: column;
   }

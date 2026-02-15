@@ -35,6 +35,24 @@ describe('OrganizerPageComponent', () => {
             { id: 'tag-1', name: 'csharp' },
             { id: 'tag-2', name: 'backend' }
           ]
+        },
+        {
+          id: 'proj-2',
+          sourceSuggestionId: 's2',
+          lastScanSessionId: 'scan-2',
+          rootPath: 'D:\\code',
+          name: 'cpp-cli',
+          description: '',
+          score: 0.77,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\cpp-cli',
+          reason: 'markers: .vcxproj',
+          extensionsSummary: 'cpp=18',
+          markers: ['.vcxproj'],
+          techHints: ['cpp'],
+          createdAt: '2026-02-13T10:00:00.000Z',
+          updatedAt: '2026-02-13T10:00:00.000Z',
+          tags: [{ id: 'tag-1', name: 'csharp' }]
         }
       ]),
       deleteProject: vi.fn().mockResolvedValue({ id: 'proj-1', deleted: true }),
@@ -98,6 +116,7 @@ describe('OrganizerPageComponent', () => {
     expect(text).toContain('csharp');
     expect(text).toContain('backend');
     expect(text).toContain('Initial description');
+    expect(text).toContain('cpp-cli');
   });
 
   it('delete action deletes project after typed-name confirmation', async () => {
@@ -141,5 +160,19 @@ describe('OrganizerPageComponent', () => {
     await fixture.componentInstance.detachTag(project, 'tag-1');
 
     expect(detachTagSpy).toHaveBeenCalledWith('proj-1', 'tag-1');
+  });
+
+  it('filters projects by selected tags using AND intersection', () => {
+    fixture.componentInstance.setTagFilter(['tag-1', 'tag-2']);
+    fixture.detectChanges();
+
+    const filtered = fixture.componentInstance.filteredProjects();
+    expect(filtered.map((item) => item.id)).toEqual(['proj-1']);
+
+    fixture.componentInstance.setTagFilter(['tag-1']);
+    fixture.detectChanges();
+
+    const filteredSingleTag = fixture.componentInstance.filteredProjects();
+    expect(filteredSingleTag.map((item) => item.id)).toEqual(['proj-1', 'proj-2']);
   });
 });

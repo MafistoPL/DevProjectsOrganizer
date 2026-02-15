@@ -1,5 +1,5 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -40,8 +40,18 @@ export class OrganizerPageComponent {
 
   readonly projects = toSignal(this.projectsService.projects$, { initialValue: [] });
   readonly tags = toSignal(this.tagsService.tags$, { initialValue: [] });
+  readonly filteredProjects = computed(() => {
+    const projects = this.projects();
+    const selectedTagIds = this.selectedFilterTagIds();
+    if (selectedTagIds.length === 0) {
+      return projects;
+    }
+
+    return projects.filter((project) => this.matchesAllSelectedFilterTags(project, selectedTagIds));
+  });
   editDescriptionProjectId: string | null = null;
   editDescriptionValue = '';
+  readonly selectedFilterTagIds = signal<string[]>([]);
   private readonly selectedTagByProjectId = new Map<string, string>();
 
   async deleteProject(project: ProjectItem): Promise<void> {
@@ -145,5 +155,22 @@ export class OrganizerPageComponent {
       const message = error instanceof Error && error.message ? error.message : 'Tag detach failed';
       this.snackBar.open(message, 'Close', { duration: 1800 });
     }
+  }
+
+  setTagFilter(tagIds: string[] | null): void {
+    this.selectedFilterTagIds.set(Array.isArray(tagIds) ? [...tagIds] : []);
+  }
+
+  clearTagFilter(): void {
+    this.selectedFilterTagIds.set([]);
+  }
+
+  private matchesAllSelectedFilterTags(project: ProjectItem, selectedTagIds: string[]): boolean {
+    if (selectedTagIds.length === 0) {
+      return true;
+    }
+
+    const projectTagIds = new Set(project.tags.map((tag) => tag.id));
+    return selectedTagIds.every((tagId) => projectTagIds.has(tagId));
   }
 }

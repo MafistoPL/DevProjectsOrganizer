@@ -4,14 +4,39 @@
       <h1 class="page-title">Project Organizer</h1>
       <p class="page-subtitle">Browse accepted projects.</p>
     </div>
+    <div class="filters">
+      <mat-form-field appearance="outline" class="filter-select">
+        <mat-label>Filter by tags (AND)</mat-label>
+        <mat-select
+          multiple
+          [value]="selectedFilterTagIds()"
+          (selectionChange)="setTagFilter($event.value)"
+          data-testid="organizer-tag-filter-select"
+        >
+          <mat-option *ngFor="let tag of tags()" [value]="tag.id">{{ tag.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="clearTagFilter()"
+        [disabled]="selectedFilterTagIds().length === 0"
+        data-testid="organizer-tag-filter-clear"
+      >
+        Clear filter
+      </button>
+    </div>
   </header>
 
   <div class="list-wrap">
     <mat-card *ngIf="projects().length === 0" class="empty-card">
       <mat-card-content>No accepted projects yet.</mat-card-content>
     </mat-card>
+    <mat-card *ngIf="projects().length > 0 && filteredProjects().length === 0" class="empty-card">
+      <mat-card-content>No projects match selected tags.</mat-card-content>
+    </mat-card>
 
-    <mat-card *ngFor="let project of projects()" class="project-card">
+    <mat-card *ngFor="let project of filteredProjects()" class="project-card">
       <div class="header-row">
         <div class="title-block">
           <h2 class="project-name">{{ project.name }}</h2>

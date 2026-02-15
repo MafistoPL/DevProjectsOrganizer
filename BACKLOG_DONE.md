@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Podstawowe wyszukiwanie projektów po tagach (AND):
+  * `Project Organizer` wspiera filtrowanie po wielu tagach jako iloczyn (projekt musi mieć wszystkie wybrane tagi).
+  * Dodano akcję `Clear filter` i komunikat pustego wyniku przy braku dopasowań.
+  * Testy: FE unit (`OrganizerPage`) oraz Playwright (`organizer.spec.ts`) dla flow filtrowania.
+  * Dokumentacja: `PLAN.md` zaktualizowany o filtr tagów w `Project Organizer`.
 * Ręczne podpinanie i odpinanie tagów dla istniejącego projektu:
   * AppHost: dodano IPC `projects.attachTag` i `projects.detachTag` oraz parser payloadu (`projectId`, `tagId`).
   * UI (`Project Organizer`): dodano ręczne akcje `Attach tag` i `Detach` dla istniejących tagów.
