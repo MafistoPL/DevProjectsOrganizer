@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Rozszerzenie heurystyk i próbek treści skanu:
+  * Zwiększono limit próbek treści skanu z `30` do `100` linii na plik.
+  * Dodano heurystykę wykrywania `winmain()`/`WINMAIN` w kodzie źródłowym.
+  * Wykrycie `winmain()` generuje sugestię tagu `winapi` (jeśli tag istnieje).
+  * Dodano test integracyjny `TagSuggestionHeuristicsServiceTests` dla sygnału `winmain()`.
 * Licznik plików projektu + ręczny reskan pojedynczego projektu:
   * Dodano trwałe pole `Project.FileCount` (DB + migracja), liczone przy materializacji projektu (`Accept` sugestii).
   * Dodano nowe IPC `projects.rescan` dla reskanu tylko jednego projektu.

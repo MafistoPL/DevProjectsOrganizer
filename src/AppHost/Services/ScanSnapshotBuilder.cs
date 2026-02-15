@@ -209,7 +209,7 @@ public sealed class ScanSnapshotBuilder
         FileInfo fileInfo,
         ScanRuntime runtime)
     {
-        const int maxLines = 30;
+        const int maxLines = 100;
         const int maxChars = 8192;
 
         var lines = new List<string>();

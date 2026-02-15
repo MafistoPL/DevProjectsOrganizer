@@ -29,6 +29,10 @@ public sealed class TagSuggestionHeuristicsService
         @"\b(?:__asm__?|asm)\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex WinMainPattern = new(
+        @"\b(?:int\s+)?(?:winapi\s+)?winmain\s*\(",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly HashSet<string> SourceSignalExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".c",
@@ -279,6 +283,11 @@ public sealed class TagSuggestionHeuristicsService
         if (sourceSignals.AsmEvidence is not null)
         {
             AddSignal("low-level", 0.88, sourceSignals.AsmEvidence);
+        }
+
+        if (sourceSignals.WinMainEvidence is not null)
+        {
+            AddSignal("winapi", 0.9, sourceSignals.WinMainEvidence);
         }
 
         if (sourceSignals.PointerEvidence is not null
@@ -627,6 +636,7 @@ public sealed class TagSuggestionHeuristicsService
         string? loremIpsumEvidence = null;
         string? pointerEvidence = null;
         string? asmEvidence = null;
+        string? winMainEvidence = null;
 
         foreach (var file in EnumerateCandidateSourceFiles(projectPath))
         {
@@ -636,7 +646,7 @@ public sealed class TagSuggestionHeuristicsService
             }
 
             inspected++;
-            var (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm) = ScanFileForSignals(file);
+            var (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm, hasWinMain) = ScanFileForSignals(file);
             if (hasHelloWorld && helloWorldEvidence is null)
             {
                 helloWorldEvidence = $"code:hello-world:{Path.GetFileName(file)}";
@@ -657,10 +667,16 @@ public sealed class TagSuggestionHeuristicsService
                 asmEvidence = $"code:asm:{Path.GetFileName(file)}";
             }
 
+            if (hasWinMain && winMainEvidence is null)
+            {
+                winMainEvidence = $"code:winmain:{Path.GetFileName(file)}";
+            }
+
             if (helloWorldEvidence is not null
                 && loremIpsumEvidence is not null
                 && pointerEvidence is not null
-                && asmEvidence is not null)
+                && asmEvidence is not null
+                && winMainEvidence is not null)
             {
                 break;
             }
@@ -669,7 +685,8 @@ public sealed class TagSuggestionHeuristicsService
         if (helloWorldEvidence is null
             && loremIpsumEvidence is null
             && pointerEvidence is null
-            && asmEvidence is null)
+            && asmEvidence is null
+            && winMainEvidence is null)
         {
             return SourceSignalDetectionResult.None;
         }
@@ -678,7 +695,8 @@ public sealed class TagSuggestionHeuristicsService
             helloWorldEvidence,
             loremIpsumEvidence,
             pointerEvidence,
-            asmEvidence);
+            asmEvidence,
+            winMainEvidence);
     }
 
     private static IEnumerable<string> EnumerateProjectSizeFiles(string rootPath)
@@ -814,7 +832,7 @@ public sealed class TagSuggestionHeuristicsService
         }
     }
 
-    private static (bool HasHelloWorld, bool HasLoremIpsum, bool HasPointer, bool HasAsm) ScanFileForSignals(
+    private static (bool HasHelloWorld, bool HasLoremIpsum, bool HasPointer, bool HasAsm, bool HasWinMain) ScanFileForSignals(
         string filePath)
     {
         try
@@ -826,6 +844,7 @@ public sealed class TagSuggestionHeuristicsService
             var hasLoremIpsum = false;
             var hasPointer = false;
             var hasAsm = false;
+            var hasWinMain = false;
             for (var lineNumber = 0; lineNumber < MaxSourceLinesPerFile; lineNumber++)
             {
                 var line = reader.ReadLine();
@@ -859,7 +878,12 @@ public sealed class TagSuggestionHeuristicsService
                     hasAsm = true;
                 }
 
-                if (hasHelloWorld && hasLoremIpsum && hasPointer && hasAsm)
+                if (!hasWinMain && WinMainPattern.IsMatch(line))
+                {
+                    hasWinMain = true;
+                }
+
+                if (hasHelloWorld && hasLoremIpsum && hasPointer && hasAsm && hasWinMain)
                 {
                     break;
                 }
@@ -876,11 +900,11 @@ public sealed class TagSuggestionHeuristicsService
                 hasAsm = true;
             }
 
-            return (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm);
+            return (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm, hasWinMain);
         }
         catch
         {
-            return (false, false, false, false);
+            return (false, false, false, false, false);
         }
     }
 
@@ -894,8 +918,9 @@ public sealed class TagSuggestionHeuristicsService
         string? HelloWorldEvidence,
         string? LoremIpsumEvidence,
         string? PointerEvidence,
-        string? AsmEvidence)
+        string? AsmEvidence,
+        string? WinMainEvidence)
     {
-        public static readonly SourceSignalDetectionResult None = new(null, null, null, null);
+        public static readonly SourceSignalDetectionResult None = new(null, null, null, null, null);
     }
 }

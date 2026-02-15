@@ -54,6 +54,7 @@ Program lokalny do porządkowania projektów na dysku:
   - Run heurystyk jest wyłącznie manualny (akcje usera: post-accept dialog, `Project Organizer`, globalne `Tags`).
   - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
   - `low-level` jest wykrywany jako sygnał ASM (nie ogólny sygnał C/C++).
+  - `winapi` jest wykrywany także po sygnale kodowym `WinMain()/WINMAIN`.
   - Dla projektów C/C++ z wykryciem wskaźników generowany jest tag `pointers`.
   - Heurystyki wyznaczają też tag rozmiaru projektu po liczbie linii (`lines-*`).
 - **AI tag suggestions (current runtime):** `projects.runAiTagSuggestions` zwraca `AiTagSuggestionsQueued`; persystencja sugestii AI jest jeszcze backlogiem.
@@ -90,6 +91,7 @@ Założenia:
 Snapshot JSON:
 - drzewo folderów + pliki,
 - próbki treści (limit linii i rozmiaru),
+  - domyślny limit próbek treści: 100 linii na plik (z limitem znaków),
 - ignorowanie artefaktów build/IDE jest już wdrożone.
 - pliki wyjściowe:
   - skan projektów: `%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`,

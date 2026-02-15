@@ -268,6 +268,53 @@ public sealed class TagSuggestionHeuristicsServiceTests
     }
 
     [Fact]
+    public void Detect_adds_winapi_when_winmain_is_detected_in_source_content()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var sourcePath = Path.Combine(tempDir, "app.cpp");
+            File.WriteAllText(
+                sourcePath,
+                """
+                #include <windows.h>
+                int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+                    return 0;
+                }
+                """);
+
+            var project = CreateProject(
+                markersJson: """["main-source"]""",
+                techHintsJson: """["cpp"]""",
+                extensionsSummary: "cpp=1",
+                name: "win-main-sample",
+                path: tempDir,
+                reason: "native sources with entry/header layout");
+
+            var tags = new[]
+            {
+                CreateTag("winapi")
+            };
+
+            var sut = new TagSuggestionHeuristicsService();
+
+            var result = sut.Detect(project, tags);
+
+            result.Should().Contain(item =>
+                item.TagName == "winapi"
+                && item.Reason.Contains("code:winmain", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Detect_adds_project_size_tag_based_on_line_count_bucket()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
