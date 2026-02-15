@@ -7,6 +7,10 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { firstValueFrom } from 'rxjs';
+import {
+  TagDeleteDialogComponent
+} from '../../components/tags/tag-delete-dialog/tag-delete-dialog.component';
 import {
   TagProjectsDialogComponent
 } from '../../components/tags/tag-projects-dialog/tag-projects-dialog.component';
@@ -68,9 +72,21 @@ export class TagsPageComponent {
     }
   }
 
-  async deleteTag(tagId: string): Promise<void> {
+  async deleteTag(tag: TagItem): Promise<void> {
+    const ref = this.dialog.open(TagDeleteDialogComponent, {
+      width: '520px',
+      data: {
+        tagName: tag.name
+      }
+    });
+
+    const confirmed = await firstValueFrom(ref.afterClosed());
+    if (!confirmed) {
+      return;
+    }
+
     try {
-      await this.tagsService.deleteTag(tagId);
+      await this.tagsService.deleteTag(tag.id);
       this.cancelEdit();
       this.snackBar.open('Tag deleted', undefined, { duration: 1200 });
     } catch (error) {

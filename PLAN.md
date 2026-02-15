@@ -43,6 +43,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 - **Tags (UI):** seedowane/systemowe tagi są widoczne na liście jako `Seeded` i nie można ich usunąć.
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
+- **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
 - **Project delete flow:** `Project Organizer` ma potwierdzenie usuwania przez przepisanie nazwy projektu (walidacja FE + BE); po usunięciu źródłowa sugestia trafia do `Rejected` w archiwum.
@@ -181,13 +182,13 @@ Główne zakładki:
 - **Project Organizer**: lista projektów, filtry, szczegóły.
 - **Project Organizer**: usuwanie projektu wymaga wpisania pełnej nazwy w modalu potwierdzenia (check FE + walidacja BE).
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
-- **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
+- **Suggestions / Project suggestions**: przełącznik `Pending` / `Accepted` / `Rejected`, eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
-- **Suggestions / panel actions**: akcje działają per panel (Project vs Tag), a bulk `Accept all` / `Reject all` są zabezpieczone dialogiem potwierdzenia.
+- **Suggestions / panel actions**: akcje działają per panel (Project vs Tag); w `Pending` są `Accept all` / `Reject all`, a w `Rejected` są `Restore all` / `Delete all`; widok `Accepted` nie ma bulk mutacji.
 - **Tag suggestions panel:** działa na realnych danych z DB (bez mocków), wspiera `Accept/Reject` per wpis i bulk.
 - **Scan / status card:** zawiera także sekcję przebiegu heurystyk tagów (`Running/Completed/Failed`, progress, generated count).
 - **Scan / status card:** wpisy `Completed` mają akcję `Clear` z potwierdzeniem (zarówno skany, jak i runy heurystyk tagów).
-- **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
+- **Suggestions / Project suggestions**: w widokach archiwalnych `Reject` jest ukryty; `Accept` może odwrócić `Rejected`; usuwanie dotyczy tylko `Rejected` (brak usuwania `Accepted`).
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
 - **Tags**: zarządzanie tagami i backfill.

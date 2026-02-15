@@ -1,5 +1,5 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, Input, OnDestroy, effect, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, Output, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -19,6 +19,7 @@ import {
   ProjectAcceptActionDialogComponent
 } from '../project-accept-action-dialog/project-accept-action-dialog.component';
 
+export type ProjectSuggestionsScope = 'pending' | 'accepted' | 'rejected';
 
 @Component({
   selector: 'app-project-suggestion-list',
@@ -40,6 +41,7 @@ import {
 })
 export class ProjectSuggestionListComponent implements OnDestroy {
   @Input() mode: 'live' | 'suggestions' = 'live';
+  @Output() scopeChange = new EventEmitter<ProjectSuggestionsScope>();
 
   private readonly suggestionsService = inject(SuggestionsService);
   private readonly projectsService = inject(ProjectsService);
@@ -47,7 +49,7 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   private readonly dialog = inject(MatDialog);
 
   layout: 'list' | 'grid' = 'list';
-  scope: 'pending' | 'archive' = 'pending';
+  scope: ProjectSuggestionsScope = 'pending';
   openId: string | null = null;
   sortKey: 'name' | 'score' | 'createdAt' = 'name';
   sortDir: 'asc' | 'desc' = 'asc';
@@ -78,7 +80,11 @@ export class ProjectSuggestionListComponent implements OnDestroy {
         return item.status === 'pending';
       }
 
-      return item.status === 'accepted' || item.status === 'rejected';
+      if (this.scope === 'accepted') {
+        return item.status === 'accepted';
+      }
+
+      return item.status === 'rejected';
     });
     const byScope = this.dedupeByPathAndKind(byScopeRaw);
 
@@ -147,24 +153,37 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     }
   }
 
+  setScope(scope: ProjectSuggestionsScope): void {
+    this.scope = scope;
+    this.scopeChange.emit(scope);
+  }
+
   shouldShowActions(item: ProjectSuggestionItem): boolean {
-    return this.canAccept(item) || this.canReject() || this.canDelete();
+    return this.canAccept(item) || this.canReject() || this.canDelete(item);
   }
 
   canAccept(item: ProjectSuggestionItem): boolean {
-    if (!this.isArchiveScope()) {
+    if (this.mode === 'live') {
       return true;
     }
 
-    return item.status === 'rejected';
+    if (this.scope === 'pending') {
+      return true;
+    }
+
+    return this.scope === 'rejected' && item.status === 'rejected';
   }
 
   canReject(): boolean {
-    return !this.isArchiveScope();
+    if (this.mode === 'live') {
+      return true;
+    }
+
+    return this.scope === 'pending';
   }
 
-  canDelete(): boolean {
-    return this.isArchiveScope();
+  canDelete(item: ProjectSuggestionItem): boolean {
+    return this.mode === 'suggestions' && this.scope === 'rejected' && item.status === 'rejected';
   }
 
   async copyReason(reason: string): Promise<void> {
@@ -254,10 +273,6 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     const copied = document.execCommand('copy');
     document.body.removeChild(area);
     return copied;
-  }
-
-  private isArchiveScope(): boolean {
-    return this.mode === 'suggestions' && this.scope === 'archive';
   }
 
   private async promptPostAcceptAction(projectName: string): Promise<ProjectAcceptAction> {

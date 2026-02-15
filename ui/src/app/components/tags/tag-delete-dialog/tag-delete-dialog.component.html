@@ -1,0 +1,30 @@
+<h2 mat-dialog-title>Delete tag</h2>
+<mat-dialog-content class="dialog-content">
+  <p>
+    This action is permanent. To confirm, type tag name exactly:
+    <strong>{{ data.tagName }}</strong>
+  </p>
+  <mat-form-field appearance="outline" class="confirm-input">
+    <mat-label>Tag name</mat-label>
+    <input
+      matInput
+      [(ngModel)]="typedName"
+      data-testid="tag-delete-confirm-input"
+    />
+  </mat-form-field>
+  <p class="warning" *ngIf="typedName && !canConfirm">
+    Typed name does not match.
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+  <button
+    mat-flat-button
+    color="warn"
+    [disabled]="!canConfirm"
+    (click)="confirm()"
+    data-testid="tag-delete-confirm-btn"
+  >
+    Delete tag
+  </button>
+</mat-dialog-actions>

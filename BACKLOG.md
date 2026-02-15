@@ -44,6 +44,19 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Suggestions archive is split into separate scopes:
+  * `Pending` / `Accepted` / `Rejected` toggle in Project suggestions.
+  * Bulk actions are scope-bound: `Accept all` / `Reject all` only in `Pending`, `Restore all` / `Delete all` only in `Rejected`.
+  * `Accepted` scope has no mutating bulk actions and no per-item delete.
+  * Tests: updated Playwright (`suggestions`, `apphost-bridge-refresh`) and unit specs for the new scope behavior.
+* Tags delete now requires typed-name confirmation:
+  * UI: custom tag `Delete` opens modal and requires exact tag name before enabling confirmation.
+  * Tests: updated tags unit + Playwright CRUD flow to validate dialog behavior.
+* Suggestions archive bulk actions are now scope-aware:
+  * `Pending` scope: `Accept all` / `Reject all`.
+  * `Archive` scope: `Restore all` / `Delete all`, both targeting only `Rejected`.
+  * `Accepted` archived suggestions are no longer deletable from UI.
+  * Tests: updated Suggestions unit/service tests and Playwright archive scenarios.
 * Added regression guard for `projects.delete` contract mismatch (FE vs BE):
   * BE: introduced `ProjectsDeletePayloadParser` tests to enforce `{ projectId }` payload acceptance and malformed payload rejection.
   * FE: `ProjectsService` spec asserts exact delete payload shape (`{ projectId }`).

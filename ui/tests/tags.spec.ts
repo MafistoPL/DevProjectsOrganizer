@@ -66,6 +66,15 @@ test('tags page supports add/edit/delete CRUD flow', async ({ page }) => {
 
   const cppRow = page.getByTestId('tag-row').filter({ hasText: 'cpp' }).first();
   await cppRow.getByTestId('tag-delete-btn').click();
+  const deleteDialog = page.locator('mat-dialog-container');
+  await expect(deleteDialog.getByRole('heading', { name: 'Delete tag' })).toBeVisible();
+  const confirmDeleteTagBtn = deleteDialog.getByTestId('tag-delete-confirm-btn');
+  await expect(confirmDeleteTagBtn).toBeDisabled();
+  await deleteDialog.getByTestId('tag-delete-confirm-input').fill('wrong');
+  await expect(confirmDeleteTagBtn).toBeDisabled();
+  await deleteDialog.getByTestId('tag-delete-confirm-input').fill('cpp');
+  await expect(confirmDeleteTagBtn).toBeEnabled();
+  await confirmDeleteTagBtn.click();
   await expect(page.getByTestId('tag-row').filter({ hasText: 'cpp' })).toHaveCount(0);
 });
 

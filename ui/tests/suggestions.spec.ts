@@ -215,7 +215,7 @@ test('project suggestion path text stays right-aligned', async ({ page }) => {
   expect(Math.abs(triggerBox.x + triggerBox.width - (textBox.x + textBox.width))).toBeLessThanOrEqual(8);
 });
 
-test('suggestions scope shows pending from all scans and archive with accepted+rejected', async ({ page }) => {
+test('suggestions scope splits accepted and rejected views', async ({ page }) => {
   await gotoSuggestions(page);
 
   const list = page.getByTestId('project-suggest-list');
@@ -232,14 +232,16 @@ test('suggestions scope shows pending from all scans and archive with accepted+r
 
   await expect(list.locator('.suggestion-card')).toHaveCount(8);
 
-  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
-  await expect(list.locator('.suggestion-card')).toHaveCount(2);
+  await page.getByTestId('project-suggest-scope').getByText('Accepted').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+  await expect(list.locator('.status').first()).toHaveText('accepted');
 
-  const statuses = await list.locator('.status').allTextContents();
-  expect([...statuses].sort()).toEqual(['accepted', 'rejected']);
+  await page.getByTestId('project-suggest-scope').getByText('Rejected').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+  await expect(list.locator('.status').first()).toHaveText('rejected');
 });
 
-test('archive scope allows fixing rejected item and hides reject action', async ({ page }) => {
+test('accepted scope hides mutating actions', async ({ page }) => {
   await gotoSuggestions(page);
 
   const list = page.getByTestId('project-suggest-list');
@@ -252,22 +254,33 @@ test('archive scope allows fixing rejected item and hides reject action', async 
   await nextCard.locator('.header-row').click();
   await nextCard.getByRole('button', { name: /^Reject$/ }).click();
 
-  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
-
-  const archiveCards = list.locator('.suggestion-card');
-  await expect(archiveCards).toHaveCount(2);
-
-  const acceptedCard = archiveCards.filter({ has: page.locator('.status[data-status="accepted"]') }).first();
+  await page.getByTestId('project-suggest-scope').getByText('Accepted').click();
+  const acceptedCard = list.locator('.suggestion-card').first();
   await acceptedCard.locator('.header-row').click();
+  await expect(acceptedCard.getByRole('button', { name: /^Accept$/ })).toHaveCount(0);
   await expect(acceptedCard.getByRole('button', { name: /^Reject$/ })).toHaveCount(0);
-
-  const rejectedCard = archiveCards.filter({ has: page.locator('.status[data-status="rejected"]') }).first();
-  await rejectedCard.locator('.header-row').click();
-  await expect(rejectedCard.getByRole('button', { name: /^Accept$/ })).toHaveCount(1);
-  await expect(rejectedCard.getByRole('button', { name: /^Reject$/ })).toHaveCount(0);
+  await expect(acceptedCard.getByTestId('project-suggest-delete-btn')).toHaveCount(0);
 });
 
-test('archive scope allows deleting archived suggestion', async ({ page }) => {
+test('rejected scope allows deleting rejected suggestion', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  const firstCard = list.locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: /^Reject$/ }).click();
+
+  await page.getByTestId('project-suggest-scope').getByText('Rejected').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+  await page.getByTestId('project-suggest-layout').getByText('Grid').click();
+
+  const rejectedCard = list.locator('.suggestion-card').first();
+  await expect(rejectedCard.getByTestId('project-suggest-delete-btn')).toBeVisible();
+  await rejectedCard.getByTestId('project-suggest-delete-btn').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(0);
+});
+
+test('rejected scope swaps bulk actions to restore/delete and targets rejected only', async ({ page }) => {
   await gotoSuggestions(page);
 
   const list = page.getByTestId('project-suggest-list');
@@ -276,14 +289,27 @@ test('archive scope allows deleting archived suggestion', async ({ page }) => {
   await firstCard.getByRole('button', { name: /^Accept$/ }).click();
   await handleProjectAcceptDialog(page, 'skip');
 
-  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
-  await expect(list.locator('.suggestion-card')).toHaveCount(1);
-  await page.getByTestId('project-suggest-layout').getByText('Grid').click();
+  const secondCard = list.locator('.suggestion-card').first();
+  await secondCard.locator('.header-row').click();
+  await secondCard.getByRole('button', { name: /^Reject$/ }).click();
 
-  const archivedCard = list.locator('.suggestion-card').first();
-  await expect(archivedCard.getByTestId('project-suggest-delete-btn')).toBeVisible();
-  await archivedCard.getByTestId('project-suggest-delete-btn').click();
+  await page.getByTestId('project-suggest-scope').getByText('Rejected').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+
+  await expect(page.getByTestId('project-suggestions-accept-all-btn')).toHaveCount(0);
+  await expect(page.getByTestId('project-suggestions-reject-all-btn')).toHaveCount(0);
+  await expect(page.getByTestId('project-suggestions-restore-all-btn')).toBeVisible();
+  await expect(page.getByTestId('project-suggestions-delete-all-btn')).toBeVisible();
+
+  await page.getByTestId('project-suggestions-delete-all-btn').click();
+  const deleteDialog = page.locator('mat-dialog-container');
+  await expect(deleteDialog.getByRole('heading', { name: 'Delete rejected project suggestions' })).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Delete' }).click();
+
   await expect(list.locator('.suggestion-card')).toHaveCount(0);
+  await page.getByTestId('project-suggest-scope').getByText('Accepted').click();
+  await expect(list.locator('.suggestion-card')).toHaveCount(1);
+  await expect(list.locator('.status').first()).toHaveText('accepted');
 });
 
 test('grid card size slider changes card dimensions', async ({ page }) => {

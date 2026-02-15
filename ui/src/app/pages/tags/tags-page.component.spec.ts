@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { TagsPageComponent } from './tags-page.component';
 import { TagsService } from '../../services/tags.service';
@@ -41,7 +42,9 @@ describe('TagsPageComponent', () => {
     updateSpy = serviceMock.updateTag;
     deleteSpy = serviceMock.deleteTag;
     listProjectsSpy = serviceMock.listProjects;
-    dialogOpenSpy = vi.fn();
+    dialogOpenSpy = vi.fn().mockReturnValue({
+      afterClosed: () => of(true)
+    });
 
     await TestBed.configureTestingModule({
       imports: [TagsPageComponent],

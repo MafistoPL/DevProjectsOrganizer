@@ -38,12 +38,13 @@
     *ngIf="mode === 'suggestions'"
     class="scope-toggle"
     [value]="scope"
-    (change)="scope = $event.value"
+    (change)="setScope($event.value)"
     aria-label="Project suggestions scope"
     data-testid="project-suggest-scope"
   >
     <mat-button-toggle value="pending">Pending</mat-button-toggle>
-    <mat-button-toggle value="archive">Archive</mat-button-toggle>
+    <mat-button-toggle value="accepted">Accepted</mat-button-toggle>
+    <mat-button-toggle value="rejected">Rejected</mat-button-toggle>
   </mat-button-toggle-group>
 
   <span class="spacer"></span>
@@ -204,7 +205,7 @@
         <button
           mat-stroked-button
           color="warn"
-          *ngIf="canDelete()"
+          *ngIf="canDelete(item)"
           data-testid="project-suggest-delete-btn"
           (click)="deleteSuggestion(item)"
         >

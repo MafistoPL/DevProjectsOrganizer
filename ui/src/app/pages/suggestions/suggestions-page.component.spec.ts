@@ -11,6 +11,8 @@ describe('SuggestionsPageComponent', () => {
   let fixture: ComponentFixture<SuggestionsPageComponent>;
   let dialogOpenSpy: ReturnType<typeof vi.fn>;
   let setPendingSpy: ReturnType<typeof vi.fn>;
+  let restoreRejectedSpy: ReturnType<typeof vi.fn>;
+  let deleteRejectedSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     const suggestionsServiceMock = {
@@ -28,9 +30,13 @@ describe('SuggestionsPageComponent', () => {
         path: 'C:\\mock\\report.json',
         rootsAnalyzed: 0
       }),
-      setPendingStatusForAll: vi.fn().mockResolvedValue(3)
+      setPendingStatusForAll: vi.fn().mockResolvedValue(3),
+      restoreRejectedFromArchive: vi.fn().mockResolvedValue(2),
+      deleteRejectedFromArchive: vi.fn().mockResolvedValue(2)
     };
     setPendingSpy = suggestionsServiceMock.setPendingStatusForAll;
+    restoreRejectedSpy = suggestionsServiceMock.restoreRejectedFromArchive;
+    deleteRejectedSpy = suggestionsServiceMock.deleteRejectedFromArchive;
 
     const matDialogMock = {
       open: vi.fn()
@@ -79,5 +85,36 @@ describe('SuggestionsPageComponent', () => {
 
     expect(dialogOpenSpy).toHaveBeenCalled();
     expect(setPendingSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs restore-all in rejected mode only after confirmation', async () => {
+    fixture.componentInstance.onProjectScopeChange('rejected');
+    fixture.detectChanges();
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[data-testid="project-suggestions-restore-all-btn"]'
+    );
+    button.click();
+    await fixture.whenStable();
+
+    expect(dialogOpenSpy).toHaveBeenCalled();
+    expect(restoreRejectedSpy).toHaveBeenCalledTimes(1);
+    expect(setPendingSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not run delete-all in rejected mode when confirmation is cancelled', async () => {
+    fixture.componentInstance.onProjectScopeChange('rejected');
+    fixture.detectChanges();
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(false) });
+
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[data-testid="project-suggestions-delete-all-btn"]'
+    );
+    button.click();
+    await fixture.whenStable();
+
+    expect(dialogOpenSpy).toHaveBeenCalled();
+    expect(deleteRejectedSpy).not.toHaveBeenCalled();
   });
 });

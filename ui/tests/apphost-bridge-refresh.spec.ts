@@ -163,16 +163,16 @@ test('scan renders host-backed cards without requiring resize/toggle', async ({ 
   ).toHaveText('alpha-api');
 });
 
-test('archive delete updates UI immediately in host-backed mode', async ({ page }) => {
+test('rejected delete updates UI immediately in host-backed mode', async ({ page }) => {
   await installWebviewBridgeMock(page, ROOTS_FIXTURE, SUGGESTIONS_FIXTURE);
   await page.goto('/suggestions');
 
-  await page.getByTestId('project-suggest-scope').getByText('Archive').click();
+  await page.getByTestId('project-suggest-scope').getByText('Rejected').click();
   await page.getByTestId('project-suggest-layout').getByText('Grid').click();
 
   const cards = page.getByTestId('project-suggest-list').locator('.suggestion-card');
-  await expect(cards).toHaveCount(2);
+  await expect(cards).toHaveCount(1);
 
   await cards.first().getByTestId('project-suggest-delete-btn').click();
-  await expect(cards).toHaveCount(1);
+  await expect(cards).toHaveCount(0);
 });

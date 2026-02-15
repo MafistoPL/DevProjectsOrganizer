@@ -30,6 +30,7 @@
           <button
             mat-raised-button
             color="primary"
+            *ngIf="projectScope === 'pending'"
             data-testid="project-suggestions-accept-all-btn"
             (click)="acceptAllProjects()"
           >
@@ -38,13 +39,35 @@
           <button
             mat-stroked-button
             color="warn"
+            *ngIf="projectScope === 'pending'"
             data-testid="project-suggestions-reject-all-btn"
             (click)="rejectAllProjects()"
           >
             Reject all
           </button>
+          <button
+            mat-raised-button
+            color="primary"
+            *ngIf="projectScope === 'rejected'"
+            data-testid="project-suggestions-restore-all-btn"
+            (click)="restoreAllRejectedProjects()"
+          >
+            Restore all
+          </button>
+          <button
+            mat-stroked-button
+            color="warn"
+            *ngIf="projectScope === 'rejected'"
+            data-testid="project-suggestions-delete-all-btn"
+            (click)="deleteAllRejectedProjects()"
+          >
+            Delete all
+          </button>
         </div>
-        <app-project-suggestion-list mode="suggestions" />
+        <app-project-suggestion-list
+          mode="suggestions"
+          (scopeChange)="onProjectScopeChange($event)"
+        />
       </mat-card-content>
     </mat-card>
     <mat-card class="panel">

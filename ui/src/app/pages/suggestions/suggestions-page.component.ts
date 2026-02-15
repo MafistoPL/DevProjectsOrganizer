@@ -7,7 +7,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   ConfirmDialogComponent
 } from '../../components/shared/confirm-dialog/confirm-dialog.component';
-import { ProjectSuggestionListComponent } from '../../components/suggestions/project-suggestion-list/project-suggestion-list.component';
+import {
+  ProjectSuggestionListComponent,
+  ProjectSuggestionsScope
+} from '../../components/suggestions/project-suggestion-list/project-suggestion-list.component';
 import { TagSuggestionListComponent } from '../../components/suggestions/tag-suggestion-list/tag-suggestion-list.component';
 import {
   SuggestionsRegressionReport,
@@ -30,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
   styleUrl: './suggestions-page.component.scss'
 })
 export class SuggestionsPageComponent {
+  projectScope: ProjectSuggestionsScope = 'pending';
   regressionReport: SuggestionsRegressionReport | null = null;
   regressionError: string | null = null;
   isRegressionBusy = false;
@@ -97,6 +101,40 @@ export class SuggestionsPageComponent {
 
     const updated = await this.suggestionsService.setPendingStatusForAll('rejected');
     this.snackBar.open(`Rejected ${updated} suggestion(s)`, undefined, { duration: 1400 });
+  }
+
+  onProjectScopeChange(scope: ProjectSuggestionsScope): void {
+    this.projectScope = scope;
+  }
+
+  async restoreAllRejectedProjects(): Promise<void> {
+    const confirmed = await this.confirmBulkAction(
+      'Restore rejected project suggestions',
+      'Are you sure you want to restore all rejected project suggestions back to Pending?',
+      'Restore',
+      'primary'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const restored = await this.suggestionsService.restoreRejectedFromArchive();
+    this.snackBar.open(`Restored ${restored} suggestion(s)`, undefined, { duration: 1400 });
+  }
+
+  async deleteAllRejectedProjects(): Promise<void> {
+    const confirmed = await this.confirmBulkAction(
+      'Delete rejected project suggestions',
+      'Are you sure you want to permanently delete all rejected project suggestions?',
+      'Delete',
+      'warn'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const deleted = await this.suggestionsService.deleteRejectedFromArchive();
+    this.snackBar.open(`Deleted ${deleted} suggestion(s)`, undefined, { duration: 1400 });
   }
 
   private async confirmBulkAction(

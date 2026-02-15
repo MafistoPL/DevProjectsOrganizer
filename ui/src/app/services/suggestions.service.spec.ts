@@ -72,6 +72,15 @@ class BridgeMock {
       return next.find((item) => item.id === payload.id) as T;
     }
 
+    if (type === 'suggestions.delete') {
+      const existed = this.suggestions.value.some((item) => item.id === payload.id);
+      if (existed) {
+        const next = this.suggestions.value.filter((item) => item.id !== payload.id);
+        this.suggestions.next(next);
+      }
+      return { id: payload.id, deleted: existed } as T;
+    }
+
     throw new Error(`Unexpected request: ${type}`);
   }
 }
@@ -127,5 +136,41 @@ describe('SuggestionsService', () => {
     await sut.setStatus('p1', 'accepted');
 
     expect(projects.loadCalls).toBe(1);
+  });
+
+  it('restoreRejectedFromArchive updates only rejected suggestions to pending', async () => {
+    const bridge = new BridgeMock();
+    const projects = new ProjectsServiceMock();
+    await bridge.request('suggestions.setStatus', { id: 'p1', status: 'Rejected' });
+    await bridge.request('suggestions.setStatus', { id: 'p2', status: 'Rejected' });
+    bridge.requests.length = 0;
+
+    const sut = new SuggestionsService(bridge as any, projects as any);
+    await sut.load();
+
+    const updated = await sut.restoreRejectedFromArchive();
+
+    expect(updated).toBe(2);
+    const setStatusCalls = bridge.requests.filter((item) => item.type === 'suggestions.setStatus');
+    expect(setStatusCalls).toHaveLength(2);
+    expect(setStatusCalls.map((item) => (item.payload as any).status)).toEqual(['Pending', 'Pending']);
+    expect(projects.loadCalls).toBe(0);
+  });
+
+  it('deleteRejectedFromArchive deletes only rejected suggestions', async () => {
+    const bridge = new BridgeMock();
+    const projects = new ProjectsServiceMock();
+    await bridge.request('suggestions.setStatus', { id: 'p1', status: 'Rejected' });
+    bridge.requests.length = 0;
+
+    const sut = new SuggestionsService(bridge as any, projects as any);
+    await sut.load();
+
+    const deleted = await sut.deleteRejectedFromArchive();
+
+    expect(deleted).toBe(1);
+    const deleteCalls = bridge.requests.filter((item) => item.type === 'suggestions.delete');
+    expect(deleteCalls).toHaveLength(1);
+    expect((deleteCalls[0].payload as any).id).toBe('p1');
   });
 });

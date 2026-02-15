@@ -116,6 +116,42 @@ export class SuggestionsService {
     return pendingIds.length;
   }
 
+  async restoreRejectedFromArchive(): Promise<number> {
+    const rejectedIds = this.itemsSubject
+      .getValue()
+      .filter((item) => item.status === 'rejected')
+      .map((item) => item.id);
+
+    if (rejectedIds.length === 0) {
+      return 0;
+    }
+
+    for (const id of rejectedIds) {
+      await this.setStatus(id, 'pending');
+    }
+
+    return rejectedIds.length;
+  }
+
+  async deleteRejectedFromArchive(): Promise<number> {
+    const rejectedIds = this.itemsSubject
+      .getValue()
+      .filter((item) => item.status === 'rejected')
+      .map((item) => item.id);
+
+    if (rejectedIds.length === 0) {
+      return 0;
+    }
+
+    for (const id of rejectedIds) {
+      await this.bridge.request<{ id: string; deleted: boolean }>('suggestions.delete', { id });
+    }
+
+    const current = this.itemsSubject.getValue();
+    this.itemsSubject.next(current.filter((item) => item.status !== 'rejected'));
+    return rejectedIds.length;
+  }
+
   async deleteSuggestion(id: string): Promise<void> {
     await this.bridge.request<{ id: string; deleted: boolean }>('suggestions.delete', { id });
     const current = this.itemsSubject.getValue();
