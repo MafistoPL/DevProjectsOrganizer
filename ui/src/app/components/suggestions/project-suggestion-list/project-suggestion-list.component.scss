@@ -54,8 +54,12 @@
   box-sizing: border-box;
 }
 
-:host-context(.page) .suggestion-list {
+:host-context(app-scan-page) .suggestion-list {
   max-height: none;
+}
+
+:host-context(app-suggestions-page) .suggestion-list {
+  max-height: clamp(320px, calc(100vh - 380px), 760px);
 }
 
 .suggestion-list.layout-grid {

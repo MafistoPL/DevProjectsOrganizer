@@ -184,10 +184,6 @@ export class SuggestionsPageComponent {
 
       const shellScrollContainer = this.findShellScrollContainer();
       if (shellScrollContainer) {
-        if (this.isElementTopVisibleInContainer(panel, shellScrollContainer)) {
-          return;
-        }
-
         const containerRect = shellScrollContainer.getBoundingClientRect();
         const panelRect = panel.getBoundingClientRect();
         const targetTop = Math.max(
