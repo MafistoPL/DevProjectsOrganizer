@@ -1,12 +1,49 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.IO;
 using AppHost.Persistence;
 
 namespace AppHost.Services;
 
 public sealed class TagSuggestionHeuristicsService
 {
+    private static readonly Regex HelloWorldPattern = new(
+        @"\bhello[\W_]*world\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex LoremIpsumPattern = new(
+        @"\blorem[\s_\-]*ipsum\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly HashSet<string> SourceSignalExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".c",
+        ".h",
+        ".hpp",
+        ".cpp",
+        ".cc",
+        ".cxx",
+        ".cs",
+        ".java",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".py",
+        ".go",
+        ".rs",
+        ".html",
+        ".txt",
+        ".md"
+    };
+
+    private const int MaxSourceFilesToInspect = 120;
+    private const int MaxSourceLinesPerFile = 120;
+    private const int MaxSourceLineLength = 512;
+    private const long MaxSourceFileBytes = 512 * 1024;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -179,6 +216,22 @@ public sealed class TagSuggestionHeuristicsService
             AddSignal("console", 0.62, "path:console");
         }
 
+        if (LooksLikeBeginnerHelloWorldProject(project))
+        {
+            AddSignal("hello-world", 0.74, "path:beginner-chapter");
+        }
+
+        var sourceSignals = DetectSourceSignals(project.Path);
+        if (sourceSignals.HelloWorldEvidence is not null)
+        {
+            AddSignal("hello-world", 0.9, sourceSignals.HelloWorldEvidence);
+        }
+
+        if (sourceSignals.LoremIpsumEvidence is not null)
+        {
+            AddSignal("lorem-ipsum", 0.9, sourceSignals.LoremIpsumEvidence);
+        }
+
         if (project.Reason.Contains("native sources", StringComparison.OrdinalIgnoreCase))
         {
             AddSignal("native", 0.72, "reason:native-sources");
@@ -316,9 +369,207 @@ public sealed class TagSuggestionHeuristicsService
         return histogram;
     }
 
+    private static bool LooksLikeBeginnerHelloWorldProject(ProjectEntity project)
+    {
+        var path = project.Path.ToLowerInvariant();
+        var name = project.Name.ToLowerInvariant();
+        var reason = project.Reason.ToLowerInvariant();
+
+        if (path.Contains("hello-world", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("hello_world", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("helloworld", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("hello-world", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("hello_world", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("helloworld", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var hasChapter01 =
+            path.Contains("chapter_01", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("chapter-01", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("chapter01", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("chapter_01", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("chapter-01", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("chapter01", StringComparison.OrdinalIgnoreCase);
+
+        var hasBeginnerSignal =
+            path.Contains("beginning_c", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("beginning c", StringComparison.OrdinalIgnoreCase)
+            || reason.Contains("single file candidate", StringComparison.OrdinalIgnoreCase);
+
+        return hasChapter01 && hasBeginnerSignal;
+    }
+
+    private static SourceSignalDetectionResult DetectSourceSignals(string projectPath)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
+        {
+            return SourceSignalDetectionResult.None;
+        }
+
+        var inspected = 0;
+        string? helloWorldEvidence = null;
+        string? loremIpsumEvidence = null;
+
+        foreach (var file in EnumerateCandidateSourceFiles(projectPath))
+        {
+            if (inspected >= MaxSourceFilesToInspect)
+            {
+                break;
+            }
+
+            inspected++;
+            var (hasHelloWorld, hasLoremIpsum) = ScanFileForSignals(file);
+            if (hasHelloWorld && helloWorldEvidence is null)
+            {
+                helloWorldEvidence = $"code:hello-world:{Path.GetFileName(file)}";
+            }
+
+            if (hasLoremIpsum && loremIpsumEvidence is null)
+            {
+                loremIpsumEvidence = $"code:lorem-ipsum:{Path.GetFileName(file)}";
+            }
+
+            if (helloWorldEvidence is not null && loremIpsumEvidence is not null)
+            {
+                break;
+            }
+        }
+
+        if (helloWorldEvidence is null && loremIpsumEvidence is null)
+        {
+            return SourceSignalDetectionResult.None;
+        }
+
+        return new SourceSignalDetectionResult(helloWorldEvidence, loremIpsumEvidence);
+    }
+
+    private static IEnumerable<string> EnumerateCandidateSourceFiles(string rootPath)
+    {
+        var pending = new Stack<string>();
+        pending.Push(rootPath);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            IEnumerable<string> subdirectories;
+            try
+            {
+                subdirectories = Directory.EnumerateDirectories(current);
+            }
+            catch
+            {
+                subdirectories = Array.Empty<string>();
+            }
+
+            foreach (var subdirectory in subdirectories)
+            {
+                pending.Push(subdirectory);
+            }
+
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(current);
+            }
+            catch
+            {
+                files = Array.Empty<string>();
+            }
+
+            foreach (var file in files)
+            {
+                if (!IsCandidateSourceFile(file))
+                {
+                    continue;
+                }
+
+                yield return file;
+            }
+        }
+    }
+
+    private static bool IsCandidateSourceFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            return false;
+        }
+
+        if (!SourceSignalExtensions.Contains(extension))
+        {
+            return false;
+        }
+
+        try
+        {
+            var info = new FileInfo(filePath);
+            return info.Exists && info.Length <= MaxSourceFileBytes;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static (bool HasHelloWorld, bool HasLoremIpsum) ScanFileForSignals(string filePath)
+    {
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            using var reader = new StreamReader(stream, Encoding.UTF8, true);
+
+            var hasHelloWorld = false;
+            var hasLoremIpsum = false;
+            for (var lineNumber = 0; lineNumber < MaxSourceLinesPerFile; lineNumber++)
+            {
+                var line = reader.ReadLine();
+                if (line is null)
+                {
+                    break;
+                }
+
+                if (line.Length > MaxSourceLineLength)
+                {
+                    line = line[..MaxSourceLineLength];
+                }
+
+                if (!hasHelloWorld && HelloWorldPattern.IsMatch(line))
+                {
+                    hasHelloWorld = true;
+                }
+
+                if (!hasLoremIpsum && LoremIpsumPattern.IsMatch(line))
+                {
+                    hasLoremIpsum = true;
+                }
+
+                if (hasHelloWorld && hasLoremIpsum)
+                {
+                    break;
+                }
+            }
+
+            return (hasHelloWorld, hasLoremIpsum);
+        }
+        catch
+        {
+            return (false, false);
+        }
+    }
+
     private sealed class TagSignal
     {
         public double Confidence { get; set; }
         public HashSet<string> Evidences { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private sealed record SourceSignalDetectionResult(
+        string? HelloWorldEvidence,
+        string? LoremIpsumEvidence)
+    {
+        public static readonly SourceSignalDetectionResult None = new(null, null);
     }
 }

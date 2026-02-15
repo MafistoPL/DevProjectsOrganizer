@@ -32,7 +32,9 @@ public sealed class TagStore
         "low-level",
         "console",
         "winapi",
-        "gui"
+        "gui",
+        "hello-world",
+        "lorem-ipsum"
     ];
     private static readonly HashSet<string> DefaultTagNormalizedSet = DefaultTags
         .Select(tag => tag.Trim().ToLowerInvariant())

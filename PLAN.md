@@ -45,6 +45,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
+  - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
 - **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
 - **Project delete flow:** `Project Organizer` ma potwierdzenie usuwania przez przepisanie nazwy projektu (walidacja FE + BE); po usunięciu źródłowa sugestia trafia do `Rejected` w archiwum.
@@ -112,7 +113,7 @@ Heurystyki tagów (v1):
 - deduplikacja: ten sam kandydat (`project + tag + fingerprint`) nie jest dublowany; historycznie odrzucony fingerprint jest tłumiony przy kolejnych runach heurystyk.
 
 Tag taxonomy v1 (draft):
-- Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`.
+- Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`, `hello-world`, `lorem-ipsum`.
 - Naming policy:
   - lowercase kebab-case tags,
   - one canonical form per concept (no alias duplicates in DB),
@@ -120,7 +121,8 @@ Tag taxonomy v1 (draft):
 - Heuristics input sources:
   - marker files (`.sln`, `*.csproj`, `*.vcxproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`),
   - extension histogram (`*.ts`, `*.tsx`, `*.jsx`, `*.cpp`, `*.h`, `*.ps1`, etc.),
-  - path/name hints (`winapi`, `gui`, `console`, `katas`, `tutorial`).
+  - path/name hints (`winapi`, `gui`, `console`, `katas`, `tutorial`, beginner chapter patterns),
+  - source content token hints (`hello world`, `lorem ipsum`) scanned with bounded limits.
 - AI-first (not heuristics v1): semantic architecture/pattern tags such as `single-responsibility-principle`, deeper design-pattern tags, and advanced domain inference.
 - Confidence policy (v1):
   - strong: direct marker match (e.g. `package.json` -> `node`),

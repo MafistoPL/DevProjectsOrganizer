@@ -1,6 +1,7 @@
 using AppHost.Persistence;
 using AppHost.Services;
 using FluentAssertions;
+using System.IO;
 using Xunit;
 
 namespace AppHost.IntegrationTests;
@@ -85,10 +86,96 @@ public sealed class TagSuggestionHeuristicsServiceTests
         first.Select(item => item.Fingerprint).Should().Equal(second.Select(item => item.Fingerprint));
     }
 
-    private static ProjectEntity CreateProject(string markersJson, string techHintsJson, string extensionsSummary)
+    [Fact]
+    public void Detect_adds_hello_world_for_beginner_chapter_path_when_tag_exists()
+    {
+        var project = CreateProject(
+            markersJson: """["main-source"]""",
+            techHintsJson: """["c","native"]""",
+            extensionsSummary: "c=2,h=1",
+            name: "Chapter_01",
+            path: @"D:\z-pulpitu\ProgrammingLearning\one_drive\Old_Projects\Beginning_C 1\Chapter_01",
+            reason: "native sources with entry/header layout");
+
+        var tags = new[]
+        {
+            CreateTag("hello-world"),
+            CreateTag("native")
+        };
+
+        var sut = new TagSuggestionHeuristicsService();
+
+        var result = sut.Detect(project, tags);
+
+        result.Select(item => item.TagName).Should().Contain("hello-world");
+        result.Should().Contain(item =>
+            item.TagName == "hello-world"
+            && item.Reason.Contains("path:beginner-chapter", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Detect_adds_hello_world_and_lorem_ipsum_based_on_source_content()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var sourcePath = Path.Combine(tempDir, "main.c");
+            File.WriteAllText(
+                sourcePath,
+                """
+                #include <stdio.h>
+                int main(void) {
+                    printf("Hello, world!\n");
+                    // Lorem ipsum dolor sit amet.
+                    return 0;
+                }
+                """);
+
+            var project = CreateProject(
+                markersJson: """["single-source-file"]""",
+                techHintsJson: """["c"]""",
+                extensionsSummary: "c=1",
+                name: "sample",
+                path: tempDir,
+                reason: "single file candidate: main.c");
+
+            var tags = new[]
+            {
+                CreateTag("hello-world"),
+                CreateTag("lorem-ipsum")
+            };
+
+            var sut = new TagSuggestionHeuristicsService();
+
+            var result = sut.Detect(project, tags);
+
+            result.Select(item => item.TagName).Should().Contain(new[] { "hello-world", "lorem-ipsum" });
+            result.Should().Contain(item =>
+                item.TagName == "hello-world"
+                && item.Reason.Contains("code:hello-world", StringComparison.OrdinalIgnoreCase));
+            result.Should().Contain(item =>
+                item.TagName == "lorem-ipsum"
+                && item.Reason.Contains("code:lorem-ipsum", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    private static ProjectEntity CreateProject(
+        string markersJson,
+        string techHintsJson,
+        string extensionsSummary,
+        string name = "sample",
+        string path = @"D:\code\sample",
+        string reason = ".sln + marker")
     {
         var now = DateTimeOffset.UtcNow;
-        var path = @"D:\code\sample";
         var kind = "ProjectRoot";
 
         return new ProjectEntity
@@ -97,12 +184,12 @@ public sealed class TagSuggestionHeuristicsServiceTests
             SourceSuggestionId = Guid.NewGuid(),
             LastScanSessionId = Guid.NewGuid(),
             RootPath = @"D:\code",
-            Name = "sample",
+            Name = name,
             Path = path,
             Kind = kind,
             ProjectKey = ProjectStore.BuildProjectKey(path, kind),
             Score = 0.88,
-            Reason = ".sln + marker",
+            Reason = reason,
             ExtensionsSummary = extensionsSummary,
             MarkersJson = markersJson,
             TechHintsJson = techHintsJson,

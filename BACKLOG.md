@@ -13,11 +13,7 @@
      * Add/confirm manual action for matching user-created tags to existing projects via AI.
      * Keep idempotency and dedupe guarantees for created `tag_suggestions` entries.
      * Keep explicit user accept step before attaching tags.
-4. Extend tag heuristics for beginner/sample projects.
-     * Add heuristic for `hello-world` style projects (including case like `D:\z-pulpitu\ProgrammingLearning\one_drive\Old_Projects\Beginning_C 1\Chapter_01`).
-     * Add source-level signal detection for `lorem-ipsum` (or equivalent marker patterns) and map to dedicated tag suggestion.
-     * Cover with integration tests in AppHost heuristics suite.
-5. Increase scan content sample depth.
+4. Increase scan content sample depth.
      * Raise sampled lines per file from `30` to `100` or make it configurable at scan start.
      * If configurable: expose in Scan UI, persist in scan request/snapshot metadata, and guard with tests.
 
@@ -41,6 +37,11 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Tag heuristics were extended for beginner/sample projects:
+  * Added `hello-world` and `lorem-ipsum` as seeded system tags.
+  * Heuristics now detect `hello-world` from beginner chapter naming/path patterns (including `Beginning_C ...\Chapter_01`-style paths).
+  * Heuristics now scan source content for `hello world` and `lorem ipsum` patterns and emit dedicated tag suggestions when matching tags exist.
+  * Tests: added AppHost integration coverage in `TagSuggestionHeuristicsServiceTests`.
 * Tag taxonomy + ownership baseline for v1 is already in place:
   * Heuristics-first flow generates `AssignExisting` suggestions from existing tags/signals.
   * `CreateNew` remains AI-only by design (not produced by heuristics v1).
