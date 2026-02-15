@@ -98,8 +98,47 @@
       </div>
       <div class="detail-row tag-row">
         <span class="label">Tags</span>
-        <div class="tag-chips" *ngIf="project.tags.length > 0; else noTags">
-          <span class="tag-chip" *ngFor="let tag of project.tags">{{ tag.name }}</span>
+        <div class="tag-content">
+          <div class="tag-chips" *ngIf="project.tags.length > 0; else noTags">
+            <span class="tag-chip" *ngFor="let tag of project.tags">
+              <span>{{ tag.name }}</span>
+              <button
+                type="button"
+                class="tag-remove-btn"
+                (click)="detachTag(project, tag.id)"
+                [attr.data-testid]="'project-detach-tag-btn-' + project.id + '-' + tag.id"
+                [attr.aria-label]="'Detach tag ' + tag.name"
+              >
+                x
+              </button>
+            </span>
+          </div>
+          <div class="tag-attach-row">
+            <mat-form-field appearance="outline" class="tag-select">
+              <mat-label>Add existing tag</mat-label>
+              <mat-select
+                [value]="getSelectedTagId(project.id)"
+                (selectionChange)="setSelectedTagId(project.id, $event.value)"
+                [attr.data-testid]="'project-attach-tag-select-' + project.id"
+              >
+                <mat-option *ngFor="let tag of getAttachableTags(project)" [value]="tag.id">
+                  {{ tag.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              color="primary"
+              (click)="attachSelectedTag(project)"
+              [disabled]="getAttachableTags(project).length === 0"
+              [attr.data-testid]="'project-attach-tag-btn-' + project.id"
+            >
+              Attach tag
+            </button>
+          </div>
+          <strong class="empty-tags" *ngIf="getAttachableTags(project).length === 0">
+            All tags already attached
+          </strong>
         </div>
         <ng-template #noTags>
           <strong class="empty-tags">No tags</strong>

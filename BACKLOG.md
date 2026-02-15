@@ -4,21 +4,17 @@
 * (pusto)
 
 ## Teraz (najbliższy tydzień)
-1. Dodać ręczne podpinanie tagów do istniejącego projektu oraz ręczne odpinanie tagów od projektu.
-     * UI w `Project Organizer` powinno umożliwiać dodanie taga z listy istniejących tagów.
-     * UI powinno umożliwiać odpięcie taga od projektu bez usuwania samego taga.
-     * Dodać testy FE + AppHost integration dla flow attach/detach.
-2. Dodać podstawowe wyszukiwanie projektów po tagach (prosty iloczyn / AND).
+1. Dodać podstawowe wyszukiwanie projektów po tagach (prosty iloczyn / AND).
      * Wyszukiwanie ma zwracać projekty, które mają wszystkie wybrane tagi.
      * Na razie bez rankingów i bez zaawansowanej składni.
-3. Wdrożyć flow ponownego przetwarzania tagów zgodny z aktualnym zachowaniem.
+2. Wdrożyć flow ponownego przetwarzania tagów zgodny z aktualnym zachowaniem.
      * Heurystyki powinny pozostać ograniczone do sygnałów seedowanych/systemowych; nie sugerować automatycznego dopasowania dla tagów custom po ich utworzeniu.
      * Dopasowanie tagów custom powinno być AI-driven (manualny trigger), a nie automatyczny heurystyczny backfill.
-4. Zdefiniować UX wsparcia AI dla tagów custom.
+3. Zdefiniować UX wsparcia AI dla tagów custom.
      * Dodać/potwierdzić manualną akcję dopasowania tagów utworzonych przez użytkownika do istniejących projektów przez AI.
      * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
      * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
-5. Zwiększyć głębokość próbek treści skanu.
+4. Zwiększyć głębokość próbek treści skanu.
      * Zwiększyć liczbę próbkowanych linii na plik z `30` do `100` albo zrobić to konfigurowalne przy starcie skanu.
      * Jeśli konfigurowalne: wystawić opcję w Scan UI, utrwalać w metadanych scan request/snapshot i zabezpieczyć testami.
 

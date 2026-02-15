@@ -136,6 +136,124 @@ public partial class MainWindow
         }
     }
 
+    private async Task HandleProjectsAttachTagAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!ProjectTagMutationPayloadParser.TryParse(request.Payload, out var projectId, out var tagId))
+        {
+            SendError(request.Id, request.Type, "Missing project id or tag id.");
+            return;
+        }
+
+        var projectExists = await _dbContext.Projects
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == projectId);
+        if (!projectExists)
+        {
+            SendError(request.Id, request.Type, "Project not found.");
+            return;
+        }
+
+        var tagExists = await _dbContext.Tags
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == tagId);
+        if (!tagExists)
+        {
+            SendError(request.Id, request.Type, "Tag not found.");
+            return;
+        }
+
+        try
+        {
+            var store = new ProjectTagStore(_dbContext);
+            var attached = await store.AttachAsync(projectId, tagId);
+            if (attached)
+            {
+                SendEvent("projects.changed", new
+                {
+                    reason = "project.tagAttached",
+                    projectId,
+                    tagId
+                });
+            }
+
+            SendResponse(request.Id, request.Type, new
+            {
+                projectId,
+                tagId,
+                attached
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
+    private async Task HandleProjectsDetachTagAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!ProjectTagMutationPayloadParser.TryParse(request.Payload, out var projectId, out var tagId))
+        {
+            SendError(request.Id, request.Type, "Missing project id or tag id.");
+            return;
+        }
+
+        var projectExists = await _dbContext.Projects
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == projectId);
+        if (!projectExists)
+        {
+            SendError(request.Id, request.Type, "Project not found.");
+            return;
+        }
+
+        var tagExists = await _dbContext.Tags
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == tagId);
+        if (!tagExists)
+        {
+            SendError(request.Id, request.Type, "Tag not found.");
+            return;
+        }
+
+        try
+        {
+            var store = new ProjectTagStore(_dbContext);
+            var detached = await store.DetachAsync(projectId, tagId);
+            if (detached)
+            {
+                SendEvent("projects.changed", new
+                {
+                    reason = "project.tagDetached",
+                    projectId,
+                    tagId
+                });
+            }
+
+            SendResponse(request.Id, request.Type, new
+            {
+                projectId,
+                tagId,
+                detached
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task HandleProjectsRunTagHeuristicsAsync(HostRequest request)
     {
         if (_dbContext == null)

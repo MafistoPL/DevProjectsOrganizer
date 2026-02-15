@@ -356,6 +356,66 @@ export class AppHostBridgeService {
 
         return Promise.resolve({ id: projectId, updated: true, description } as T);
       }
+      case 'projects.attachTag': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        const tagId = typeof payload?.tagId === 'string' ? payload.tagId : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+        if (!tagId) {
+          return Promise.reject(new Error('Missing tag id.'));
+        }
+
+        const project = this.mockProjects.find((item) => item.id === projectId);
+        if (!project) {
+          return Promise.reject(new Error('Project not found.'));
+        }
+
+        const tag = this.mockTags.find((item) => item.id === tagId);
+        if (!tag) {
+          return Promise.reject(new Error('Tag not found.'));
+        }
+
+        const attached = this.attachMockProjectTag(projectId, tagId);
+        if (attached) {
+          this.eventSubject.next({
+            type: 'projects.changed',
+            data: { reason: 'project.tagAttached', projectId, tagId }
+          });
+        }
+
+        return Promise.resolve({ projectId, tagId, attached } as T);
+      }
+      case 'projects.detachTag': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        const tagId = typeof payload?.tagId === 'string' ? payload.tagId : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+        if (!tagId) {
+          return Promise.reject(new Error('Missing tag id.'));
+        }
+
+        const project = this.mockProjects.find((item) => item.id === projectId);
+        if (!project) {
+          return Promise.reject(new Error('Project not found.'));
+        }
+
+        const tag = this.mockTags.find((item) => item.id === tagId);
+        if (!tag) {
+          return Promise.reject(new Error('Tag not found.'));
+        }
+
+        const detached = this.detachMockProjectTag(projectId, tagId);
+        if (detached) {
+          this.eventSubject.next({
+            type: 'projects.changed',
+            data: { reason: 'project.tagDetached', projectId, tagId }
+          });
+        }
+
+        return Promise.resolve({ projectId, tagId, detached } as T);
+      }
       case 'projects.runTagHeuristics': {
         const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
         if (!projectId) {
@@ -1470,20 +1530,40 @@ export class AppHostBridgeService {
     });
   }
 
-  private attachMockProjectTag(projectId: string, tagId: string): void {
+  private attachMockProjectTag(projectId: string, tagId: string): boolean {
     if (!projectId || !tagId) {
-      return;
+      return false;
     }
 
     const exists = this.mockProjectTags.some(
       (item) => item.projectId === projectId && item.tagId === tagId
     );
     if (exists) {
-      return;
+      return false;
     }
 
     this.mockProjectTags = [...this.mockProjectTags, { projectId, tagId }];
     this.saveMockProjectTags();
+    return true;
+  }
+
+  private detachMockProjectTag(projectId: string, tagId: string): boolean {
+    if (!projectId || !tagId) {
+      return false;
+    }
+
+    const hasLink = this.mockProjectTags.some(
+      (item) => item.projectId === projectId && item.tagId === tagId
+    );
+    if (!hasLink) {
+      return false;
+    }
+
+    this.mockProjectTags = this.mockProjectTags.filter(
+      (item) => !(item.projectId === projectId && item.tagId === tagId)
+    );
+    this.saveMockProjectTags();
+    return true;
   }
 
   private createId(): string {

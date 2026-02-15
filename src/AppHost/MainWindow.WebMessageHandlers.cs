@@ -24,6 +24,8 @@ public partial class MainWindow
             ["projects.list"] = HandleProjectsListAsync,
             ["projects.delete"] = HandleProjectsDeleteAsync,
             ["projects.update"] = HandleProjectsUpdateAsync,
+            ["projects.attachTag"] = HandleProjectsAttachTagAsync,
+            ["projects.detachTag"] = HandleProjectsDetachTagAsync,
             ["projects.runTagHeuristics"] = HandleProjectsRunTagHeuristicsAsync,
             ["projects.runAiTagSuggestions"] = HandleProjectsRunAiTagSuggestionsAsync,
             ["tags.list"] = HandleTagsListAsync,

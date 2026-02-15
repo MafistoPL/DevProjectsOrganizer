@@ -88,6 +88,24 @@ class BridgeMock {
       } as T;
     }
 
+    if (type === 'projects.attachTag') {
+      const tagPayload = payload as any;
+      return {
+        projectId: tagPayload?.projectId ?? 'proj-1',
+        tagId: tagPayload?.tagId ?? 'tag-1',
+        attached: true
+      } as T;
+    }
+
+    if (type === 'projects.detachTag') {
+      const tagPayload = payload as any;
+      return {
+        projectId: tagPayload?.projectId ?? 'proj-1',
+        tagId: tagPayload?.tagId ?? 'tag-1',
+        detached: true
+      } as T;
+    }
+
     throw new Error(`Unexpected request: ${type}`);
   }
 }
@@ -222,6 +240,34 @@ describe('ProjectsService', () => {
 
     expect(bridge.requests).toEqual([
       { type: 'projects.update', payload: { projectId: 'proj-1', description: 'updated description' } },
+      { type: 'projects.list', payload: undefined }
+    ]);
+  });
+
+  it('attachTag sends exact payload shape and reloads list', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    await sut.attachTag('proj-1', 'tag-2');
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.attachTag', payload: { projectId: 'proj-1', tagId: 'tag-2' } },
+      { type: 'projects.list', payload: undefined }
+    ]);
+  });
+
+  it('detachTag sends exact payload shape and reloads list', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    await sut.detachTag('proj-1', 'tag-1');
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.detachTag', payload: { projectId: 'proj-1', tagId: 'tag-1' } },
       { type: 'projects.list', payload: undefined }
     ]);
   });

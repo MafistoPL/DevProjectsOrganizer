@@ -109,7 +109,13 @@
 }
 
 .tag-row {
-  align-items: center;
+  align-items: start;
+}
+
+.tag-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .tag-chips {
@@ -128,6 +134,32 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
+  gap: 6px;
+}
+
+.tag-remove-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tag-remove-btn:hover {
+  opacity: 0.75;
+}
+
+.tag-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tag-select {
+  width: min(320px, 100%);
 }
 
 .empty-tags {
@@ -156,5 +188,9 @@
   .description-value-wrap {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tag-attach-row {
+    align-items: stretch;
   }
 }

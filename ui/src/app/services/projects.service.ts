@@ -125,6 +125,30 @@ export class ProjectsService {
     return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
   }
 
+  async attachTag(projectId: string, tagId: string): Promise<{ projectId: string; tagId: string; attached: boolean }> {
+    const result = await this.bridge.request<{ projectId: string; tagId: string; attached: boolean }>(
+      'projects.attachTag',
+      {
+        projectId,
+        tagId
+      }
+    );
+    await this.load();
+    return result;
+  }
+
+  async detachTag(projectId: string, tagId: string): Promise<{ projectId: string; tagId: string; detached: boolean }> {
+    const result = await this.bridge.request<{ projectId: string; tagId: string; detached: boolean }>(
+      'projects.detachTag',
+      {
+        projectId,
+        tagId
+      }
+    );
+    await this.load();
+    return result;
+  }
+
   async runTagHeuristicsForAll(
     onProgress?: (progress: ProjectHeuristicsBatchProgress) => void
   ): Promise<ProjectHeuristicsBatchResult> {

@@ -30,4 +30,18 @@ public sealed class ProjectTagStore
         await _db.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<bool> DetachAsync(Guid projectId, Guid tagId, CancellationToken cancellationToken = default)
+    {
+        var link = await _db.ProjectTags
+            .FirstOrDefaultAsync(item => item.ProjectId == projectId && item.TagId == tagId, cancellationToken);
+        if (link == null)
+        {
+            return false;
+        }
+
+        _db.ProjectTags.Remove(link);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

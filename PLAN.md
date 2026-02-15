@@ -40,6 +40,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 - **Project Organizer (description):** projekt ma pole opisu; opis można dodać podczas `Accept` sugestii i edytować później na zakładce `Project Organizer`.
+- **Project Organizer (manual tags):** można ręcznie podpinać istniejące tagi do projektu i odpinać tagi z projektu (bez usuwania taga globalnie).
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 - **Tags (sorting):** lista tagów wspiera sortowanie po nazwie i po liczbie projektów (asc/desc).
@@ -71,7 +72,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
   - `suggestions.setStatus` accepts optional `projectName` i `projectDescription` for `Accepted` flow.
-- **IPC projects:** `projects.list`, `projects.update`, `projects.delete`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
+- **IPC projects:** `projects.list`, `projects.update`, `projects.delete`, `projects.attachTag`, `projects.detachTag`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
 - **IPC tags:** `tags.list`, `tags.projects`, `tags.add`, `tags.update`, `tags.delete`.
 - **IPC tag suggestions:** `tagSuggestions.list`, `tagSuggestions.setStatus`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
@@ -203,6 +204,7 @@ Główne zakładki:
 - **Project Organizer**: lista projektów, filtry, szczegóły.
 - **Project Organizer**: usuwanie projektu wymaga wpisania pełnej nazwy w modalu potwierdzenia (check FE + walidacja BE).
 - **Project Organizer**: karta projektu pokazuje również przypięte tagi (chipy).
+- **Project Organizer**: przy tagach dostępne są ręczne akcje `Attach tag` / `Detach` dla istniejących tagów.
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
 - **Suggestions / Project suggestions**: przełącznik `Pending` / `Accepted` / `Rejected`, eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Suggestions / Project suggestions**: akcje regresji/eksportu mają tooltipy opisujące działanie, w tym gdzie pojawia się wynik raportu i jak przejść do folderu JSON (`Open JSON folder`).
@@ -236,6 +238,8 @@ Piramida testów:
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 - **FE unit/component tests (ng test)**: pokrywają logikę bulk akcji (`setPendingStatusForAll`) i potwierdzenia dialogowe na stronie Suggestions.
 - **FE unit/component tests (ng test)**: obejmują też render przypiętych tagów w `Project Organizer`, filtrowanie/sortowanie/scope w `Tag suggestions` oraz widoczność panelu `Heuristics regression report` (success/failure).
+- **FE unit/component tests (ng test)**: obejmują też ręczne attach/detach tagów w `Project Organizer` oraz dokładny payload IPC (`projects.attachTag`, `projects.detachTag`) w `ProjectsService`.
+- **Integration (AppHost)**: payload parser dla mutacji tagów projektu akceptuje minimalny payload (`projectId`, `tagId`) i odrzuca niepoprawny.
 - **E2E layout guards (Playwright)**: po uruchomieniu regresji i głębokim scrollu nagłówki stron (`Scan`, `Project Organizer`, `Suggestions`, `Tags`, `Recent`) muszą pozostać w viewport po przełączaniu zakładek.
 - **E2E layout guards (Playwright)**: nagłówek strony (`h1`) musi być renderowany poniżej paska zakładek (brak nakładania/ucięcia przez sticky tabs).
 - **E2E regression guards (Playwright)**: panel `Heuristics regression report` musi zostać doscrollowany i widoczny w kontenerze GUI zarówno dla sukcesu raportu, jak i dla błędu.

@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Ręczne podpinanie i odpinanie tagów dla istniejącego projektu:
+  * AppHost: dodano IPC `projects.attachTag` i `projects.detachTag` oraz parser payloadu (`projectId`, `tagId`).
+  * UI (`Project Organizer`): dodano ręczne akcje `Attach tag` i `Detach` dla istniejących tagów.
+  * Testy: AppHost integration (`ProjectTagStoreTests`, `ProjectTagMutationPayloadParserTests`) oraz FE unit (`ProjectsService`, `OrganizerPage`).
+  * Dokumentacja: zaktualizowano `PLAN.md` o nowe IPC i flow ręcznego zarządzania tagami projektu.
 * Reorganizacja dokumentacji backlogu:
   * Wydzielono historię wykonanych zadań do osobnego pliku BACKLOG_DONE.md.
   * Dodano do BACKLOG.md nowe wymagania: ręczne attach/detach tagów oraz podstawowe wyszukiwanie projektów po tagach (AND).
