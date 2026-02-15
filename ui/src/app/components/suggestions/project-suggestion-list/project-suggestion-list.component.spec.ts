@@ -46,7 +46,9 @@ describe('ProjectSuggestionListComponent', () => {
     };
 
     const matDialogMock = {
-      open: vi.fn().mockReturnValue({ afterClosed: () => of('skip') })
+      open: vi.fn().mockReturnValue({
+        afterClosed: () => of({ action: 'skip', projectName: 'dotnet-api' })
+      })
     };
     dialogOpenSpy = matDialogMock.open;
 
@@ -71,21 +73,29 @@ describe('ProjectSuggestionListComponent', () => {
   });
 
   it('runs tag heuristics when accepted and selected in dialog', async () => {
-    dialogOpenSpy.mockReturnValue({ afterClosed: () => of('heuristics') });
+    dialogOpenSpy.mockReturnValue({
+      afterClosed: () => of({ action: 'heuristics', projectName: 'dotnet-api-renamed' })
+    });
 
     await component.setStatus('suggestion-1', 'accepted', {
       id: 'suggestion-1',
       name: 'dotnet-api'
     } as any);
 
-    expect(suggestionsServiceMock.setStatus).toHaveBeenCalledWith('suggestion-1', 'accepted');
+    expect(suggestionsServiceMock.setStatus).toHaveBeenCalledWith(
+      'suggestion-1',
+      'accepted',
+      'dotnet-api-renamed'
+    );
     expect(projectsServiceMock.findBySourceSuggestionId).toHaveBeenCalledWith('suggestion-1');
     expect(projectsServiceMock.runTagHeuristics).toHaveBeenCalledWith('project-1');
     expect(projectsServiceMock.runAiTagSuggestions).not.toHaveBeenCalled();
   });
 
   it('runs AI action when selected in dialog', async () => {
-    dialogOpenSpy.mockReturnValue({ afterClosed: () => of('ai') });
+    dialogOpenSpy.mockReturnValue({
+      afterClosed: () => of({ action: 'ai', projectName: 'dotnet-api' })
+    });
 
     await component.setStatus('suggestion-1', 'accepted', {
       id: 'suggestion-1',
@@ -93,6 +103,19 @@ describe('ProjectSuggestionListComponent', () => {
     } as any);
 
     expect(projectsServiceMock.runAiTagSuggestions).toHaveBeenCalledWith('project-1');
+    expect(projectsServiceMock.runTagHeuristics).not.toHaveBeenCalled();
+  });
+
+  it('cancels accept when dialog is closed without choice', async () => {
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(undefined) });
+
+    await component.setStatus('suggestion-1', 'accepted', {
+      id: 'suggestion-1',
+      name: 'dotnet-api'
+    } as any);
+
+    expect(suggestionsServiceMock.setStatus).not.toHaveBeenCalled();
+    expect(projectsServiceMock.runAiTagSuggestions).not.toHaveBeenCalled();
     expect(projectsServiceMock.runTagHeuristics).not.toHaveBeenCalled();
   });
 

@@ -48,6 +48,12 @@ public partial class MainWindow
             var updated = await store.SetStatusAsync(suggestionId, status);
             if (status == ProjectSuggestionStatus.Accepted)
             {
+                var acceptedProjectName = GetAcceptedProjectName(request.Payload);
+                if (!string.IsNullOrWhiteSpace(acceptedProjectName))
+                {
+                    updated.Name = acceptedProjectName;
+                }
+
                 var projectStore = new ProjectStore(_dbContext);
                 await projectStore.UpsertFromSuggestionAsync(updated);
                 SendEvent("projects.changed", new { reason = "suggestion.accepted", suggestionId = updated.Id });
@@ -284,6 +290,28 @@ public partial class MainWindow
         }
 
         return Enum.TryParse<ProjectSuggestionStatus>(raw, true, out status);
+    }
+
+    private static string? GetAcceptedProjectName(JsonElement? payload)
+    {
+        if (!payload.HasValue)
+        {
+            return null;
+        }
+
+        var element = payload.Value;
+        if (!element.TryGetProperty("projectName", out var nameElement))
+        {
+            return null;
+        }
+
+        var raw = nameElement.GetString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return raw.Trim();
     }
 
     private static bool TryGetPath(JsonElement? payload, out string path)

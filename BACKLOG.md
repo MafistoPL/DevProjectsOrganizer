@@ -1,28 +1,25 @@
 # Backlog
 
 ## Now (next 1 week)
-1. Define tag taxonomy + ownership (heuristics vs AI) before coding tag heuristics.
-     * Bootstrap candidate tags from current signals: markers/tech hints (e.g. `cpp`, `native`, `.net`, `.sln`).
-     * Define normalized tag set and naming policy (avoid duplicates like `vs-project` vs `vs-solution` unless both are intentional).
-     * Classify tags by source:
-       * Heuristics-first candidates: `html`, `angular`, `react`, `node`, `json`, `git`, `vs-project`, `vs-solution`, `low-level`, `native`, `cpp`.
-       * AI-only / advanced semantic candidates (for now): e.g. `SingleResponsibilityPrinciple`, deeper architecture/pattern tags.
-     * Add mapping rules draft (marker/ext/path/file-name -> tag suggestion) and confidence tiers.
-     * Decide which tags are inferred from project metadata only vs requiring source/content analysis.
-     * Draft v1 canonical set to validate on scan data:
-       `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`.
-     * Validation notes from current scan snapshots:
-       * strong and stable: `vs-solution`, `vs-project`, `cpp`, `native`, `java`, `single-file`.
-       * useful path/content hints: `design-patterns`, `gui` (`Swing`), `winapi` (`windows.h` in sample lines).
-       * noise to control: `json` appears often from tooling files and should require stronger co-signal or be disabled in v1.
-2. Backfill after creating a new tag.
-     * BE: async and idempotent, heuristics always, AI optional.
-     * UI: lightweight status feedback (toast/status).
-3. Tag governance model.
-     * Seed system tags used by heuristics.
-     * System tags are not deletable.
-     * User-created / AI-created tags are deletable.
-     * `CreateNew` tag suggestions are AI-only; accepting one creates the tag and attaches it.
+1. Clarify and implement tag reprocessing flow aligned with current behavior.
+     * Heuristics should stay scoped to seeded/system-like signals; do not imply automatic matching for custom tags after tag creation.
+     * Custom tag matching should be AI-driven (manual trigger), not automatic heuristics backfill.
+     * Document this explicitly in `PLAN.md`/`README.md` to avoid false expectations in UI.
+2. Add manual global action in `Tags` view for heuristics refresh.
+     * Add CTA like `Apply latest heuristics to all projects` (or equivalent wording).
+     * Scope: rerun heuristics-based tag suggestions for existing projects, with progress/status feedback in GUI.
+     * Cover with FE unit + Playwright tests (visibility, confirmation, completion feedback).
+3. Define custom-tag AI assist UX.
+     * Add/confirm manual action for matching user-created tags to existing projects via AI.
+     * Keep idempotency and dedupe guarantees for created `tag_suggestions` entries.
+     * Keep explicit user accept step before attaching tags.
+4. Extend tag heuristics for beginner/sample projects.
+     * Add heuristic for `hello-world` style projects (including case like `D:\z-pulpitu\ProgrammingLearning\one_drive\Old_Projects\Beginning_C 1\Chapter_01`).
+     * Add source-level signal detection for `lorem-ipsum` (or equivalent marker patterns) and map to dedicated tag suggestion.
+     * Cover with integration tests in AppHost heuristics suite.
+5. Increase scan content sample depth.
+     * Raise sampled lines per file from `30` to `100` or make it configurable at scan start.
+     * If configurable: expose in Scan UI, persist in scan request/snapshot metadata, and guard with tests.
 
 ## Soon (2-4 weeks)
 * Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
@@ -44,6 +41,12 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Tag taxonomy + ownership baseline for v1 is already in place:
+  * Heuristics-first flow generates `AssignExisting` suggestions from existing tags/signals.
+  * `CreateNew` remains AI-only by design (not produced by heuristics v1).
+* Tag governance core is implemented:
+  * Seeded/system tags are visible and protected from deletion.
+  * User-created tags are deletable (with typed-name confirmation in UI).
 * Suggestions archive is split into separate scopes:
   * `Pending` / `Accepted` / `Rejected` toggle in Project suggestions.
   * Bulk actions are scope-bound: `Accept all` / `Reject all` only in `Pending`, `Restore all` / `Delete all` only in `Rejected`.

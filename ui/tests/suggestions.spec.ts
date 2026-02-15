@@ -237,10 +237,15 @@ const buildTallMockRegressionReport = (rootsCount: number) => {
 
 const handleProjectAcceptDialog = async (
   page: Page,
-  action: 'skip' | 'heuristics' | 'ai' = 'skip'
+  action: 'skip' | 'heuristics' | 'ai' = 'skip',
+  projectName?: string
 ) => {
   const dialog = page.locator('mat-dialog-container').last();
-  await expect(dialog.getByRole('heading', { name: 'Project accepted' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Accept project suggestion' })).toBeVisible();
+
+  if (projectName !== undefined) {
+    await dialog.getByTestId('project-accept-name-input').fill(projectName);
+  }
 
   const buttonMap: Record<typeof action, string> = {
     skip: 'project-accept-action-skip-btn',
@@ -891,6 +896,19 @@ test('project accept dialog allows choosing heuristics or AI action', async ({ p
   await nextCard.getByRole('button', { name: /^Accept$/ }).click();
   await handleProjectAcceptDialog(page, 'ai');
   await expect(page.getByText('AI tag suggestions queued')).toBeVisible();
+});
+
+test('project accept dialog allows editing project name before accept', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  const firstCard = list.locator('.suggestion-card').first();
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'skip', 'dotnet-api-renamed');
+
+  await page.getByRole('tab', { name: 'Project Organizer' }).click();
+  await expect(page.getByText('dotnet-api-renamed')).toBeVisible();
 });
 
 test('tag heuristics run is visible in scan status with progress', async ({ page }) => {

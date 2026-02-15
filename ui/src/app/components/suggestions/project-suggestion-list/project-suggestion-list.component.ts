@@ -16,6 +16,7 @@ import { ProjectsService } from '../../../services/projects.service';
 import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from '../../../services/suggestions.service';
 import {
   ProjectAcceptAction,
+  ProjectAcceptDialogResult,
   ProjectAcceptActionDialogComponent
 } from '../project-accept-action-dialog/project-accept-action-dialog.component';
 
@@ -123,10 +124,17 @@ export class ProjectSuggestionListComponent {
   }
 
   async setStatus(id: string, status: SuggestionStatus, item?: ProjectSuggestionItem): Promise<void> {
-    await this.suggestionsService.setStatus(id, status);
     if (status !== 'accepted') {
+      await this.suggestionsService.setStatus(id, status);
       return;
     }
+
+    const decision = await this.promptAcceptDecision(item?.name ?? '');
+    if (!decision) {
+      return;
+    }
+
+    await this.suggestionsService.setStatus(id, status, decision.projectName);
 
     const project = this.projectsService.findBySourceSuggestionId(id);
     if (!project) {
@@ -134,7 +142,7 @@ export class ProjectSuggestionListComponent {
       return;
     }
 
-    const selectedAction = await this.promptPostAcceptAction(item?.name ?? project.name);
+    const selectedAction = decision.action;
     if (selectedAction === 'skip') {
       return;
     }
@@ -260,16 +268,41 @@ export class ProjectSuggestionListComponent {
     return copied;
   }
 
-  private async promptPostAcceptAction(projectName: string): Promise<ProjectAcceptAction> {
+  private async promptAcceptDecision(projectName: string): Promise<ProjectAcceptDialogResult | null> {
+    const normalizedProjectName = projectName.trim();
+    if (!normalizedProjectName) {
+      return null;
+    }
+
     const ref = this.dialog.open(ProjectAcceptActionDialogComponent, {
-      width: '520px',
+      width: '560px',
+      disableClose: false,
       data: {
-        projectName
+        projectName: normalizedProjectName
       }
     });
 
-    const selectedAction = await firstValueFrom(ref.afterClosed());
-    return selectedAction ?? 'skip';
+    const selected = await firstValueFrom(ref.afterClosed());
+    if (!selected) {
+      return null;
+    }
+
+    if (typeof selected === 'string') {
+      return {
+        action: selected as ProjectAcceptAction,
+        projectName: normalizedProjectName
+      };
+    }
+
+    const selectedName = selected.projectName?.trim();
+    if (!selectedName) {
+      return null;
+    }
+
+    return {
+      action: selected.action,
+      projectName: selectedName
+    };
   }
 
   private dedupeByPathAndKind(items: ProjectSuggestionItem[]): ProjectSuggestionItem[] {

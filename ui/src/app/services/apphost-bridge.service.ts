@@ -567,6 +567,8 @@ export class AppHostBridgeService {
       case 'suggestions.setStatus': {
         const id = typeof payload?.id === 'string' ? payload.id : '';
         const statusRaw = typeof payload?.status === 'string' ? payload.status : '';
+        const projectNameRaw =
+          typeof payload?.projectName === 'string' ? payload.projectName.trim() : '';
         if (!id) {
           return Promise.reject(new Error('Missing suggestion id.'));
         }
@@ -583,7 +585,11 @@ export class AppHostBridgeService {
               ? 'Rejected'
               : 'Pending';
 
-        const updated = { ...this.mockSuggestions[index], status: normalized };
+        const updated = {
+          ...this.mockSuggestions[index],
+          status: normalized,
+          name: normalized === 'Accepted' && projectNameRaw ? projectNameRaw : this.mockSuggestions[index].name
+        };
         this.mockSuggestions = [
           ...this.mockSuggestions.slice(0, index),
           updated,

@@ -1,37 +1,57 @@
-<h2 mat-dialog-title>Project accepted</h2>
+<h2 mat-dialog-title>Accept project suggestion</h2>
 
 <mat-dialog-content>
   <p>
-    <strong>{{ data.projectName }}</strong> was moved to Project Organizer.
+    Confirm project name before accepting. You can edit it now.
   </p>
+  <mat-form-field appearance="outline" class="project-name-input">
+    <mat-label>Project name</mat-label>
+    <input
+      matInput
+      [value]="projectName"
+      (input)="projectName = $any($event.target).value"
+      data-testid="project-accept-name-input"
+    />
+  </mat-form-field>
   <p>Choose what to run next for tags:</p>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
   <button
+    mat-button
+    type="button"
+    data-testid="project-accept-action-cancel-btn"
+    (click)="cancel()"
+  >
+    Cancel
+  </button>
+  <button
     mat-stroked-button
     type="button"
     data-testid="project-accept-action-skip-btn"
+    [disabled]="!normalizedProjectName"
     (click)="choose('skip')"
   >
-    Skip
+    Accept only
   </button>
   <button
     mat-raised-button
     color="primary"
     type="button"
     data-testid="project-accept-action-heuristics-btn"
+    [disabled]="!normalizedProjectName"
     (click)="choose('heuristics')"
   >
-    Run tag heuristics
+    Accept + heuristics
   </button>
   <button
     mat-raised-button
     color="accent"
     type="button"
     data-testid="project-accept-action-ai-btn"
+    [disabled]="!normalizedProjectName"
     (click)="choose('ai')"
   >
-    Run AI tag suggestions
+    Accept + AI suggestions
   </button>
 </mat-dialog-actions>
