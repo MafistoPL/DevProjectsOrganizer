@@ -21,6 +21,11 @@
   border-bottom: none;
 }
 
+.root-select {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
 .root-main {
   display: flex;
   flex-direction: column;

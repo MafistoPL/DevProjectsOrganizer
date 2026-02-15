@@ -221,13 +221,19 @@ export class AppHostBridgeService {
         return Promise.resolve(this.mockScans as T);
       }
       case 'scan.start': {
+        const selectedRootId = typeof payload?.rootId === 'string' ? payload.rootId : '';
+        const selectedRoot = selectedRootId
+          ? this.mockRoots.find((root) => root.id === selectedRootId)
+          : null;
+        const rootPath = selectedRoot?.path ?? 'C:\\src';
+        const disk = /^[A-Za-z]:/.test(rootPath) ? rootPath.slice(0, 2) : 'C:';
         const scan = {
           id: this.createId(),
-          rootPath: 'C:\\src',
+          rootPath,
           mode: payload?.mode ?? 'roots',
           state: 'Running',
-          disk: 'C:',
-          currentPath: 'C:\\src\\project\\file.cs',
+          disk,
+          currentPath: `${rootPath}\\project\\file.cs`,
           filesScanned: 120,
           totalFiles: 480,
           queueReason: null,

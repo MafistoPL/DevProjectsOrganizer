@@ -1,6 +1,12 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Scan UI: reskan zaznaczonych rootów:
+  * Do każdego roota na widoku `Scan` dodano checkbox wyboru roota do zbiorczego reskanu.
+  * Checkbox ma tooltip wyjaśniający, że root trafi do akcji `Rescan selected roots`.
+  * Przycisk `Import roots` został zastąpiony przez `Rescan selected roots` na stronie `Scan`.
+  * Akcja uruchamia `scan.start` tylko dla zaznaczonych rootów.
+  * Dodano testy: FE unit (`RootsService`) oraz Playwright (`scan.spec.ts`) dla flow zaznaczania i reskanu.
 * Dodano nowy pakiet wymagań do backlogu i sklasyfikowano go czasowo:
   * Tryb nasłuchiwanych rootów + automatyczne/ręczne reskany (z niskim `depth limit` dla dużych katalogów typu Desktop).
   * Nasłuchiwanie zmian w projektach i reskan per-projekt z odświeżaniem sugestii tagów.

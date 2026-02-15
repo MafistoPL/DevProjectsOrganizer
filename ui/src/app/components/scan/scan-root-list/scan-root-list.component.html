@@ -2,8 +2,17 @@
   <mat-card-title class="panel-title panel-title--roots">Roots</mat-card-title>
   <mat-card-content>
     <div class="root-list">
-      <div *ngFor="let root of roots$ | async" class="root-item">
+      <div *ngFor="let root of roots()" class="root-item">
         <div class="root-row">
+          <mat-checkbox
+            class="root-select"
+            [checked]="isSelected(root.id)"
+            (change)="toggleSelected(root.id, $event.checked)"
+            [matTooltip]="'Include this root in the Rescan selected roots action.'"
+            [attr.data-testid]="'scan-root-select-' + root.id"
+            [attr.aria-label]="'Select root ' + root.path + ' for rescan'"
+          ></mat-checkbox>
+
           <div class="root-main">
             <span class="path" data-testid="scan-root-path">{{ root.path }}</span>
             <span class="summary" data-testid="root-last-summary" *ngIf="root.lastScanState; else noScanSummary">

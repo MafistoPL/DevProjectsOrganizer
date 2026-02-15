@@ -7,7 +7,14 @@
     <div class="actions">
       <button mat-raised-button color="primary" (click)="openStartDialog()">Start scan</button>
       <button mat-stroked-button (click)="openManageRootsDialog()">Manage roots</button>
-      <button mat-stroked-button>Import roots</button>
+      <button
+        mat-stroked-button
+        (click)="rescanSelectedRoots()"
+        [disabled]="selectedRootCount() === 0"
+        data-testid="scan-rescan-selected-btn"
+      >
+        Rescan selected roots
+      </button>
     </div>
   </header>
 

@@ -17,7 +17,6 @@
 * Tryb „nasłuchiwany root” + automatyczne reskany:
   * Możliwość oznaczenia rootów jako nasłuchiwane.
   * Automatyczny reskan nasłuchiwanych rootów po starcie aplikacji.
-  * Ręczna akcja w Scan UI do uruchomienia reskanu tylko dla nasłuchiwanych/wybranych rootów.
   * Dla rootów typu Desktop/duże katalogi: niski `depth limit` (np. `1-3`) konfigurowany per root.
 
 ## Wkrótce (1-3 miesiące)
