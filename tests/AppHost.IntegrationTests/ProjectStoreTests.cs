@@ -1,6 +1,7 @@
 using AppHost.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 using Xunit;
 
 namespace AppHost.IntegrationTests;
@@ -52,6 +53,7 @@ public sealed class ProjectStoreTests
 
             project.Name.Should().Be("2Dsource");
             project.Path.Should().Be(@"D:\code\2Dsource");
+            project.FileCount.Should().Be(0);
 
             await using var checkDb = new AppDbContext(options);
             var all = await checkDb.Projects.ToListAsync();
@@ -60,6 +62,43 @@ public sealed class ProjectStoreTests
         }
         finally
         {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertFromSuggestionAsync_counts_project_files_with_ignore_rules()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        var tempProjectDir = Path.Combine(Path.GetTempPath(), $"dpo-project-count-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempProjectDir);
+        Directory.CreateDirectory(Path.Combine(tempProjectDir, "bin"));
+        Directory.CreateDirectory(Path.Combine(tempProjectDir, "obj"));
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempProjectDir, "main.c"), "int main(void){return 0;}");
+            await File.WriteAllTextAsync(Path.Combine(tempProjectDir, "README.md"), "sample");
+            await File.WriteAllTextAsync(Path.Combine(tempProjectDir, "bin", "artifact.exe"), "binary");
+            await File.WriteAllTextAsync(Path.Combine(tempProjectDir, "obj", "build.obj"), "object");
+
+            var suggestion = await AddSuggestionAsync(
+                db,
+                scanSessionId: Guid.NewGuid(),
+                name: "count-test",
+                path: tempProjectDir);
+            var store = new ProjectStore(db);
+
+            var project = await store.UpsertFromSuggestionAsync(suggestion);
+
+            project.FileCount.Should().Be(2);
+        }
+        finally
+        {
+            if (Directory.Exists(tempProjectDir))
+            {
+                Directory.Delete(tempProjectDir, recursive: true);
+            }
+
             await RootStoreTests.DisposeDbAsync(db, path);
         }
     }

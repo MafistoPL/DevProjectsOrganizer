@@ -37,6 +37,7 @@ type MockProject = {
   rootPath: string;
   name: string;
   description: string;
+  fileCount: number;
   score: number;
   kind: string;
   path: string;
@@ -481,6 +482,81 @@ export class AppHostBridgeService {
           projectId,
           action: 'TagHeuristicsCompleted',
           generatedCount: generated,
+          regression: heuristicsResult.regression,
+          outputPath: `C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-tag-heur-${runId}.json`,
+          finishedAt
+        } as T);
+      }
+      case 'projects.rescan': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+
+        const index = this.mockProjects.findIndex((item) => item.id === projectId);
+        if (index < 0) {
+          return Promise.reject(new Error('Project not found.'));
+        }
+
+        const project = this.mockProjects[index];
+        const runId = this.createId();
+        const startedAt = new Date().toISOString();
+        this.emitTagHeuristicsProgress({
+          runId,
+          projectId,
+          projectName: project.name,
+          state: 'Running',
+          progress: 20,
+          message: 'Rescanning project files',
+          startedAt,
+          finishedAt: null,
+          generatedCount: null
+        });
+
+        const nextFileCount = Math.max(1, (project.fileCount ?? 0) + 1);
+        const refreshedProject: MockProject = {
+          ...project,
+          fileCount: nextFileCount,
+          updatedAt: new Date().toISOString()
+        };
+        this.mockProjects = [
+          ...this.mockProjects.slice(0, index),
+          refreshedProject,
+          ...this.mockProjects.slice(index + 1)
+        ];
+        this.eventSubject.next({
+          type: 'projects.changed',
+          data: { reason: 'project.rescanned', projectId, fileCount: nextFileCount }
+        });
+
+        const heuristicsResult = this.generateMockTagSuggestionsForProject(refreshedProject);
+        const generated = heuristicsResult.generatedCount;
+        const finishedAt = new Date().toISOString();
+        this.emitTagHeuristicsProgress({
+          runId,
+          projectId,
+          projectName: refreshedProject.name,
+          state: 'Completed',
+          progress: 100,
+          message: `Completed. Generated ${generated} suggestion(s)`,
+          startedAt,
+          finishedAt,
+          generatedCount: generated
+        });
+
+        if (generated > 0) {
+          this.eventSubject.next({
+            type: 'tagSuggestions.changed',
+            data: { reason: 'project.tagHeuristics', projectId, generatedCount: generated }
+          });
+        }
+
+        return Promise.resolve({
+          runId,
+          projectId,
+          action: 'ProjectRescanCompleted',
+          generatedCount: generated,
+          fileCount: nextFileCount,
           regression: heuristicsResult.regression,
           outputPath: `C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-tag-heur-${runId}.json`,
           finishedAt
@@ -1312,6 +1388,7 @@ export class AppHostBridgeService {
         rootPath: item.rootPath,
         name: item.name,
         description: '',
+        fileCount: this.estimateMockFileCount(item.extensionsSummary),
         score: item.score,
         kind: item.kind,
         path: item.path,
@@ -1339,6 +1416,11 @@ export class AppHostBridgeService {
       rootPath: suggestion.rootPath,
       name: suggestion.name,
       description: suggestion.projectDescription ?? (index >= 0 ? this.mockProjects[index].description : ''),
+      fileCount: typeof suggestion.fileCount === 'number'
+        ? suggestion.fileCount
+        : (index >= 0
+            ? this.mockProjects[index].fileCount
+            : this.estimateMockFileCount(suggestion.extensionsSummary)),
       score: suggestion.score,
       kind: suggestion.kind,
       path: suggestion.path,
@@ -1502,6 +1584,19 @@ export class AppHostBridgeService {
         addedCount
       }
     };
+  }
+
+  private estimateMockFileCount(summary: unknown): number {
+    if (typeof summary !== 'string' || summary.trim().length === 0) {
+      return 0;
+    }
+
+    return summary
+      .split(',')
+      .map((segment) => segment.split('='))
+      .map((parts) => Number.parseInt((parts[1] ?? '').trim(), 10))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .reduce((total, value) => total + value, 0);
   }
 
   private createMockTagSuggestionDecisionKey(projectId: string, tagId: string | null, tagName: string): string {

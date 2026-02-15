@@ -18,6 +18,7 @@ public sealed class ProjectEntityConfiguration : IEntityTypeConfiguration<Projec
         entity.Property(e => e.Kind).IsRequired();
         entity.Property(e => e.ProjectKey).IsRequired();
         entity.Property(e => e.Description).IsRequired();
+        entity.Property(e => e.FileCount).IsRequired();
         entity.Property(e => e.Score).IsRequired();
         entity.Property(e => e.Reason).IsRequired();
         entity.Property(e => e.ExtensionsSummary).IsRequired();

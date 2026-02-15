@@ -3,6 +3,7 @@ using AppHost.Services;
 using AppHost.Contracts;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.IO;
 
 namespace AppHost;
 
@@ -254,6 +255,64 @@ public partial class MainWindow
         }
     }
 
+    private async Task HandleProjectsRescanAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!ProjectsRescanPayloadParser.TryParse(request.Payload, out var projectId))
+        {
+            SendError(request.Id, request.Type, "Missing project id.");
+            return;
+        }
+
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(item => item.Id == projectId);
+        if (project == null)
+        {
+            SendError(request.Id, request.Type, "Project not found.");
+            return;
+        }
+
+        try
+        {
+            await RescanProjectMetadataAsync(project);
+            SendEvent("projects.changed", new
+            {
+                reason = "project.rescanned",
+                projectId = project.Id,
+                fileCount = project.FileCount
+            });
+
+            var heuristicsRun = await RunTagHeuristicsForProjectAsync(project);
+            SendResponse(request.Id, request.Type, new
+            {
+                runId = heuristicsRun.RunId,
+                projectId = project.Id,
+                action = "ProjectRescanCompleted",
+                generatedCount = heuristicsRun.GeneratedCount,
+                fileCount = project.FileCount,
+                regression = new
+                {
+                    baselineAcceptedCount = heuristicsRun.Regression.BaselineAcceptedCount,
+                    baselineRejectedCount = heuristicsRun.Regression.BaselineRejectedCount,
+                    acceptedMissingCount = heuristicsRun.Regression.AcceptedMissingCount,
+                    rejectedMissingCount = heuristicsRun.Regression.RejectedMissingCount,
+                    addedCount = heuristicsRun.Regression.AddedCount
+                },
+                outputPath = heuristicsRun.OutputPath,
+                finishedAt = heuristicsRun.FinishedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task HandleProjectsRunTagHeuristicsAsync(HostRequest request)
     {
         if (_dbContext == null)
@@ -274,6 +333,70 @@ public partial class MainWindow
         {
             SendError(request.Id, request.Type, "Project not found.");
             return;
+        }
+
+        try
+        {
+            var heuristicsRun = await RunTagHeuristicsForProjectAsync(project);
+            SendResponse(request.Id, request.Type, new
+            {
+                runId = heuristicsRun.RunId,
+                projectId = project.Id,
+                action = "TagHeuristicsCompleted",
+                generatedCount = heuristicsRun.GeneratedCount,
+                regression = new
+                {
+                    baselineAcceptedCount = heuristicsRun.Regression.BaselineAcceptedCount,
+                    baselineRejectedCount = heuristicsRun.Regression.BaselineRejectedCount,
+                    acceptedMissingCount = heuristicsRun.Regression.AcceptedMissingCount,
+                    rejectedMissingCount = heuristicsRun.Regression.RejectedMissingCount,
+                    addedCount = heuristicsRun.Regression.AddedCount
+                },
+                outputPath = heuristicsRun.OutputPath,
+                finishedAt = heuristicsRun.FinishedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
+    private async Task HandleProjectsRunAiTagSuggestionsAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!TryGetProjectId(request.Payload, out var projectId))
+        {
+            SendError(request.Id, request.Type, "Missing project id.");
+            return;
+        }
+
+        var project = await _dbContext.Projects
+            .FirstOrDefaultAsync(item => item.Id == projectId);
+        if (project == null)
+        {
+            SendError(request.Id, request.Type, "Project not found.");
+            return;
+        }
+
+        SendResponse(request.Id, request.Type, new
+        {
+            projectId = project.Id,
+            action = "AiTagSuggestionsQueued",
+            queuedAt = DateTimeOffset.UtcNow
+        });
+    }
+
+    private async Task<TagHeuristicsRunResult> RunTagHeuristicsForProjectAsync(ProjectEntity project)
+    {
+        if (_dbContext == null)
+        {
+            throw new InvalidOperationException("Database not ready.");
         }
 
         var runId = Guid.NewGuid();
@@ -299,6 +422,7 @@ public partial class MainWindow
                 startedAt,
                 null,
                 null);
+
             var store = new TagSuggestionStore(_dbContext);
             var regression = await store.AnalyzeRegressionForProjectAsync(project.Id, detected);
             var generated = await store.ReplaceForProjectAsync(project.Id, detected);
@@ -339,23 +463,12 @@ public partial class MainWindow
                 generatedCount = generated
             });
 
-            SendResponse(request.Id, request.Type, new
-            {
+            return new TagHeuristicsRunResult(
                 runId,
-                projectId = project.Id,
-                action = "TagHeuristicsCompleted",
-                generatedCount = generated,
-                regression = new
-                {
-                    baselineAcceptedCount = regression.BaselineAcceptedCount,
-                    baselineRejectedCount = regression.BaselineRejectedCount,
-                    acceptedMissingCount = regression.AcceptedMissingCount,
-                    rejectedMissingCount = regression.RejectedMissingCount,
-                    addedCount = regression.AddedCount
-                },
+                generated,
                 outputPath,
-                finishedAt
-            });
+                finishedAt,
+                regression);
         }
         catch (Exception ex)
         {
@@ -368,38 +481,114 @@ public partial class MainWindow
                 startedAt,
                 DateTimeOffset.UtcNow,
                 null);
-            SendError(request.Id, request.Type, ex.Message);
+            throw;
         }
     }
 
-    private async Task HandleProjectsRunAiTagSuggestionsAsync(HostRequest request)
+    private async Task RescanProjectMetadataAsync(ProjectEntity project)
     {
         if (_dbContext == null)
         {
-            SendError(request.Id, request.Type, "Database not ready.");
+            throw new InvalidOperationException("Database not ready.");
+        }
+
+        var path = project.Path?.Trim() ?? string.Empty;
+        var scanSessionId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            project.LastScanSessionId = scanSessionId;
+            project.FileCount = 0;
+            project.UpdatedAt = now;
+            await _dbContext.SaveChangesAsync();
             return;
         }
 
-        if (!TryGetProjectId(request.Payload, out var projectId))
+        if (File.Exists(path))
         {
-            SendError(request.Id, request.Type, "Missing project id.");
+            project.LastScanSessionId = scanSessionId;
+            project.FileCount = 1;
+            project.UpdatedAt = now;
+            await _dbContext.SaveChangesAsync();
             return;
         }
 
-        var project = await _dbContext.Projects
-            .FirstOrDefaultAsync(item => item.Id == projectId);
-        if (project == null)
+        if (!Directory.Exists(path))
         {
-            SendError(request.Id, request.Type, "Project not found.");
+            project.LastScanSessionId = scanSessionId;
+            project.FileCount = 0;
+            project.UpdatedAt = now;
+            await _dbContext.SaveChangesAsync();
             return;
         }
 
-        SendResponse(request.Id, request.Type, new
+        var runtime = new ScanRuntime(
+            scanSessionId,
+            path,
+            GetDiskKey(path),
+            new ScanStartRequest("roots", null, null));
+        runtime.SetState(ScanSessionStates.Counting);
+
+        var snapshotBuilder = new ScanSnapshotBuilder();
+        runtime.TotalFiles = await snapshotBuilder.CountFilesAsync(runtime);
+        runtime.SetState(ScanSessionStates.Running);
+        var snapshot = await snapshotBuilder.BuildSnapshotAsync(runtime, _ => Task.CompletedTask);
+
+        var detectedProjects = new ProjectSuggestionHeuristicsService().Detect(snapshot);
+        var matched = SelectRescanSuggestion(project, detectedProjects);
+        if (matched != null)
         {
-            projectId = project.Id,
-            action = "AiTagSuggestionsQueued",
-            queuedAt = DateTimeOffset.UtcNow
-        });
+            ApplySuggestionMetadata(project, matched);
+        }
+
+        project.LastScanSessionId = scanSessionId;
+        project.FileCount = runtime.TotalFiles ?? snapshot.FilesScanned;
+        project.UpdatedAt = DateTimeOffset.UtcNow;
+        await _dbContext.SaveChangesAsync();
+    }
+
+    private static DetectedProjectSuggestion? SelectRescanSuggestion(
+        ProjectEntity project,
+        IReadOnlyList<DetectedProjectSuggestion> detected)
+    {
+        if (detected.Count == 0)
+        {
+            return null;
+        }
+
+        var normalizedProjectPath = NormalizePath(project.Path);
+        return detected
+            .FirstOrDefault(item =>
+                string.Equals(NormalizePath(item.Path), normalizedProjectPath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.Kind, project.Kind, StringComparison.OrdinalIgnoreCase))
+            ?? detected.FirstOrDefault(item =>
+                string.Equals(NormalizePath(item.Path), normalizedProjectPath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ApplySuggestionMetadata(ProjectEntity project, DetectedProjectSuggestion suggestion)
+    {
+        project.Name = suggestion.Name;
+        project.Kind = suggestion.Kind;
+        project.ProjectKey = ProjectStore.BuildProjectKey(project.Path, suggestion.Kind);
+        project.Score = suggestion.Score;
+        project.Reason = suggestion.Reason;
+        project.ExtensionsSummary = suggestion.ExtensionsSummary;
+        project.MarkersJson = JsonSerializer.Serialize(suggestion.Markers);
+        project.TechHintsJson = JsonSerializer.Serialize(suggestion.TechHints);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return path
+            .Trim()
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static string GetDiskKey(string path)
+    {
+        var root = Path.GetPathRoot(path) ?? path;
+        return root.TrimEnd(Path.DirectorySeparatorChar);
     }
 
     private static bool TryGetProjectId(JsonElement? payload, out Guid projectId)
@@ -446,6 +635,7 @@ public partial class MainWindow
             entity.RootPath,
             entity.Name,
             entity.Description,
+            entity.FileCount,
             entity.Path,
             entity.Kind,
             entity.Score,
@@ -457,6 +647,13 @@ public partial class MainWindow
             entity.UpdatedAt,
             tags);
     }
+
+    private sealed record TagHeuristicsRunResult(
+        Guid RunId,
+        int GeneratedCount,
+        string OutputPath,
+        DateTimeOffset FinishedAt,
+        TagSuggestionRegressionProjectReport Regression);
 
     private void PublishTagHeuristicsProgress(
         Guid runId,

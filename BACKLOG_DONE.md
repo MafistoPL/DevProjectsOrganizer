@@ -1,6 +1,13 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Licznik plików projektu + ręczny reskan pojedynczego projektu:
+  * Dodano trwałe pole `Project.FileCount` (DB + migracja), liczone przy materializacji projektu (`Accept` sugestii).
+  * Dodano nowe IPC `projects.rescan` dla reskanu tylko jednego projektu.
+  * Reskan odświeża metadane projektu, przelicza `FileCount` i ponownie uruchamia heurystyki tagów tylko dla tego projektu.
+  * `Project Organizer` pokazuje teraz wyraźnie `Files N` oraz ma akcję `Rescan project`.
+  * Testy kontraktu IPC: FE (`ProjectsService` payload `{ projectId }`) oraz AppHost (`ProjectsRescanPayloadParser` accept/reject).
+  * Testy UI: unit (`OrganizerPage`) i Playwright (`organizer.spec.ts`) dla flow licznika plików i reskanu.
 * Podstawowe wyszukiwanie projektów po tagach (AND):
   * `Project Organizer` wspiera filtrowanie po wielu tagach jako iloczyn (projekt musi mieć wszystkie wybrane tagi).
   * Dodano akcję `Clear filter` i komunikat pustego wyniku przy braku dopasowań.

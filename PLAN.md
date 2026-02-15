@@ -42,6 +42,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Project Organizer (tag filter):** lista projektów wspiera podstawowe filtrowanie po wielu tagach (AND / iloczyn).
 - **Project Organizer (description):** projekt ma pole opisu; opis można dodać podczas `Accept` sugestii i edytować później na zakładce `Project Organizer`.
 - **Project Organizer (manual tags):** można ręcznie podpinać istniejące tagi do projektu i odpinać tagi z projektu (bez usuwania taga globalnie).
+- **Project Organizer (file count + rescan):** projekt ma trwałe `FileCount`; liczba plików jest liczona przy materializacji projektu, a akcja `Rescan project` skanuje tylko ten projekt, odświeża metadane projektu i ponownie uruchamia heurystyki tagów dla tego projektu.
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 - **Tags (sorting):** lista tagów wspiera sortowanie po nazwie i po liczbie projektów (asc/desc).
@@ -73,7 +74,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
   - `suggestions.setStatus` accepts optional `projectName` i `projectDescription` for `Accepted` flow.
-- **IPC projects:** `projects.list`, `projects.update`, `projects.delete`, `projects.attachTag`, `projects.detachTag`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
+- **IPC projects:** `projects.list`, `projects.update`, `projects.delete`, `projects.attachTag`, `projects.detachTag`, `projects.rescan`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
 - **IPC tags:** `tags.list`, `tags.projects`, `tags.add`, `tags.update`, `tags.delete`.
 - **IPC tag suggestions:** `tagSuggestions.list`, `tagSuggestions.setStatus`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
@@ -187,6 +188,7 @@ Minimalny zestaw:
 - **ProjectSuggestion.Fingerprint**: deterministyczny podpis heurystyki dla konkretnego kandydata (używany do suppress/restore po `Reject/Delete`).
 - **Project**: zaakceptowany projekt.
 - **Project.Description**: edytowalny opis projektu.
+- **Project.FileCount**: liczba plików projektu (liczona przy materializacji + aktualizowana przez ręczny reskan projektu).
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
 - **ProjectTag**: relacja N:M między `Project` i `Tag`.
 - **Tag** ma mieć klasyfikację źródła/typu (np. `System` vs `Custom`) i regułę usuwalności.
@@ -222,6 +224,7 @@ Główne zakładki:
   - Dialog akceptacji pozwala edytować nazwę projektu i dodać opis przed finalnym `Accept` (z opcją: tylko zaakceptuj / zaakceptuj + heurystyki / zaakceptuj + AI).
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
 - **Project Organizer**: opis projektu jest widoczny i edytowalny inline (`Edit description` / `Save`).
+- **Project Organizer**: karta projektu uwypukla liczbę plików (`Files N`) i ma akcję `Rescan project` (recount plików + odświeżenie rekomendacji tagów tylko dla tego projektu).
 - **Tags**: zarządzanie tagami i backfill.
 - **Tags**: działające CRUD (lista + add/edit/delete), z ochroną tagów systemowych (`Seeded` bez opcji `Delete`).
 - **Tags**: licznik użycia (`Projects N`) i modal z listą projektów przypiętych do wybranego taga.
@@ -242,6 +245,7 @@ Piramida testów:
 - **FE unit/component tests (ng test)**: obejmują też render przypiętych tagów w `Project Organizer`, filtrowanie/sortowanie/scope w `Tag suggestions` oraz widoczność panelu `Heuristics regression report` (success/failure).
 - **FE unit/component tests (ng test)**: obejmują też ręczne attach/detach tagów w `Project Organizer` oraz dokładny payload IPC (`projects.attachTag`, `projects.detachTag`) w `ProjectsService`.
 - **Integration (AppHost)**: payload parser dla mutacji tagów projektu akceptuje minimalny payload (`projectId`, `tagId`) i odrzuca niepoprawny.
+- **IPC contract tests (FE+BE)**: `projects.rescan` ma test dokładnego payloadu w FE (`{ projectId }`) oraz test parsera payloadu w AppHost (accept minimal/reject invalid).
 - **E2E layout guards (Playwright)**: po uruchomieniu regresji i głębokim scrollu nagłówki stron (`Scan`, `Project Organizer`, `Suggestions`, `Tags`, `Recent`) muszą pozostać w viewport po przełączaniu zakładek.
 - **E2E layout guards (Playwright)**: nagłówek strony (`h1`) musi być renderowany poniżej paska zakładek (brak nakładania/ucięcia przez sticky tabs).
 - **E2E regression guards (Playwright)**: panel `Heuristics regression report` musi zostać doscrollowany i widoczny w kontenerze GUI zarówno dla sukcesu raportu, jak i dla błędu.

@@ -14,6 +14,7 @@ export type ProjectItem = {
   rootPath: string;
   name: string;
   description: string;
+  fileCount: number;
   score: number;
   kind: string;
   path: string;
@@ -123,6 +124,28 @@ export class ProjectsService {
 
   async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {
     return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
+  }
+
+  async rescanProject(projectId: string): Promise<{
+    runId: string;
+    projectId: string;
+    action: string;
+    generatedCount: number;
+    fileCount: number;
+    outputPath?: string;
+  }> {
+    const result = await this.bridge.request<{
+      runId: string;
+      projectId: string;
+      action: string;
+      generatedCount: number;
+      fileCount: number;
+      outputPath?: string;
+    }>('projects.rescan', {
+      projectId
+    });
+    await this.load();
+    return result;
   }
 
   async attachTag(projectId: string, tagId: string): Promise<{ projectId: string; tagId: string; attached: boolean }> {

@@ -52,6 +52,7 @@ export class OrganizerPageComponent {
   editDescriptionProjectId: string | null = null;
   editDescriptionValue = '';
   readonly selectedFilterTagIds = signal<string[]>([]);
+  private readonly rescanningProjectIds = signal<string[]>([]);
   private readonly selectedTagByProjectId = new Map<string, string>();
 
   async deleteProject(project: ProjectItem): Promise<void> {
@@ -154,6 +155,31 @@ export class OrganizerPageComponent {
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : 'Tag detach failed';
       this.snackBar.open(message, 'Close', { duration: 1800 });
+    }
+  }
+
+  isRescanning(projectId: string): boolean {
+    return this.rescanningProjectIds().includes(projectId);
+  }
+
+  async rescanProject(project: ProjectItem): Promise<void> {
+    if (this.isRescanning(project.id)) {
+      return;
+    }
+
+    this.rescanningProjectIds.update((ids) => [...ids, project.id]);
+    try {
+      const result = await this.projectsService.rescanProject(project.id);
+      this.snackBar.open(
+        `Rescan done: ${result.fileCount} files, ${result.generatedCount} tag suggestion(s)`,
+        undefined,
+        { duration: 2200 }
+      );
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : 'Project rescan failed';
+      this.snackBar.open(message, 'Close', { duration: 2000 });
+    } finally {
+      this.rescanningProjectIds.update((ids) => ids.filter((id) => id !== project.id));
     }
   }
 

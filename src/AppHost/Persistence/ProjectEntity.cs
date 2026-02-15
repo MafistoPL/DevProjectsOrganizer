@@ -11,6 +11,7 @@ public sealed class ProjectEntity
     public string Kind { get; set; } = string.Empty;
     public string ProjectKey { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public long FileCount { get; set; }
     public double Score { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string ExtensionsSummary { get; set; } = string.Empty;

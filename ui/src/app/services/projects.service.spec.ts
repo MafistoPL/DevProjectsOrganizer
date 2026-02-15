@@ -12,6 +12,7 @@ class BridgeMock {
       rootPath: 'D:\\code',
       name: 'dotnet-api',
       description: 'Sample API project',
+      fileCount: 42,
       score: 0.88,
       kind: 'ProjectRoot',
       path: 'D:\\code\\dotnet-api',
@@ -30,6 +31,7 @@ class BridgeMock {
       rootPath: 'D:\\code',
       name: 'cpp-tree',
       description: '',
+      fileCount: 17,
       score: 0.81,
       kind: 'ProjectRoot',
       path: 'D:\\code\\cpp-tree',
@@ -73,6 +75,17 @@ class BridgeMock {
 
     if (type === 'projects.runAiTagSuggestions') {
       return {} as T;
+    }
+
+    if (type === 'projects.rescan') {
+      const projectId = (payload as any)?.projectId ?? 'proj-1';
+      return {
+        runId: 'run-1',
+        projectId,
+        action: 'ProjectRescanCompleted',
+        generatedCount: 3,
+        fileCount: 99
+      } as T;
     }
 
     if (type === 'projects.delete') {
@@ -268,6 +281,20 @@ describe('ProjectsService', () => {
 
     expect(bridge.requests).toEqual([
       { type: 'projects.detachTag', payload: { projectId: 'proj-1', tagId: 'tag-1' } },
+      { type: 'projects.list', payload: undefined }
+    ]);
+  });
+
+  it('rescanProject sends exact payload shape and reloads list', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    await sut.rescanProject('proj-2');
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.rescan', payload: { projectId: 'proj-2' } },
       { type: 'projects.list', payload: undefined }
     ]);
   });

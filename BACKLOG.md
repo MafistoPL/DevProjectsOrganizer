@@ -1,7 +1,7 @@
 # Backlog
 
 ## W trakcie
-* (pusto)
+* Brak aktywnych zadań.
 
 ## Teraz (najbliższy tydzień)
 1. Wdrożyć flow ponownego przetwarzania tagów zgodny z aktualnym zachowaniem.

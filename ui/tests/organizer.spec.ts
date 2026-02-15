@@ -246,3 +246,34 @@ test('project organizer filters projects by selected tags with AND logic', async
   await page.getByTestId('organizer-tag-filter-clear').click();
   await expect(page.getByRole('heading', { name: 'cpp-cli' })).toBeVisible();
 });
+
+test('project organizer shows file count and updates it after rescan', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockSuggestions',
+      JSON.stringify([
+        {
+          id: 's1',
+          scanSessionId: 'scan-1',
+          rootPath: 'D:\\code',
+          name: 'dotnet-api',
+          score: 0.88,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\dotnet-api',
+          reason: 'markers: .sln',
+          extensionsSummary: 'cs=10',
+          markers: ['.sln'],
+          techHints: ['csharp'],
+          createdAt: '2026-02-15T10:00:00.000Z',
+          status: 'Accepted'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/organizer');
+
+  await expect(page.getByText('Files 10')).toBeVisible();
+  await page.getByTestId('project-rescan-btn-project-s1').click();
+  await expect(page.getByText('Files 11')).toBeVisible();
+});

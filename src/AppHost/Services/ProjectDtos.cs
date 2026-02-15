@@ -12,6 +12,7 @@ public sealed record ProjectDto(
     string RootPath,
     string Name,
     string Description,
+    long FileCount,
     string Path,
     string Kind,
     double Score,

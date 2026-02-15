@@ -11,6 +11,7 @@ describe('OrganizerPageComponent', () => {
   let updateDescriptionSpy: ReturnType<typeof vi.fn>;
   let attachTagSpy: ReturnType<typeof vi.fn>;
   let detachTagSpy: ReturnType<typeof vi.fn>;
+  let rescanProjectSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     const projectsServiceMock = {
@@ -22,6 +23,7 @@ describe('OrganizerPageComponent', () => {
           rootPath: 'D:\\code',
           name: 'dotnet-api',
           description: 'Initial description',
+          fileCount: 42,
           score: 0.88,
           kind: 'ProjectRoot',
           path: 'D:\\code\\dotnet-api',
@@ -43,6 +45,7 @@ describe('OrganizerPageComponent', () => {
           rootPath: 'D:\\code',
           name: 'cpp-cli',
           description: '',
+          fileCount: 17,
           score: 0.77,
           kind: 'ProjectRoot',
           path: 'D:\\code\\cpp-cli',
@@ -62,7 +65,14 @@ describe('OrganizerPageComponent', () => {
         description: 'Updated description'
       }),
       attachTag: vi.fn().mockResolvedValue({ projectId: 'proj-1', tagId: 'tag-3', attached: true }),
-      detachTag: vi.fn().mockResolvedValue({ projectId: 'proj-1', tagId: 'tag-1', detached: true })
+      detachTag: vi.fn().mockResolvedValue({ projectId: 'proj-1', tagId: 'tag-1', detached: true }),
+      rescanProject: vi.fn().mockResolvedValue({
+        runId: 'run-1',
+        projectId: 'proj-1',
+        action: 'ProjectRescanCompleted',
+        generatedCount: 2,
+        fileCount: 43
+      })
     };
     const tagsServiceMock = {
       tags$: new BehaviorSubject([
@@ -96,6 +106,7 @@ describe('OrganizerPageComponent', () => {
     updateDescriptionSpy = projectsServiceMock.updateProjectDescription;
     attachTagSpy = projectsServiceMock.attachTag;
     detachTagSpy = projectsServiceMock.detachTag;
+    rescanProjectSpy = projectsServiceMock.rescanProject;
 
     await TestBed.configureTestingModule({
       imports: [OrganizerPageComponent],
@@ -116,6 +127,7 @@ describe('OrganizerPageComponent', () => {
     expect(text).toContain('csharp');
     expect(text).toContain('backend');
     expect(text).toContain('Initial description');
+    expect(text).toContain('Files 42');
     expect(text).toContain('cpp-cli');
   });
 
@@ -160,6 +172,15 @@ describe('OrganizerPageComponent', () => {
     await fixture.componentInstance.detachTag(project, 'tag-1');
 
     expect(detachTagSpy).toHaveBeenCalledWith('proj-1', 'tag-1');
+  });
+
+  it('rescans project and triggers service call', async () => {
+    (fixture.componentInstance as any).snackBar = { open: vi.fn() };
+    const project = fixture.componentInstance.projects()[0];
+
+    await fixture.componentInstance.rescanProject(project);
+
+    expect(rescanProjectSpy).toHaveBeenCalledWith('proj-1');
   });
 
   it('filters projects by selected tags using AND intersection', () => {

@@ -44,9 +44,19 @@
         </div>
         <div class="header-actions">
           <div class="meta">
+            <span class="file-count">Files {{ project.fileCount }}</span>
             <span>Score {{ project.score }}</span>
             <span>Updated {{ project.updatedAt | date:'short' }}</span>
           </div>
+          <button
+            mat-stroked-button
+            color="primary"
+            (click)="rescanProject(project)"
+            [disabled]="isRescanning(project.id)"
+            [attr.data-testid]="'project-rescan-btn-' + project.id"
+          >
+            {{ isRescanning(project.id) ? 'Rescanning...' : 'Rescan project' }}
+          </button>
           <button
             mat-stroked-button
             color="warn"

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Engine.Scanning;
+using System.IO;
 
 namespace AppHost.Persistence;
 
@@ -48,6 +50,7 @@ public sealed class ProjectStore
     {
         var key = BuildProjectKey(suggestion.Path, suggestion.Kind);
         var now = DateTimeOffset.UtcNow;
+        var fileCount = CountProjectFiles(suggestion.Path);
 
         var existing = await _db.Projects
             .FirstOrDefaultAsync(project => project.ProjectKey == key, cancellationToken);
@@ -65,6 +68,7 @@ public sealed class ProjectStore
                 Kind = suggestion.Kind,
                 ProjectKey = key,
                 Description = NormalizeDescription(acceptedDescription) ?? string.Empty,
+                FileCount = fileCount,
                 Score = suggestion.Score,
                 Reason = suggestion.Reason,
                 ExtensionsSummary = suggestion.ExtensionsSummary,
@@ -92,6 +96,7 @@ public sealed class ProjectStore
             existing.Description = normalizedDescription;
         }
 
+        existing.FileCount = fileCount;
         existing.Score = suggestion.Score;
         existing.Reason = suggestion.Reason;
         existing.ExtensionsSummary = suggestion.ExtensionsSummary;
@@ -158,5 +163,81 @@ public sealed class ProjectStore
         }
 
         return description.Trim();
+    }
+
+    private static long CountProjectFiles(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return 0;
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                return 1;
+            }
+
+            if (!Directory.Exists(path))
+            {
+                return 0;
+            }
+        }
+        catch
+        {
+            return 0;
+        }
+
+        long count = 0;
+        var pending = new Stack<string>();
+        pending.Push(path);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            IEnumerable<string> entries;
+            try
+            {
+                entries = Directory.EnumerateFileSystemEntries(current);
+            }
+            catch
+            {
+                continue;
+            }
+
+            foreach (var entry in entries)
+            {
+                try
+                {
+                    if (Directory.Exists(entry))
+                    {
+                        var name = Path.GetFileName(entry.TrimEnd(Path.DirectorySeparatorChar));
+                        if (ScanIgnorePolicy.ShouldSkipDirectory(name))
+                        {
+                            continue;
+                        }
+
+                        pending.Push(entry);
+                        continue;
+                    }
+
+                    var fileName = Path.GetFileName(entry);
+                    var extension = Path.GetExtension(entry);
+                    if (ScanIgnorePolicy.ShouldSkipFile(fileName, extension))
+                    {
+                        continue;
+                    }
+
+                    count++;
+                }
+                catch
+                {
+                    // Ignore inaccessible entries and continue counting.
+                }
+            }
+        }
+
+        return count;
     }
 }
