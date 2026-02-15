@@ -10,6 +10,7 @@
 - Keep `PLAN.md` up to date as the spec evolves.
 - Keep `BACKLOG.md` up to date with deferred tasks and follow-ups.
 - Keep `BACKLOG.md` written in Polish.
+- Keep git commit messages in English.
 - For every user request/run, maintain `BACKLOG.md` lifecycle:
   - At run start, add planned scope to `## In progress`.
   - If user asked for more than can be done in this run, classify remaining items into appropriate backlog sections (`Now`, `Soon`, `Later`, etc.).

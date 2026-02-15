@@ -35,6 +35,8 @@
 * Dodać miejsce do przechowywania PAT do pracy z gh; trzeba ustalić bezpieczny sposób.
 
 ## Zrobione (ostatnio)
+* Uzupełniono zasady pracy w `AGENTS.md`:
+  * Dodano regułę, że wiadomości commitów mają być po angielsku.
 * Doprecyzowano aktualne zachowanie i dokumentację reprocessingu tagów:
   * Zweryfikowano ścieżkę implementacji: `tags.add` tylko tworzy tag; `projects.runTagHeuristics` jest manualne; `projects.runAiTagSuggestions` obecnie zwraca tylko potwierdzenie kolejki.
   * Zaktualizowano `README.md`, dodając jawną sekcję "Tag Reprocessing (current behavior)", aby uniknąć fałszywych oczekiwań.
