@@ -218,6 +218,7 @@ Piramida testów:
 - **E2E regression guards (Playwright)**: panel `Heuristics regression report` musi zostać doscrollowany i widoczny w kontenerze GUI zarówno dla sukcesu raportu, jak i dla błędu.
 - **E2E spacing guards (Playwright)**: widok `Suggestions` musi mieć dolny margines przy końcu scrolla zarówno bez raportu, jak i z panelem `Heuristics regression report`.
 - **E2E responsiveness guards (Playwright)**: po kliknięciu `Run regression report` panel raportu ma pojawić się od razu (bez dodatkowej akcji użytkownika) i automatycznie przewinąć widok.
+- **E2E layout guards (Playwright / report container)**: `regression-panel` musi mieć dodatnią wysokość i obejmować wyrenderowaną treść raportu (brak kolapsu kontenera i ucinania dzieci).
 - **IPC contract tests (FE+BE)**: dla zmian payloadów IPC (np. `projects.delete`) wymagamy testu kształtu payloadu w FE oraz testu parsera/walidacji payloadu w AppHost.
 
 Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).

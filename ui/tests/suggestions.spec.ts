@@ -25,6 +25,12 @@ const setMockRegressionReportError = async (page: Page, message: string) => {
   }, message);
 };
 
+const setMockRegressionReportPayload = async (page: Page, payload: unknown) => {
+  await page.addInitScript((reportPayload) => {
+    localStorage.setItem('mockRegressionReportPayload', JSON.stringify(reportPayload));
+  }, payload);
+};
+
 const setMockTagSuggestions = async (page: Page, items: unknown[]) => {
   await page.addInitScript((mockItems) => {
     localStorage.setItem('mockTagSuggestions', JSON.stringify(mockItems));
@@ -71,12 +77,15 @@ const expectRegressionPanelInShellViewport = async (page: Page) => {
     .poll(async () => {
       return await page.evaluate(() => {
         const panel = document.querySelector('[data-testid="regression-panel"]');
+        const summary = document.querySelector('[data-testid="regression-report-summary"]');
+        const error = document.querySelector('[data-testid="regression-report-error"]');
+        const target = summary ?? error ?? panel;
         const shell = document.querySelector('mat-tab-nav-panel.content-inner');
-        if (!(panel instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+        if (!(target instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
           return false;
         }
 
-        const panelRect = panel.getBoundingClientRect();
+        const panelRect = target.getBoundingClientRect();
         const shellRect = shell.getBoundingClientRect();
         return panelRect.top >= shellRect.top - 2 && panelRect.top < shellRect.bottom - 36;
       });
@@ -124,6 +133,49 @@ const getBottomGapToListViewport = async (page: Page, testId: string): Promise<n
   }, testId);
 };
 
+const getBottomSpacerGeometry = async (page: Page): Promise<{
+  reportBottomGap: number;
+  spacerVisiblePx: number;
+  spacerTopToShellBottom: number;
+} | null> => {
+  return await page.evaluate(async () => {
+    const shell = document.querySelector('mat-tab-nav-panel.content-inner');
+    const report = document.querySelector('[data-testid=\"regression-panel\"]');
+    const roots = document.querySelector('[data-testid=\"regression-report-roots\"]');
+    const summary = document.querySelector('[data-testid=\"regression-report-summary\"]');
+    const error = document.querySelector('[data-testid=\"regression-report-error\"]');
+    const spacer = document.querySelector('[data-testid=\"suggestions-bottom-spacer\"]');
+    if (!(shell instanceof HTMLElement) || !(spacer instanceof HTMLElement)) {
+      return null;
+    }
+
+    for (let i = 0; i < 6; i += 1) {
+      shell.scrollTop = shell.scrollHeight;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
+    const shellRect = shell.getBoundingClientRect();
+    const spacerRect = spacer.getBoundingClientRect();
+    const reportTarget =
+      (roots instanceof HTMLElement ? roots : null) ??
+      (summary instanceof HTMLElement ? summary : null) ??
+      (error instanceof HTMLElement ? error : null) ??
+      (report instanceof HTMLElement ? report : null);
+    const reportRect = reportTarget instanceof HTMLElement ? reportTarget.getBoundingClientRect() : null;
+
+    const spacerVisiblePx = Math.max(
+      0,
+      Math.min(shellRect.bottom, spacerRect.bottom) - Math.max(shellRect.top, spacerRect.top)
+    );
+
+    return {
+      reportBottomGap: reportRect ? Number((shellRect.bottom - reportRect.bottom).toFixed(2)) : 0,
+      spacerVisiblePx: Number(spacerVisiblePx.toFixed(2)),
+      spacerTopToShellBottom: Number((shellRect.bottom - spacerRect.top).toFixed(2))
+    };
+  });
+};
+
 const buildLongMockSuggestions = (count: number) => {
   return Array.from({ length: count }, (_, idx) => ({
     id: `long-${idx + 1}`,
@@ -156,6 +208,31 @@ const buildLongMockTagSuggestions = (count: number) => {
     createdAt: new Date(Date.UTC(2025, 0, 1, 12, 0, idx)).toISOString(),
     status: 'Pending'
   }));
+};
+
+const buildTallMockRegressionReport = (rootsCount: number) => {
+  const roots = Array.from({ length: rootsCount }, (_, idx) => ({
+    rootPath: `D:\\bulk\\root-${String(idx + 1).padStart(2, '0')}`,
+    snapshotScanSessionId: `scan-root-${idx + 1}`,
+    snapshotPath: `C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-root-${idx + 1}.json`,
+    baselineAcceptedCount: 10 + (idx % 3),
+    baselineRejectedCount: 2 + (idx % 2),
+    acceptedMissingCount: idx % 2,
+    rejectedMissingCount: (idx + 1) % 2,
+    addedCount: 5 + (idx % 4),
+    acceptedMissingPaths: [],
+    rejectedMissingPaths: []
+  }));
+
+  return {
+    rootsAnalyzed: rootsCount,
+    baselineAcceptedCount: roots.reduce((acc, item) => acc + item.baselineAcceptedCount, 0),
+    baselineRejectedCount: roots.reduce((acc, item) => acc + item.baselineRejectedCount, 0),
+    acceptedMissingCount: roots.reduce((acc, item) => acc + item.acceptedMissingCount, 0),
+    rejectedMissingCount: roots.reduce((acc, item) => acc + item.rejectedMissingCount, 0),
+    addedCount: roots.reduce((acc, item) => acc + item.addedCount, 0),
+    roots
+  };
 };
 
 const handleProjectAcceptDialog = async (
@@ -580,6 +657,35 @@ test('suggestions regression actions show summary and allow export', async ({ pa
   await expect(page.getByText(/Exported:/)).toBeVisible();
 });
 
+test('regression panel container wraps rendered report content', async ({ page }) => {
+  await gotoSuggestions(page);
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="regression-panel"]');
+    const summary = document.querySelector('[data-testid="regression-report-summary"]');
+    if (!(panel instanceof HTMLElement) || !(summary instanceof HTMLElement)) {
+      return null;
+    }
+
+    const panelRect = panel.getBoundingClientRect();
+    const summaryRect = summary.getBoundingClientRect();
+    return {
+      panelHeight: Number(panelRect.height.toFixed(2)),
+      panelBottom: Number(panelRect.bottom.toFixed(2)),
+      summaryBottom: Number(summaryRect.bottom.toFixed(2))
+    };
+  });
+
+  if (!geometry) {
+    throw new Error('Cannot measure regression panel container geometry');
+  }
+
+  expect(geometry.panelHeight).toBeGreaterThanOrEqual(80);
+  expect(geometry.panelBottom).toBeGreaterThanOrEqual(geometry.summaryBottom - 2);
+});
+
 test('regression report is placed in GUI viewport for long suggestions list', async ({ page }) => {
   await setMockSuggestions(page, buildLongMockSuggestions(120));
   await gotoSuggestions(page);
@@ -652,6 +758,40 @@ test('suggestions page keeps bottom margin with regression report', async ({ pag
   }
 
   expect(gap).toBeGreaterThanOrEqual(16);
+});
+
+test('suggestions bottom spacer stays visible with tall regression report', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 973 });
+  await setMockSuggestions(page, buildLongMockSuggestions(120));
+  await setMockRegressionReportPayload(page, buildTallMockRegressionReport(24));
+  await gotoSuggestions(page);
+
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+  await expect(page.getByTestId('regression-report-roots').locator('.regression-root')).toHaveCount(24);
+
+  const geometry = await getBottomSpacerGeometry(page);
+  if (!geometry) {
+    throw new Error('Cannot measure suggestions bottom spacer geometry');
+  }
+
+  expect(geometry.reportBottomGap).toBeGreaterThanOrEqual(16);
+  expect(geometry.spacerVisiblePx).toBeGreaterThanOrEqual(12);
+  expect(geometry.spacerTopToShellBottom).toBeGreaterThan(0);
+});
+
+test('suggestions bottom spacer is visible without regression report in host-like viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 973 });
+  await setMockSuggestions(page, buildLongMockSuggestions(120));
+  await gotoSuggestions(page);
+
+  const geometry = await getBottomSpacerGeometry(page);
+  if (!geometry) {
+    throw new Error('Cannot measure suggestions bottom spacer geometry without report');
+  }
+
+  expect(geometry.spacerVisiblePx).toBeGreaterThanOrEqual(12);
+  expect(geometry.spacerTopToShellBottom).toBeGreaterThan(0);
 });
 
 test('suggestions lists keep inner bottom gap at end of scroll', async ({ page }) => {

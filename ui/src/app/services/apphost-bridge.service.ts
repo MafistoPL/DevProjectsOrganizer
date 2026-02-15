@@ -655,6 +655,15 @@ export class AppHostBridgeService {
           return Promise.reject(new Error(forcedError.trim()));
         }
 
+        const forcedPayload = localStorage.getItem('mockRegressionReportPayload');
+        if (forcedPayload && forcedPayload.trim().length > 0) {
+          try {
+            return Promise.resolve(JSON.parse(forcedPayload) as T);
+          } catch {
+            return Promise.reject(new Error('Invalid mockRegressionReportPayload JSON'));
+          }
+        }
+
         return Promise.resolve({
           rootsAnalyzed: 2,
           baselineAcceptedCount: 3,

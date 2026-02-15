@@ -55,6 +55,15 @@
   margin-bottom: 16px;
 }
 
+.regression-panel mat-card-title {
+  display: block;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 4px 0 8px 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .page-bottom-spacer {
   flex: 0 0 24px;
   height: 24px;
