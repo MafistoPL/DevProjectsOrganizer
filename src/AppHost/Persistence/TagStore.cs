@@ -30,11 +30,22 @@ public sealed class TagStore
         "go",
         "powershell",
         "low-level",
+        "pointers",
         "console",
         "winapi",
         "gui",
         "hello-world",
-        "lorem-ipsum"
+        "lorem-ipsum",
+        "lines-lt-100",
+        "lines-100-200",
+        "lines-200-500",
+        "lines-500-1k",
+        "lines-1k-2k",
+        "lines-2k-5k",
+        "lines-10k-20k",
+        "lines-20k-50k",
+        "lines-50k-100k",
+        "lines-gt-100k"
     ];
     private static readonly HashSet<string> DefaultTagNormalizedSet = DefaultTags
         .Select(tag => tag.Trim().ToLowerInvariant())

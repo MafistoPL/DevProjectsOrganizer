@@ -17,6 +17,18 @@ public sealed class TagSuggestionHeuristicsService
         @"\blorem[\s_\-]*ipsum\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex PointerDeclarationPattern = new(
+        @"\b(?:const\s+)?(?:unsigned\s+|signed\s+)?[a-z_][\w:<>]*\s*\*+\s*[a-z_]\w*",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex PointerArrowPattern = new(
+        @"->",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex AsmKeywordPattern = new(
+        @"\b(?:__asm__?|asm)\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly HashSet<string> SourceSignalExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".c",
@@ -25,6 +37,8 @@ public sealed class TagSuggestionHeuristicsService
         ".cpp",
         ".cc",
         ".cxx",
+        ".asm",
+        ".s",
         ".cs",
         ".java",
         ".js",
@@ -39,10 +53,35 @@ public sealed class TagSuggestionHeuristicsService
         ".md"
     };
 
+    private static readonly HashSet<string> ProjectSizeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".c",
+        ".h",
+        ".hpp",
+        ".cpp",
+        ".cc",
+        ".cxx",
+        ".asm",
+        ".s",
+        ".cs",
+        ".java",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".py",
+        ".go",
+        ".rs",
+        ".ps1"
+    };
+
     private const int MaxSourceFilesToInspect = 120;
     private const int MaxSourceLinesPerFile = 120;
     private const int MaxSourceLineLength = 512;
     private const long MaxSourceFileBytes = 512 * 1024;
+    private const int MaxProjectSourceFilesToInspect = 2_500;
+    private const long MaxProjectSourceFileBytes = 4 * 1024 * 1024;
+    private const int MaxProjectLinesToClassify = 100_001;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -85,7 +124,6 @@ public sealed class TagSuggestionHeuristicsService
                     AddSignal("vs-project", 0.91, $"marker:{normalized}");
                     AddSignal("cpp", 0.84, $"marker:{normalized}");
                     AddSignal("native", 0.8, $"marker:{normalized}");
-                    AddSignal("low-level", 0.66, $"marker:{normalized}");
                     break;
                 case "package.json":
                     AddSignal("node", 0.91, $"marker:{normalized}");
@@ -129,11 +167,13 @@ public sealed class TagSuggestionHeuristicsService
             {
                 case "cpp":
                     AddSignal("cpp", 0.84, $"hint:{normalized}");
-                    AddSignal("low-level", 0.7, $"hint:{normalized}");
                     break;
                 case "native":
                     AddSignal("native", 0.8, $"hint:{normalized}");
-                    AddSignal("low-level", 0.7, $"hint:{normalized}");
+                    break;
+                case "asm":
+                case "assembly":
+                    AddSignal("low-level", 0.84, $"hint:{normalized}");
                     break;
                 case "csharp":
                     AddSignal("csharp", 0.82, $"hint:{normalized}");
@@ -171,6 +211,10 @@ public sealed class TagSuggestionHeuristicsService
                 case "c":
                     AddSignal("c", Math.Min(0.82, 0.58 + count * 0.03), $"ext:{ext}={count}");
                     AddSignal("native", Math.Min(0.72, 0.53 + count * 0.02), $"ext:{ext}={count}");
+                    break;
+                case "asm":
+                case "s":
+                    AddSignal("low-level", Math.Min(0.92, 0.7 + count * 0.03), $"ext:{ext}={count}");
                     break;
                 case "cs":
                     AddSignal("csharp", Math.Min(0.82, 0.58 + count * 0.03), $"ext:{ext}={count}");
@@ -232,6 +276,17 @@ public sealed class TagSuggestionHeuristicsService
             AddSignal("lorem-ipsum", 0.9, sourceSignals.LoremIpsumEvidence);
         }
 
+        if (sourceSignals.AsmEvidence is not null)
+        {
+            AddSignal("low-level", 0.88, sourceSignals.AsmEvidence);
+        }
+
+        if (sourceSignals.PointerEvidence is not null
+            && LooksLikeCorCppProject(markers, hints, extensionHistogram, project.Path, project.Reason))
+        {
+            AddSignal("pointers", 0.85, sourceSignals.PointerEvidence);
+        }
+
         if (project.Reason.Contains("native sources", StringComparison.OrdinalIgnoreCase))
         {
             AddSignal("native", 0.72, "reason:native-sources");
@@ -247,6 +302,12 @@ public sealed class TagSuggestionHeuristicsService
         {
             AddSignal("html", 0.76, "reason:static-site");
             AddSignal("gui", 0.62, "reason:static-site");
+        }
+
+        var projectLineCount = CountProjectSourceLines(project.Path);
+        if (projectLineCount >= 0 && TryResolveProjectSizeTag(projectLineCount, out var projectSizeTag))
+        {
+            AddSignal(projectSizeTag, 0.88, $"lines:{projectLineCount}");
         }
 
         var output = new List<DetectedTagSuggestion>();
@@ -401,6 +462,159 @@ public sealed class TagSuggestionHeuristicsService
         return hasChapter01 && hasBeginnerSignal;
     }
 
+    private static bool LooksLikeCorCppProject(
+        IReadOnlyCollection<string> markers,
+        IReadOnlyCollection<string> hints,
+        IReadOnlyDictionary<string, int> extensionHistogram,
+        string projectPath,
+        string projectReason)
+    {
+        if (markers.Any(marker =>
+                marker.Equals(".vcxproj", StringComparison.OrdinalIgnoreCase)
+                || marker.Equals(".vcproj", StringComparison.OrdinalIgnoreCase)
+                || marker.Equals("cmakelists.txt", StringComparison.OrdinalIgnoreCase)
+                || marker.Equals("makefile", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (hints.Any(hint =>
+                hint.Equals("c", StringComparison.OrdinalIgnoreCase)
+                || hint.Equals("cpp", StringComparison.OrdinalIgnoreCase)
+                || hint.Equals("native", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (extensionHistogram.ContainsKey("c")
+            || extensionHistogram.ContainsKey("h")
+            || extensionHistogram.ContainsKey("hpp")
+            || extensionHistogram.ContainsKey("cpp")
+            || extensionHistogram.ContainsKey("cc")
+            || extensionHistogram.ContainsKey("cxx"))
+        {
+            return true;
+        }
+
+        return projectPath.Contains("cpp", StringComparison.OrdinalIgnoreCase)
+            || projectReason.Contains("native", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int CountProjectSourceLines(string projectPath)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
+        {
+            return -1;
+        }
+
+        var inspected = 0;
+        var totalLines = 0;
+        foreach (var filePath in EnumerateProjectSizeFiles(projectPath))
+        {
+            if (inspected >= MaxProjectSourceFilesToInspect || totalLines >= MaxProjectLinesToClassify)
+            {
+                break;
+            }
+
+            inspected++;
+            var remaining = MaxProjectLinesToClassify - totalLines;
+            totalLines += CountLines(filePath, remaining);
+        }
+
+        return Math.Min(totalLines, MaxProjectLinesToClassify);
+    }
+
+    private static int CountLines(string filePath, int maxLinesToCount)
+    {
+        if (maxLinesToCount <= 0)
+        {
+            return 0;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            using var reader = new StreamReader(stream, Encoding.UTF8, true);
+            var count = 0;
+            while (count < maxLinesToCount && reader.ReadLine() is not null)
+            {
+                count++;
+            }
+
+            return count;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static bool TryResolveProjectSizeTag(int lineCount, out string tagName)
+    {
+        tagName = string.Empty;
+        if (lineCount < 100)
+        {
+            tagName = "lines-lt-100";
+            return true;
+        }
+
+        if (lineCount < 200)
+        {
+            tagName = "lines-100-200";
+            return true;
+        }
+
+        if (lineCount < 500)
+        {
+            tagName = "lines-200-500";
+            return true;
+        }
+
+        if (lineCount < 1_000)
+        {
+            tagName = "lines-500-1k";
+            return true;
+        }
+
+        if (lineCount < 2_000)
+        {
+            tagName = "lines-1k-2k";
+            return true;
+        }
+
+        if (lineCount < 5_000)
+        {
+            tagName = "lines-2k-5k";
+            return true;
+        }
+
+        if (lineCount >= 10_000 && lineCount < 20_000)
+        {
+            tagName = "lines-10k-20k";
+            return true;
+        }
+
+        if (lineCount >= 20_000 && lineCount < 50_000)
+        {
+            tagName = "lines-20k-50k";
+            return true;
+        }
+
+        if (lineCount >= 50_000 && lineCount < 100_000)
+        {
+            tagName = "lines-50k-100k";
+            return true;
+        }
+
+        if (lineCount >= 100_000)
+        {
+            tagName = "lines-gt-100k";
+            return true;
+        }
+
+        return false;
+    }
+
     private static SourceSignalDetectionResult DetectSourceSignals(string projectPath)
     {
         if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
@@ -411,6 +625,8 @@ public sealed class TagSuggestionHeuristicsService
         var inspected = 0;
         string? helloWorldEvidence = null;
         string? loremIpsumEvidence = null;
+        string? pointerEvidence = null;
+        string? asmEvidence = null;
 
         foreach (var file in EnumerateCandidateSourceFiles(projectPath))
         {
@@ -420,7 +636,7 @@ public sealed class TagSuggestionHeuristicsService
             }
 
             inspected++;
-            var (hasHelloWorld, hasLoremIpsum) = ScanFileForSignals(file);
+            var (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm) = ScanFileForSignals(file);
             if (hasHelloWorld && helloWorldEvidence is null)
             {
                 helloWorldEvidence = $"code:hello-world:{Path.GetFileName(file)}";
@@ -431,18 +647,83 @@ public sealed class TagSuggestionHeuristicsService
                 loremIpsumEvidence = $"code:lorem-ipsum:{Path.GetFileName(file)}";
             }
 
-            if (helloWorldEvidence is not null && loremIpsumEvidence is not null)
+            if (hasPointer && pointerEvidence is null)
+            {
+                pointerEvidence = $"code:pointers:{Path.GetFileName(file)}";
+            }
+
+            if (hasAsm && asmEvidence is null)
+            {
+                asmEvidence = $"code:asm:{Path.GetFileName(file)}";
+            }
+
+            if (helloWorldEvidence is not null
+                && loremIpsumEvidence is not null
+                && pointerEvidence is not null
+                && asmEvidence is not null)
             {
                 break;
             }
         }
 
-        if (helloWorldEvidence is null && loremIpsumEvidence is null)
+        if (helloWorldEvidence is null
+            && loremIpsumEvidence is null
+            && pointerEvidence is null
+            && asmEvidence is null)
         {
             return SourceSignalDetectionResult.None;
         }
 
-        return new SourceSignalDetectionResult(helloWorldEvidence, loremIpsumEvidence);
+        return new SourceSignalDetectionResult(
+            helloWorldEvidence,
+            loremIpsumEvidence,
+            pointerEvidence,
+            asmEvidence);
+    }
+
+    private static IEnumerable<string> EnumerateProjectSizeFiles(string rootPath)
+    {
+        var pending = new Stack<string>();
+        pending.Push(rootPath);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            IEnumerable<string> subdirectories;
+            try
+            {
+                subdirectories = Directory.EnumerateDirectories(current);
+            }
+            catch
+            {
+                subdirectories = Array.Empty<string>();
+            }
+
+            foreach (var subdirectory in subdirectories)
+            {
+                pending.Push(subdirectory);
+            }
+
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(current);
+            }
+            catch
+            {
+                files = Array.Empty<string>();
+            }
+
+            foreach (var file in files)
+            {
+                if (!IsProjectSizeSourceFile(file))
+                {
+                    continue;
+                }
+
+                yield return file;
+            }
+        }
     }
 
     private static IEnumerable<string> EnumerateCandidateSourceFiles(string rootPath)
@@ -514,7 +795,27 @@ public sealed class TagSuggestionHeuristicsService
         }
     }
 
-    private static (bool HasHelloWorld, bool HasLoremIpsum) ScanFileForSignals(string filePath)
+    private static bool IsProjectSizeSourceFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath);
+        if (string.IsNullOrWhiteSpace(extension) || !ProjectSizeExtensions.Contains(extension))
+        {
+            return false;
+        }
+
+        try
+        {
+            var info = new FileInfo(filePath);
+            return info.Exists && info.Length <= MaxProjectSourceFileBytes;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static (bool HasHelloWorld, bool HasLoremIpsum, bool HasPointer, bool HasAsm) ScanFileForSignals(
+        string filePath)
     {
         try
         {
@@ -523,6 +824,8 @@ public sealed class TagSuggestionHeuristicsService
 
             var hasHelloWorld = false;
             var hasLoremIpsum = false;
+            var hasPointer = false;
+            var hasAsm = false;
             for (var lineNumber = 0; lineNumber < MaxSourceLinesPerFile; lineNumber++)
             {
                 var line = reader.ReadLine();
@@ -546,17 +849,38 @@ public sealed class TagSuggestionHeuristicsService
                     hasLoremIpsum = true;
                 }
 
-                if (hasHelloWorld && hasLoremIpsum)
+                if (!hasPointer && (PointerDeclarationPattern.IsMatch(line) || PointerArrowPattern.IsMatch(line)))
+                {
+                    hasPointer = true;
+                }
+
+                if (!hasAsm && AsmKeywordPattern.IsMatch(line))
+                {
+                    hasAsm = true;
+                }
+
+                if (hasHelloWorld && hasLoremIpsum && hasPointer && hasAsm)
                 {
                     break;
                 }
             }
 
-            return (hasHelloWorld, hasLoremIpsum);
+            var extension = Path.GetExtension(filePath);
+            if (!hasAsm && extension.Equals(".asm", StringComparison.OrdinalIgnoreCase))
+            {
+                hasAsm = true;
+            }
+
+            if (!hasAsm && extension.Equals(".s", StringComparison.OrdinalIgnoreCase))
+            {
+                hasAsm = true;
+            }
+
+            return (hasHelloWorld, hasLoremIpsum, hasPointer, hasAsm);
         }
         catch
         {
-            return (false, false);
+            return (false, false, false, false);
         }
     }
 
@@ -568,8 +892,10 @@ public sealed class TagSuggestionHeuristicsService
 
     private sealed record SourceSignalDetectionResult(
         string? HelloWorldEvidence,
-        string? LoremIpsumEvidence)
+        string? LoremIpsumEvidence,
+        string? PointerEvidence,
+        string? AsmEvidence)
     {
-        public static readonly SourceSignalDetectionResult None = new(null, null);
+        public static readonly SourceSignalDetectionResult None = new(null, null, null, null);
     }
 }

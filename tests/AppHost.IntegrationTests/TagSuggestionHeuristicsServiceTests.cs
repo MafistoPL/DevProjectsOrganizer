@@ -34,6 +34,7 @@ public sealed class TagSuggestionHeuristicsServiceTests
         result.Should().OnlyContain(item => item.Type == "AssignExisting");
         result.Should().OnlyContain(item => item.Source == "Heuristic");
         result.Select(item => item.TagName).Should().Contain(new[] { "vs-solution", "vs-project", "cpp", "native" });
+        result.Select(item => item.TagName).Should().NotContain("low-level");
     }
 
     [Fact]
@@ -157,6 +158,144 @@ public sealed class TagSuggestionHeuristicsServiceTests
             result.Should().Contain(item =>
                 item.TagName == "lorem-ipsum"
                 && item.Reason.Contains("code:lorem-ipsum", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Detect_adds_low_level_for_asm_extension_and_code_signal()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var asmPath = Path.Combine(tempDir, "entry.asm");
+            File.WriteAllText(
+                asmPath,
+                """
+                global _start
+                section .text
+                _start:
+                  mov eax, 1
+                  mov ebx, 0
+                  int 0x80
+                """);
+
+            var project = CreateProject(
+                markersJson: """["single-source-file"]""",
+                techHintsJson: """["native"]""",
+                extensionsSummary: "asm=1",
+                name: "asm-sample",
+                path: tempDir,
+                reason: "single file candidate: entry.asm");
+
+            var tags = new[]
+            {
+                CreateTag("low-level")
+            };
+
+            var sut = new TagSuggestionHeuristicsService();
+
+            var result = sut.Detect(project, tags);
+
+            result.Should().Contain(item =>
+                item.TagName == "low-level"
+                && item.Reason.Contains("asm", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Detect_adds_pointers_for_c_or_cpp_with_pointer_signals()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var sourcePath = Path.Combine(tempDir, "main.c");
+            File.WriteAllText(
+                sourcePath,
+                """
+                #include <stdio.h>
+                int main(void) {
+                    int value = 42;
+                    int *ptr = &value;
+                    printf("%d\n", *ptr);
+                    return 0;
+                }
+                """);
+
+            var project = CreateProject(
+                markersJson: """["main-source"]""",
+                techHintsJson: """["c"]""",
+                extensionsSummary: "c=1",
+                name: "pointer-sample",
+                path: tempDir,
+                reason: "single file candidate: main.c");
+
+            var tags = new[]
+            {
+                CreateTag("pointers")
+            };
+
+            var sut = new TagSuggestionHeuristicsService();
+
+            var result = sut.Detect(project, tags);
+
+            result.Should().Contain(item =>
+                item.TagName == "pointers"
+                && item.Reason.Contains("code:pointers", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Detect_adds_project_size_tag_based_on_line_count_bucket()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dpo-tag-heur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var sourcePath = Path.Combine(tempDir, "main.c");
+            var lines = Enumerable.Range(1, 120).Select(index => $"// line {index}");
+            File.WriteAllLines(sourcePath, lines);
+
+            var project = CreateProject(
+                markersJson: """["single-source-file"]""",
+                techHintsJson: """["c"]""",
+                extensionsSummary: "c=1",
+                name: "size-sample",
+                path: tempDir,
+                reason: "single file candidate: main.c");
+
+            var tags = new[]
+            {
+                CreateTag("lines-100-200")
+            };
+
+            var sut = new TagSuggestionHeuristicsService();
+
+            var result = sut.Detect(project, tags);
+
+            result.Should().Contain(item => item.TagName == "lines-100-200");
         }
         finally
         {
