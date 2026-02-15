@@ -71,6 +71,45 @@ public partial class MainWindow
         }
     }
 
+    private async Task HandleTagSuggestionsDeleteAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!TryGetTagSuggestionId(request.Payload, out var suggestionId))
+        {
+            SendError(request.Id, request.Type, "Missing tag suggestion id.");
+            return;
+        }
+
+        try
+        {
+            var store = new TagSuggestionStore(_dbContext);
+            var deleted = await store.DeleteRejectedAsync(suggestionId);
+            if (deleted)
+            {
+                SendEvent("tagSuggestions.changed", new
+                {
+                    reason = "tagSuggestion.deleted",
+                    id = suggestionId
+                });
+            }
+
+            SendResponse(request.Id, request.Type, new
+            {
+                id = suggestionId,
+                deleted
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task<IReadOnlyList<TagSuggestionDto>> MapTagSuggestionDtosAsync(IReadOnlyList<TagSuggestionEntity> entities)
     {
         if (_dbContext == null || entities.Count == 0)

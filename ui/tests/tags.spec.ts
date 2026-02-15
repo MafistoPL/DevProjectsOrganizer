@@ -207,4 +207,5 @@ test('tags page applies latest heuristics to all projects with confirmation', as
   await dialog.getByRole('button', { name: 'Run' }).click();
 
   await expect(page.getByTestId('tag-apply-heuristics-status')).toContainText('Processed 2/2');
+  await expect(page.getByTestId('tag-heuristics-regression-summary')).toContainText('Projects analyzed: 2');
 });

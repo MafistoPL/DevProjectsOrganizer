@@ -15,7 +15,7 @@ import {
 import {
   TagProjectsDialogComponent
 } from '../../components/tags/tag-projects-dialog/tag-projects-dialog.component';
-import { ProjectsService } from '../../services/projects.service';
+import { ProjectsService, TagHeuristicsRegressionReport } from '../../services/projects.service';
 import { TagsService, type TagItem } from '../../services/tags.service';
 
 @Component({
@@ -46,6 +46,7 @@ export class TagsPageComponent {
   editTagName = '';
   readonly isApplyHeuristicsBusy = signal(false);
   readonly applyHeuristicsStatus = signal('');
+  readonly heuristicsRegressionReport = signal<TagHeuristicsRegressionReport | null>(null);
 
   async addTag(): Promise<void> {
     try {
@@ -139,6 +140,7 @@ export class TagsPageComponent {
 
     this.isApplyHeuristicsBusy.set(true);
     this.applyHeuristicsStatus.set('Starting...');
+    this.heuristicsRegressionReport.set(null);
     try {
       const summary = await this.projectsService.runTagHeuristicsForAll((progress) => {
         this.applyHeuristicsStatus.set(
@@ -154,6 +156,7 @@ export class TagsPageComponent {
         );
       }
 
+      this.heuristicsRegressionReport.set(summary.regressionReport);
       this.snackBar.open(this.applyHeuristicsStatus(), undefined, { duration: 2200 });
     } catch (error) {
       this.applyHeuristicsStatus.set(this.getErrorMessage(error));

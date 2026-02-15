@@ -32,6 +32,7 @@ public partial class MainWindow
             ["tags.delete"] = HandleTagsDeleteAsync,
             ["tagSuggestions.list"] = HandleTagSuggestionsListAsync,
             ["tagSuggestions.setStatus"] = HandleTagSuggestionsSetStatusAsync,
+            ["tagSuggestions.delete"] = HandleTagSuggestionsDeleteAsync,
             ["suggestions.list"] = HandleSuggestionsListAsync,
             ["suggestions.setStatus"] = HandleSuggestionsSetStatusAsync,
             ["suggestions.delete"] = HandleSuggestionsDeleteAsync,

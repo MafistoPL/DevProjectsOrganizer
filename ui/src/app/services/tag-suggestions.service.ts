@@ -78,6 +78,12 @@ export class TagSuggestionsService {
     return pendingIds.length;
   }
 
+  async deleteSuggestion(id: string): Promise<void> {
+    await this.bridge.request<{ id: string; deleted: boolean }>('tagSuggestions.delete', { id });
+    const current = this.itemsSubject.getValue();
+    this.itemsSubject.next(current.filter((item) => item.id !== id));
+  }
+
   private upsert(item: TagSuggestionItem): void {
     const current = this.itemsSubject.getValue();
     const index = current.findIndex((entry) => entry.id === item.id);

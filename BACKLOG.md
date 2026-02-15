@@ -33,6 +33,11 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Tag heuristics + tag suggestions hardening:
+  * `Apply latest heuristics to all projects` no longer creates duplicates for already attached/semantically accepted tag suggestions.
+  * `Tag suggestions` now allow permanent delete of `Rejected` entries (archive cleanup).
+  * Global tag heuristics run now returns and displays regression report in `Tags` view, based on historical `Accepted`/`Rejected` decisions.
+  * Tests: AppHost integration (`TagSuggestionStore`), FE unit/component (`ProjectsService`, `TagsPage`, `TagSuggestionsService`, `TagSuggestionList`), and Playwright (`tags`, `suggestions`).
 * Added manual global action in `Tags` view for heuristics refresh:
   * CTA: `Apply latest heuristics to all projects`.
   * Runs heuristics sequentially for all existing projects and reports progress/status in GUI.

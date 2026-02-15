@@ -34,11 +34,32 @@ export type ProjectHeuristicsBatchProgress = {
   failed: number;
 };
 
+export type TagHeuristicsRegressionProjectReport = {
+  projectId: string;
+  projectName: string;
+  baselineAcceptedCount: number;
+  baselineRejectedCount: number;
+  acceptedMissingCount: number;
+  rejectedMissingCount: number;
+  addedCount: number;
+};
+
+export type TagHeuristicsRegressionReport = {
+  projectsAnalyzed: number;
+  baselineAcceptedCount: number;
+  baselineRejectedCount: number;
+  acceptedMissingCount: number;
+  rejectedMissingCount: number;
+  addedCount: number;
+  projects: TagHeuristicsRegressionProjectReport[];
+};
+
 export type ProjectHeuristicsBatchResult = {
   total: number;
   processed: number;
   failed: number;
   generatedTotal: number;
+  regressionReport: TagHeuristicsRegressionReport;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -74,11 +95,25 @@ export class ProjectsService {
     generatedCount: number;
     runId?: string;
     outputPath?: string;
+    regression?: {
+      baselineAcceptedCount: number;
+      baselineRejectedCount: number;
+      acceptedMissingCount: number;
+      rejectedMissingCount: number;
+      addedCount: number;
+    };
   }> {
     return await this.bridge.request<{
       generatedCount: number;
       runId?: string;
       outputPath?: string;
+      regression?: {
+        baselineAcceptedCount: number;
+        baselineRejectedCount: number;
+        acceptedMissingCount: number;
+        rejectedMissingCount: number;
+        addedCount: number;
+      };
     }>(
       'projects.runTagHeuristics',
       { projectId }
@@ -99,6 +134,12 @@ export class ProjectsService {
     let processed = 0;
     let failed = 0;
     let generatedTotal = 0;
+    const regressionProjects: TagHeuristicsRegressionProjectReport[] = [];
+    let regressionBaselineAcceptedCount = 0;
+    let regressionBaselineRejectedCount = 0;
+    let regressionAcceptedMissingCount = 0;
+    let regressionRejectedMissingCount = 0;
+    let regressionAddedCount = 0;
 
     for (const [index, project] of projects.entries()) {
       let generatedCount = 0;
@@ -106,6 +147,34 @@ export class ProjectsService {
         const result = await this.runTagHeuristics(project.id);
         generatedCount = result.generatedCount ?? 0;
         generatedTotal += generatedCount;
+
+        const regression = result.regression;
+        if (regression) {
+          regressionBaselineAcceptedCount += regression.baselineAcceptedCount;
+          regressionBaselineRejectedCount += regression.baselineRejectedCount;
+          regressionAcceptedMissingCount += regression.acceptedMissingCount;
+          regressionRejectedMissingCount += regression.rejectedMissingCount;
+          regressionAddedCount += regression.addedCount;
+          regressionProjects.push({
+            projectId: project.id,
+            projectName: project.name,
+            baselineAcceptedCount: regression.baselineAcceptedCount,
+            baselineRejectedCount: regression.baselineRejectedCount,
+            acceptedMissingCount: regression.acceptedMissingCount,
+            rejectedMissingCount: regression.rejectedMissingCount,
+            addedCount: regression.addedCount
+          });
+        } else {
+          regressionProjects.push({
+            projectId: project.id,
+            projectName: project.name,
+            baselineAcceptedCount: 0,
+            baselineRejectedCount: 0,
+            acceptedMissingCount: 0,
+            rejectedMissingCount: 0,
+            addedCount: 0
+          });
+        }
       } catch {
         failed += 1;
       } finally {
@@ -125,7 +194,16 @@ export class ProjectsService {
       total,
       processed,
       failed,
-      generatedTotal
+      generatedTotal,
+      regressionReport: {
+        projectsAnalyzed: regressionProjects.length,
+        baselineAcceptedCount: regressionBaselineAcceptedCount,
+        baselineRejectedCount: regressionBaselineRejectedCount,
+        acceptedMissingCount: regressionAcceptedMissingCount,
+        rejectedMissingCount: regressionRejectedMissingCount,
+        addedCount: regressionAddedCount,
+        projects: regressionProjects
+      }
     };
   }
 

@@ -48,7 +48,25 @@ class BridgeMock {
     }
 
     if (type === 'projects.runTagHeuristics') {
-      return { generatedCount: 2 } as T;
+      const projectId = (payload as any)?.projectId === 'proj-1' ? 'proj-1' : 'proj-2';
+      return {
+        generatedCount: 2,
+        regression: projectId === 'proj-1'
+          ? {
+              baselineAcceptedCount: 1,
+              baselineRejectedCount: 0,
+              acceptedMissingCount: 0,
+              rejectedMissingCount: 0,
+              addedCount: 1
+            }
+          : {
+              baselineAcceptedCount: 2,
+              baselineRejectedCount: 1,
+              acceptedMissingCount: 1,
+              rejectedMissingCount: 0,
+              addedCount: 0
+            }
+      } as T;
     }
 
     if (type === 'projects.runAiTagSuggestions') {
@@ -126,7 +144,35 @@ describe('ProjectsService', () => {
       total: 2,
       processed: 2,
       failed: 0,
-      generatedTotal: 4
+      generatedTotal: 4,
+      regressionReport: {
+        projectsAnalyzed: 2,
+        baselineAcceptedCount: 3,
+        baselineRejectedCount: 1,
+        acceptedMissingCount: 1,
+        rejectedMissingCount: 0,
+        addedCount: 1,
+        projects: [
+          {
+            projectId: 'proj-1',
+            projectName: 'dotnet-api',
+            baselineAcceptedCount: 1,
+            baselineRejectedCount: 0,
+            acceptedMissingCount: 0,
+            rejectedMissingCount: 0,
+            addedCount: 1
+          },
+          {
+            projectId: 'proj-2',
+            projectName: 'cpp-tree',
+            baselineAcceptedCount: 2,
+            baselineRejectedCount: 1,
+            acceptedMissingCount: 1,
+            rejectedMissingCount: 0,
+            addedCount: 0
+          }
+        ]
+      }
     });
 
     expect(progress).toEqual([

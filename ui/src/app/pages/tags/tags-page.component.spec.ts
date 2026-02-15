@@ -60,7 +60,26 @@ describe('TagsPageComponent', () => {
           total: 1,
           processed: 1,
           failed: 0,
-          generatedTotal: 2
+          generatedTotal: 2,
+          regressionReport: {
+            projectsAnalyzed: 1,
+            baselineAcceptedCount: 1,
+            baselineRejectedCount: 0,
+            acceptedMissingCount: 0,
+            rejectedMissingCount: 0,
+            addedCount: 1,
+            projects: [
+              {
+                projectId: 'proj-1',
+                projectName: 'dotnet-api',
+                baselineAcceptedCount: 1,
+                baselineRejectedCount: 0,
+                acceptedMissingCount: 0,
+                rejectedMissingCount: 0,
+                addedCount: 1
+              }
+            ]
+          }
         };
       })
     };
@@ -133,5 +152,7 @@ describe('TagsPageComponent', () => {
     expect(runAllHeuristicsSpy).toHaveBeenCalledTimes(1);
     const status = fixture.nativeElement.querySelector('[data-testid="tag-apply-heuristics-status"]');
     expect(status?.textContent).toContain('Processed 1/1');
+    const regression = fixture.nativeElement.querySelector('[data-testid="tag-heuristics-regression-report"]');
+    expect(regression?.textContent).toContain('Projects analyzed: 1');
   });
 });

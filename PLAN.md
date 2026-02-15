@@ -47,7 +47,9 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
   - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
 - **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
+- **Tag suggestions (archive):** odrzucone sugestie (`Rejected`) można trwale usuwać z archiwum (per-item) z poziomu GUI.
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
+- **Heurystyki tagów (dedupe):** ponowne uruchomienia nie generują duplikatów dla tagów już przypiętych do projektu ani dla semantycznie zaakceptowanych sugestii.
 - **Project delete flow:** `Project Organizer` ma potwierdzenie usuwania przez przepisanie nazwy projektu (walidacja FE + BE); po usunięciu źródłowa sugestia trafia do `Rejected` w archiwum.
 - **Project Organizer (tags):** karta projektu pokazuje przypięte tagi bezpośrednio pod metadanymi projektu.
 - **Tag heuristics progress:** uruchomienie `Run tag heuristics` publikuje eventy progresu i jest widoczne w GUI (sekcja `Tag heuristics runs` na zakładce Scan).
@@ -206,6 +208,7 @@ Główne zakładki:
 - **Tags**: działające CRUD (lista + add/edit/delete), z ochroną tagów systemowych (`Seeded` bez opcji `Delete`).
 - **Tags**: licznik użycia (`Projects N`) i modal z listą projektów przypiętych do wybranego taga.
 - **Tags**: globalna akcja `Apply latest heuristics to all projects` uruchamia heurystyki tagów dla wszystkich projektów z potwierdzeniem i statusem postępu w GUI.
+- **Tags / global apply heuristics**: po zakończeniu runa generowany jest raport regresji tag heurystyk oparty o historyczne decyzje `Accepted`/`Rejected` (summary + per-project w GUI).
 - **Recent**: last_viewed / last_opened.
 
 Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.

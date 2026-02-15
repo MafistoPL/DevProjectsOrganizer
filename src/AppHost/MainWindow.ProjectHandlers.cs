@@ -140,6 +140,7 @@ public partial class MainWindow
                 null,
                 null);
             var store = new TagSuggestionStore(_dbContext);
+            var regression = await store.AnalyzeRegressionForProjectAsync(project.Id, detected);
             var generated = await store.ReplaceForProjectAsync(project.Id, detected);
 
             PublishTagHeuristicsProgress(
@@ -184,6 +185,14 @@ public partial class MainWindow
                 projectId = project.Id,
                 action = "TagHeuristicsCompleted",
                 generatedCount = generated,
+                regression = new
+                {
+                    baselineAcceptedCount = regression.BaselineAcceptedCount,
+                    baselineRejectedCount = regression.BaselineRejectedCount,
+                    acceptedMissingCount = regression.AcceptedMissingCount,
+                    rejectedMissingCount = regression.RejectedMissingCount,
+                    addedCount = regression.AddedCount
+                },
                 outputPath,
                 finishedAt
             });

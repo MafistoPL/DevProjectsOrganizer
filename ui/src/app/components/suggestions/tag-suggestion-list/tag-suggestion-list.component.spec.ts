@@ -10,6 +10,7 @@ import { TagSuggestionsService } from '../../../services/tag-suggestions.service
 describe('TagSuggestionListComponent', () => {
   let fixture: ComponentFixture<TagSuggestionListComponent>;
   let setPendingSpy: ReturnType<typeof vi.fn>;
+  let deleteSuggestionSpy: ReturnType<typeof vi.fn>;
   let dialogOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
@@ -56,9 +57,11 @@ describe('TagSuggestionListComponent', () => {
         }
       ]),
       setStatus: vi.fn().mockResolvedValue(undefined),
-      setPendingStatusForAll: vi.fn().mockResolvedValue(1)
+      setPendingStatusForAll: vi.fn().mockResolvedValue(1),
+      deleteSuggestion: vi.fn().mockResolvedValue(undefined)
     };
     setPendingSpy = suggestionsServiceMock.setPendingStatusForAll;
+    deleteSuggestionSpy = suggestionsServiceMock.deleteSuggestion;
 
     const matDialogMock = {
       open: vi.fn()
@@ -151,5 +154,16 @@ describe('TagSuggestionListComponent', () => {
     fixture.componentInstance.sortKey = 'tagName';
     expect(fixture.componentInstance.visibleItems).toHaveLength(1);
     expect(fixture.componentInstance.visibleItems[0].tagName).toBe('angular');
+  });
+
+  it('allows deleting rejected suggestion', async () => {
+    fixture.componentInstance.scope = 'rejected';
+    fixture.detectChanges();
+
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="tag-suggest-delete-btn-ts-3"]');
+    button.click();
+    await fixture.whenStable();
+
+    expect(deleteSuggestionSpy).toHaveBeenCalledWith('ts-3');
   });
 });

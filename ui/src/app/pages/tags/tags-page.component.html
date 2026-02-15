@@ -94,4 +94,29 @@
       </div>
     </mat-card-content>
   </mat-card>
+
+  <mat-card class="regression-card" *ngIf="heuristicsRegressionReport()" data-testid="tag-heuristics-regression-report">
+    <mat-card-title>Tag heuristics regression report</mat-card-title>
+    <mat-card-content>
+      <div class="regression-summary-grid" data-testid="tag-heuristics-regression-summary">
+        <div><strong>Projects analyzed:</strong> {{ heuristicsRegressionReport()!.projectsAnalyzed }}</div>
+        <div><strong>Baseline accepted:</strong> {{ heuristicsRegressionReport()!.baselineAcceptedCount }}</div>
+        <div><strong>Baseline rejected:</strong> {{ heuristicsRegressionReport()!.baselineRejectedCount }}</div>
+        <div><strong>Accepted missing:</strong> {{ heuristicsRegressionReport()!.acceptedMissingCount }}</div>
+        <div><strong>Rejected missing:</strong> {{ heuristicsRegressionReport()!.rejectedMissingCount }}</div>
+        <div><strong>Added:</strong> {{ heuristicsRegressionReport()!.addedCount }}</div>
+      </div>
+
+      <div class="regression-projects">
+        <div class="regression-project-row" *ngFor="let project of heuristicsRegressionReport()!.projects">
+          <div class="regression-project-name">{{ project.projectName }}</div>
+          <div class="regression-project-counters">
+            <span>Accepted missing: {{ project.acceptedMissingCount }}</span>
+            <span>Rejected missing: {{ project.rejectedMissingCount }}</span>
+            <span>Added: {{ project.addedCount }}</span>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </section>

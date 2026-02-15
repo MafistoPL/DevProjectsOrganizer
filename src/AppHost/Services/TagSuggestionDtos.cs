@@ -24,3 +24,11 @@ public sealed record TagSuggestionDto(
     DateTimeOffset CreatedAt,
     string Status
 );
+
+public sealed record TagSuggestionRegressionProjectReport(
+    int BaselineAcceptedCount,
+    int BaselineRejectedCount,
+    int AcceptedMissingCount,
+    int RejectedMissingCount,
+    int AddedCount
+);

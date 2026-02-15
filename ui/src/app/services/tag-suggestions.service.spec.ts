@@ -54,6 +54,16 @@ class BridgeMock {
       return item as T;
     }
 
+    if (type === 'tagSuggestions.delete') {
+      const index = this.items.findIndex((entry) => entry.id === payload.id);
+      if (index >= 0) {
+        this.items.splice(index, 1);
+        return { id: payload.id, deleted: true } as T;
+      }
+
+      return { id: payload.id, deleted: false } as T;
+    }
+
     throw new Error(`Unexpected request: ${type}`);
   }
 }
@@ -80,5 +90,18 @@ describe('TagSuggestionsService', () => {
 
     expect(updated).toBe(2);
     expect(bridge.requests.filter((item) => item.type === 'tagSuggestions.setStatus')).toHaveLength(2);
+  });
+
+  it('deleteSuggestion removes suggestion from local state and sends delete request', async () => {
+    const bridge = new BridgeMock();
+    const sut = new TagSuggestionsService(bridge as any);
+    await sut.load();
+
+    await sut.deleteSuggestion('ts-1');
+
+    expect(bridge.requests).toContainEqual({
+      type: 'tagSuggestions.delete',
+      payload: { id: 'ts-1' }
+    });
   });
 });

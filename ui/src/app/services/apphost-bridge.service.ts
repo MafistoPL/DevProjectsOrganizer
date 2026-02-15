@@ -75,6 +75,14 @@ type MockTagSuggestion = {
   status: string;
 };
 
+type MockTagHeuristicsRegression = {
+  baselineAcceptedCount: number;
+  baselineRejectedCount: number;
+  acceptedMissingCount: number;
+  rejectedMissingCount: number;
+  addedCount: number;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AppHostBridgeService {
   private readonly pending = new Map<string, PendingRequest>();
@@ -343,7 +351,8 @@ export class AppHostBridgeService {
           generatedCount: null
         });
 
-        const generated = this.generateMockTagSuggestionsForProject(project);
+        const heuristicsResult = this.generateMockTagSuggestionsForProject(project);
+        const generated = heuristicsResult.generatedCount;
 
         this.emitTagHeuristicsProgress({
           runId,
@@ -382,6 +391,7 @@ export class AppHostBridgeService {
           projectId,
           action: 'TagHeuristicsCompleted',
           generatedCount: generated,
+          regression: heuristicsResult.regression,
           outputPath: `C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-tag-heur-${runId}.json`,
           finishedAt
         } as T);
@@ -557,6 +567,29 @@ export class AppHostBridgeService {
         });
 
         return Promise.resolve(updated as T);
+      }
+      case 'tagSuggestions.delete': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing tag suggestion id.'));
+        }
+
+        const item = this.mockTagSuggestions.find((entry) => entry.id === id);
+        if (!item) {
+          return Promise.resolve({ id, deleted: false } as T);
+        }
+
+        if (String(item.status).toLowerCase() !== 'rejected') {
+          return Promise.reject(new Error('Only rejected tag suggestions can be deleted.'));
+        }
+
+        this.mockTagSuggestions = this.mockTagSuggestions.filter((entry) => entry.id !== id);
+        this.saveMockTagSuggestions();
+        this.eventSubject.next({
+          type: 'tagSuggestions.changed',
+          data: { reason: 'tagSuggestion.deleted', id }
+        });
+        return Promise.resolve({ id, deleted: true } as T);
       }
       case 'suggestions.list': {
         const items = [...this.mockSuggestions].sort(
@@ -1207,7 +1240,10 @@ export class AppHostBridgeService {
     ];
   }
 
-  private generateMockTagSuggestionsForProject(project: MockProject): number {
+  private generateMockTagSuggestionsForProject(project: MockProject): {
+    generatedCount: number;
+    regression: MockTagHeuristicsRegression;
+  } {
     const candidates = this.mockTags.map((tag) => tag.name.toLowerCase());
     const derived: Array<{ tagName: string; confidence: number; reason: string }> = [];
 
@@ -1248,19 +1284,68 @@ export class AppHostBridgeService {
       tryAdd('winapi', 0.74, 'path/reason:winapi');
     }
 
+    const recomputedKeys = new Set<string>();
+    for (const item of derived) {
+      const tag = this.mockTags.find((entry) => entry.name.toLowerCase() === item.tagName);
+      if (!tag) {
+        continue;
+      }
+      recomputedKeys.add(this.createMockTagSuggestionDecisionKey(project.id, tag.id, tag.name));
+    }
+
+    const latestHistoryByDecisionKey = this.mockTagSuggestions
+      .filter((entry) => entry.projectId === project.id && entry.status.toLowerCase() !== 'pending')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .reduce((acc, entry) => {
+        const key = this.createMockTagSuggestionDecisionKey(
+          entry.projectId,
+          entry.tagId,
+          entry.tagName
+        );
+        if (!acc.has(key)) {
+          acc.set(key, entry.status.toLowerCase());
+        }
+        return acc;
+      }, new Map<string, string>());
+
+    const baselineAcceptedCount = Array.from(latestHistoryByDecisionKey.values()).filter((status) => status === 'accepted').length;
+    const baselineRejectedCount = Array.from(latestHistoryByDecisionKey.values()).filter((status) => status === 'rejected').length;
+
+    const acceptedMissingCount = Array.from(latestHistoryByDecisionKey.entries()).filter(
+      ([key, status]) => status === 'accepted' && !recomputedKeys.has(key)
+    ).length;
+    const rejectedMissingCount = Array.from(latestHistoryByDecisionKey.entries()).filter(
+      ([key, status]) => status === 'rejected' && !recomputedKeys.has(key)
+    ).length;
+    const addedCount = Array.from(recomputedKeys).filter(
+      (key) => !latestHistoryByDecisionKey.has(key)
+    ).length;
+
+    const attachedTagIds = this.mockProjectTags
+      .filter((item) => item.projectId === project.id)
+      .map((item) => item.tagId);
+    const attachedTagIdSet = new Set(attachedTagIds);
+
+    this.mockTagSuggestions = this.mockTagSuggestions.filter((entry) => !(
+      entry.projectId === project.id
+      && String(entry.status).toLowerCase() === 'pending'
+      && String(entry.source).toLowerCase() === 'heuristic'
+    ));
+
+    let generatedCount = 0;
     for (const item of derived) {
       const tag = this.mockTags.find((entry) => entry.name.toLowerCase() === item.tagName);
       if (!tag) {
         continue;
       }
 
-      const duplicate = this.mockTagSuggestions.some(
-        (entry) =>
-          entry.projectId === project.id &&
-          entry.tagId === tag.id &&
-          entry.status.toLowerCase() === 'pending'
-      );
-      if (duplicate) {
+      if (attachedTagIdSet.has(tag.id)) {
+        continue;
+      }
+
+      const decisionKey = this.createMockTagSuggestionDecisionKey(project.id, tag.id, tag.name);
+      const latestStatus = latestHistoryByDecisionKey.get(decisionKey);
+      if (latestStatus === 'accepted' || latestStatus === 'rejected') {
         continue;
       }
 
@@ -1280,10 +1365,25 @@ export class AppHostBridgeService {
         },
         ...this.mockTagSuggestions
       ];
+      generatedCount += 1;
     }
 
     this.saveMockTagSuggestions();
-    return derived.length;
+    return {
+      generatedCount,
+      regression: {
+        baselineAcceptedCount,
+        baselineRejectedCount,
+        acceptedMissingCount,
+        rejectedMissingCount,
+        addedCount
+      }
+    };
+  }
+
+  private createMockTagSuggestionDecisionKey(projectId: string, tagId: string | null, tagName: string): string {
+    const tagPart = tagId && tagId.trim().length > 0 ? tagId.trim().toLowerCase() : tagName.trim().toLowerCase();
+    return `${projectId.trim().toLowerCase()}::assignexisting::${tagPart}`;
   }
 
   private createMockProjectKey(path: string, kind: string): string {

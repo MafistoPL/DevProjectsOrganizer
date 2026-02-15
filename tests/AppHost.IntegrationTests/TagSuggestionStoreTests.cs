@@ -170,6 +170,208 @@ public sealed class TagSuggestionStoreTests
         }
     }
 
+    [Fact]
+    public async Task ReplaceForProjectAsync_skips_already_attached_or_historically_accepted()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var (project, tag) = await SeedProjectAndTagAsync(db, "cpp");
+            var now = DateTimeOffset.UtcNow;
+
+            db.ProjectTags.Add(new ProjectTagEntity
+            {
+                ProjectId = project.Id,
+                TagId = tag.Id,
+                CreatedAt = now.AddMinutes(-5)
+            });
+
+            db.TagSuggestions.Add(new TagSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = project.Id,
+                TagId = tag.Id,
+                SuggestedTagName = tag.Name,
+                Type = TagSuggestionType.AssignExisting,
+                Source = TagSuggestionSource.Heuristic,
+                Confidence = 0.9,
+                Reason = "marker:.vcxproj",
+                Fingerprint = "fp-accepted",
+                CreatedAt = now.AddMinutes(-4),
+                Status = TagSuggestionStatus.Accepted
+            });
+            await db.SaveChangesAsync();
+
+            var store = new TagSuggestionStore(db);
+            var inserted = await store.ReplaceForProjectAsync(project.Id,
+                [
+                    new DetectedTagSuggestion(
+                        tag.Id,
+                        tag.Name,
+                        TagSuggestionType.AssignExisting.ToString(),
+                        TagSuggestionSource.Heuristic.ToString(),
+                        0.82,
+                        "hint:cpp",
+                        "fp-new",
+                        now)
+                ]);
+
+            inserted.Should().Be(0);
+
+            await using var checkDb = new AppDbContext(options);
+            var pending = await checkDb.TagSuggestions
+                .AsNoTracking()
+                .Where(item => item.ProjectId == project.Id && item.Status == TagSuggestionStatus.Pending)
+                .ToListAsync();
+            pending.Should().BeEmpty();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task DeleteRejectedAsync_allows_only_rejected_items()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var (project, tag) = await SeedProjectAndTagAsync(db, "native");
+            var rejected = new TagSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = project.Id,
+                TagId = tag.Id,
+                SuggestedTagName = tag.Name,
+                Type = TagSuggestionType.AssignExisting,
+                Source = TagSuggestionSource.Heuristic,
+                Confidence = 0.75,
+                Reason = "marker:.vcxproj",
+                Fingerprint = "fp-rejected-delete",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                Status = TagSuggestionStatus.Rejected
+            };
+            var pending = new TagSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = project.Id,
+                TagId = tag.Id,
+                SuggestedTagName = tag.Name,
+                Type = TagSuggestionType.AssignExisting,
+                Source = TagSuggestionSource.Heuristic,
+                Confidence = 0.78,
+                Reason = "hint:cpp",
+                Fingerprint = "fp-pending-delete",
+                CreatedAt = DateTimeOffset.UtcNow,
+                Status = TagSuggestionStatus.Pending
+            };
+            db.TagSuggestions.AddRange(rejected, pending);
+            await db.SaveChangesAsync();
+
+            var store = new TagSuggestionStore(db);
+            var deleted = await store.DeleteRejectedAsync(rejected.Id);
+            deleted.Should().BeTrue();
+
+            var deletePending = async () => await store.DeleteRejectedAsync(pending.Id);
+            await deletePending.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Only rejected tag suggestions can be deleted.");
+
+            await using var checkDb = new AppDbContext(options);
+            (await checkDb.TagSuggestions.AnyAsync(item => item.Id == rejected.Id)).Should().BeFalse();
+            (await checkDb.TagSuggestions.AnyAsync(item => item.Id == pending.Id)).Should().BeTrue();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task AnalyzeRegressionForProjectAsync_counts_missing_and_added_against_latest_decisions()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var (project, cppTag) = await SeedProjectAndTagAsync(db, "cpp");
+            var nativeTag = new TagEntity
+            {
+                Id = Guid.NewGuid(),
+                Name = "native",
+                NormalizedName = "native",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.Tags.Add(nativeTag);
+            await db.SaveChangesAsync();
+
+            var now = DateTimeOffset.UtcNow;
+            db.TagSuggestions.AddRange(
+                new TagSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ProjectId = project.Id,
+                    TagId = cppTag.Id,
+                    SuggestedTagName = cppTag.Name,
+                    Type = TagSuggestionType.AssignExisting,
+                    Source = TagSuggestionSource.Heuristic,
+                    Confidence = 0.86,
+                    Reason = "accepted baseline",
+                    Fingerprint = "fp-a1",
+                    CreatedAt = now.AddMinutes(-3),
+                    Status = TagSuggestionStatus.Accepted
+                },
+                new TagSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ProjectId = project.Id,
+                    TagId = nativeTag.Id,
+                    SuggestedTagName = nativeTag.Name,
+                    Type = TagSuggestionType.AssignExisting,
+                    Source = TagSuggestionSource.Heuristic,
+                    Confidence = 0.66,
+                    Reason = "rejected baseline",
+                    Fingerprint = "fp-r1",
+                    CreatedAt = now.AddMinutes(-2),
+                    Status = TagSuggestionStatus.Rejected
+                });
+            await db.SaveChangesAsync();
+
+            var store = new TagSuggestionStore(db);
+            var report = await store.AnalyzeRegressionForProjectAsync(project.Id,
+                [
+                    new DetectedTagSuggestion(
+                        cppTag.Id,
+                        cppTag.Name,
+                        TagSuggestionType.AssignExisting.ToString(),
+                        TagSuggestionSource.Heuristic.ToString(),
+                        0.9,
+                        "still detected",
+                        "fp-a2",
+                        now),
+                    new DetectedTagSuggestion(
+                        null,
+                        "hello-world",
+                        TagSuggestionType.AssignExisting.ToString(),
+                        TagSuggestionSource.Heuristic.ToString(),
+                        0.71,
+                        "new detected",
+                        "fp-new",
+                        now)
+                ]);
+
+            report.BaselineAcceptedCount.Should().Be(1);
+            report.BaselineRejectedCount.Should().Be(1);
+            report.AcceptedMissingCount.Should().Be(0);
+            report.RejectedMissingCount.Should().Be(1);
+            report.AddedCount.Should().Be(1);
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
     private static async Task<(ProjectEntity Project, TagEntity Tag)> SeedProjectAndTagAsync(AppDbContext db, string tagName)
     {
         var now = DateTimeOffset.UtcNow;

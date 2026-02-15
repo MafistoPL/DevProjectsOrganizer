@@ -25,6 +25,50 @@
   min-height: 220px;
 }
 
+.regression-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.regression-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.regression-summary-grid > div {
+  border: 1px solid #e7ecf1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.regression-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.regression-project-row {
+  border: 1px solid #e7ecf1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.regression-project-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.regression-project-counters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 13px;
+}
+
 .empty {
   color: #5f6368;
 }
@@ -110,5 +154,9 @@
 
   .edit-input {
     grid-column: auto;
+  }
+
+  .regression-summary-grid {
+    grid-template-columns: 1fr;
   }
 }

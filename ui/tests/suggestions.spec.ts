@@ -963,3 +963,21 @@ test('tag suggestions accept all requires confirmation dialog', async ({ page })
   await secondTagDialog.getByRole('button', { name: 'Accept' }).click();
   await expect(page.locator('mat-dialog-container')).toHaveCount(0);
 });
+
+test('tag suggestions rejected scope allows permanent delete', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const tagScope = page.locator('app-tag-suggestion-list');
+  const firstTagCard = tagScope.locator('.suggestion-card').first();
+  await firstTagCard.locator('.header-row').click();
+  await firstTagCard.getByRole('button', { name: /^Reject$/ }).click();
+
+  await page.getByTestId('tag-suggest-scope').getByText('Rejected').click();
+  await expect(tagScope.locator('.status[data-status="rejected"]')).toHaveCount(1);
+
+  const rejectedCard = tagScope.locator('.suggestion-card').first();
+  await page.getByTestId('tag-suggest-layout').getByText('Grid').click();
+  await rejectedCard.locator('[data-testid^="tag-suggest-delete-btn-"]').click();
+
+  await expect(tagScope.locator('.status[data-status="rejected"]')).toHaveCount(0);
+});

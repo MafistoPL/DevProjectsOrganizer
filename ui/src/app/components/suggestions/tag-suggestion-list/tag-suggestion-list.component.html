@@ -164,6 +164,15 @@
         >
           Reject
         </button>
+        <button
+          mat-stroked-button
+          color="warn"
+          *ngIf="item.status === 'rejected'"
+          (click)="deleteSuggestion(item)"
+          [attr.data-testid]="'tag-suggest-delete-btn-' + item.id"
+        >
+          Delete
+        </button>
       </div>
     </div>
   </mat-card>

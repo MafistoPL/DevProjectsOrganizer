@@ -104,6 +104,15 @@ export class TagSuggestionListComponent {
     await this.suggestionsService.setStatus(item.id, 'rejected');
   }
 
+  async deleteSuggestion(item: TagSuggestionItem): Promise<void> {
+    if (item.status !== 'rejected') {
+      return;
+    }
+
+    await this.suggestionsService.deleteSuggestion(item.id);
+    this.snackBar.open('Tag suggestion deleted', undefined, { duration: 1200 });
+  }
+
   async acceptAll(): Promise<void> {
     const confirmed = await this.confirmBulkAction(
       'Accept all tag suggestions',
