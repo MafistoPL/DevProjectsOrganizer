@@ -50,7 +50,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
 - **Tags (reprocessing trigger):** `tags.add` tworzy tylko wpis taga; nie uruchamia automatycznie heurystyk ani AI backfill.
-- **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
+- **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów systemowych (`isSystem=true`); sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
   - Run heurystyk jest wyłącznie manualny (akcje usera: post-accept dialog, `Project Organizer`, globalne `Tags`).
   - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
   - `low-level` jest wykrywany jako sygnał ASM (nie ogólny sygnał C/C++).
@@ -123,7 +123,7 @@ Heurystyki tagów (v1):
 - markery i histogram rozszerzeń,
 - nazwy katalogów (np. `course`, `tutorial`, `katas`),
 - struktura (`src/`, `tests/`).
-- heurystyki **nie tworzą nowych tagów**; generują tylko sugestie przypięcia istniejących tagów (`AssignExisting`).
+- heurystyki **nie tworzą nowych tagów**; generują tylko sugestie przypięcia istniejących tagów systemowych (`AssignExisting`).
 - status flow sugestii tagów: `Pending` -> `Accepted`/`Rejected`; `Accepted` podpina tag do projektu.
 - deduplikacja: ten sam kandydat (`project + tag + fingerprint`) nie jest dublowany; historycznie odrzucony fingerprint jest tłumiony przy kolejnych runach heurystyk.
 
@@ -168,7 +168,7 @@ AI (opcjonalnie, później):
 Tag governance (docelowo):
 - `System tags` (seedowane pod heurystyki): niedeletowalne w UI.
 - `Custom tags` (dodane ręcznie lub utworzone po akceptacji sugestii AI): deletowalne.
-- Heurystyki działają na słowniku tagów systemowych + istniejących tagach użytkownika, ale `CreateNew` pozostaje domeną AI.
+- Heurystyki działają wyłącznie na słowniku tagów systemowych; tagi użytkownika są obsługiwane ścieżką manualną/AI (`CreateNew` pozostaje domeną AI).
 
 Backfill (current vs target):
 - Obecnie wdrożone:

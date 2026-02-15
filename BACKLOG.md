@@ -11,9 +11,6 @@
      * Dodać/potwierdzić manualną akcję dopasowania tagów utworzonych przez użytkownika do istniejących projektów przez AI.
      * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
      * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
-3. Zwiększyć głębokość próbek treści skanu.
-     * Zwiększyć liczbę próbkowanych linii na plik z `30` do `100` albo zrobić to konfigurowalne przy starcie skanu.
-     * Jeśli konfigurowalne: wystawić opcję w Scan UI, utrwalać w metadanych scan request/snapshot i zabezpieczyć testami.
 
 ## Wkrótce (2-4 tygodnie)
 * Pre-commit: zweryfikować konfigurację w dokumentacji (`core.hooksPath=.githooks`) dla każdego klonu/środowiska.

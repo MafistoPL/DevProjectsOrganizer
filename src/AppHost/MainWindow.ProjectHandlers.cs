@@ -407,6 +407,7 @@ public partial class MainWindow
             PublishTagHeuristicsProgress(runId, project, "Running", 10, "Loading tags", startedAt, null, null);
             var tags = await _dbContext.Tags
                 .AsNoTracking()
+                .Where(item => item.IsSystem)
                 .ToListAsync();
 
             PublishTagHeuristicsProgress(runId, project, "Running", 40, "Detecting tag suggestions", startedAt, null, null);

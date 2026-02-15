@@ -1,6 +1,10 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Ograniczenie reprocessingu heurystyk tagów do tagów systemowych:
+  * `projects.runTagHeuristics` pobiera teraz wyłącznie tagi z `isSystem = true`.
+  * Heurystyki nie wykonują automatycznego backfillu dla tagów custom.
+  * Zaktualizowano dokumentację bieżącego zachowania (`README.md`, `PLAN.md`).
 * Rozszerzenie heurystyk i próbek treści skanu:
   * Zwiększono limit próbek treści skanu z `30` do `100` linii na plik.
   * Dodano heurystykę wykrywania `winmain()`/`WINMAIN` w kodzie źródłowym.
