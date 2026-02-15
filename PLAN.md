@@ -38,6 +38,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Scan UI (root selection):** każdy root ma checkbox do zbiorczego reskanu; akcja `Rescan selected roots` uruchamia `scan.start` tylko dla zaznaczonych rootów (zastępuje wcześniejszy placeholder `Import roots`), a po zaznaczeniu roota pojawia się per-root input `Depth limit` przekazywany do payloadu skanu; zaznaczenia rootów i `Depth limit` są trwałe między restartami aplikacji.
+- **Scan UI (live results selection):** `Live results` są filtrowane po ręcznie wybranym skanie z karty `Active scans` (działa dla skanów aktywnych i zakończonych).
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 - **Project Organizer (tag filter):** lista projektów wspiera podstawowe filtrowanie po wielu tagach (AND / iloczyn).

@@ -1,8 +1,11 @@
 <mat-card class="panel" data-testid="live-results-card">
   <mat-card-title>Live results</mat-card-title>
   <mat-card-content data-testid="live-results-content">
-    <div class="live-results-list">
-      <app-project-suggestion-list mode="live" />
+    <div class="empty" *ngIf="!selectedScanId" data-testid="live-results-empty-selection">
+      Select an active or completed scan to view related results.
+    </div>
+    <div class="live-results-list" *ngIf="selectedScanId">
+      <app-project-suggestion-list mode="live" [liveScanSessionId]="selectedScanId" />
     </div>
   </mat-card-content>
 </mat-card>

@@ -36,6 +36,14 @@
   gap: 8px;
   padding-bottom: 12px;
   border-bottom: 1px solid #edf0f2;
+  border-left: 3px solid transparent;
+  padding-left: 8px;
+}
+
+.scan-item.is-selected {
+  border-left-color: #1565c0;
+  background: linear-gradient(90deg, #e3f2fd 0%, rgba(227, 242, 253, 0) 85%);
+  border-radius: 6px;
 }
 
 .scan-item:last-child {

@@ -1,5 +1,5 @@
 import { AsyncPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -25,6 +25,9 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
 })
 export class ScanStatusComponent {
   private static readonly terminalStates = new Set(['Completed', 'Failed', 'Stopped']);
+  @Input() selectedScanId: string | null = null;
+  @Output() readonly selectedScanIdChange = new EventEmitter<string | null>();
+
   readonly scans$: Observable<ScanSessionView[]>;
   readonly tagHeuristicsRuns$: Observable<TagHeuristicsRun[]>;
 
@@ -55,6 +58,15 @@ export class ScanStatusComponent {
 
   canStop(scan: ScanSessionView): boolean {
     return !ScanStatusComponent.terminalStates.has(scan.state);
+  }
+
+  isSelected(scan: ScanSessionView): boolean {
+    return this.selectedScanId === scan.id;
+  }
+
+  selectScan(scan: ScanSessionView): void {
+    const nextId = this.selectedScanId === scan.id ? null : scan.id;
+    this.selectedScanIdChange.emit(nextId);
   }
 
   async clearScan(scan: ScanSessionView): Promise<void> {

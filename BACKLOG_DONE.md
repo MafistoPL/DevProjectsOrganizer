@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Scan UI: `Live results` powiązano z wybranym skanem:
+  * Na liście `Active scans` dodano wybór skanu (`Select for live results`), także dla skanów zakończonych.
+  * `Live results` wyświetla sugestie tylko dla zaznaczonego `scanSessionId`.
+  * Dodano stany puste: brak wybranego skanu oraz brak oczekujących sugestii dla wybranego skanu.
+  * Dodano testy: FE unit (`ProjectSuggestionListComponent`) oraz Playwright (`scan.spec.ts`, `scan-layout.spec.ts`).
 * Scan UI: trwałość zaznaczeń rootów między restartami:
   * Zaznaczone checkboxy rootów są persystowane i odtwarzane po restarcie aplikacji.
   * `Depth limit` ustawiony per root jest persystowany i odtwarzany po restarcie aplikacji.

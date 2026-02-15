@@ -1,4 +1,4 @@
-import { Component, computed, Signal } from '@angular/core';
+import { Component, Signal, computed, effect } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -9,7 +9,7 @@ import { ScanRootListComponent } from '../../components/scan/scan-root-list/scan
 import { ScanStartDialogComponent } from '../../components/scan/scan-start-dialog/scan-start-dialog.component';
 import { ScanStatusComponent } from '../../components/scan/scan-status/scan-status.component';
 import { RootsService } from '../../services/roots.service';
-import { ScanService } from '../../services/scan.service';
+import { ScanService, type ScanSessionView } from '../../services/scan.service';
 
 @Component({
   selector: 'app-scan-page',
@@ -26,7 +26,9 @@ import { ScanService } from '../../services/scan.service';
 })
 export class ScanPageComponent {
   private readonly selectedRootIds: Signal<string[]>;
+  private readonly scans: Signal<ScanSessionView[]>;
   readonly selectedRootCount: Signal<number>;
+  selectedScanId: string | null = null;
 
   constructor(
     private readonly dialog: MatDialog,
@@ -37,7 +39,25 @@ export class ScanPageComponent {
     this.selectedRootIds = toSignal(this.rootsService.selectedRootIds$, {
       initialValue: [] as string[]
     });
+    this.scans = toSignal(this.scanService.scans$, {
+      initialValue: [] as ScanSessionView[]
+    });
     this.selectedRootCount = computed(() => this.selectedRootIds().length);
+    effect(() => {
+      const scans = this.scans();
+      if (!this.selectedScanId) {
+        return;
+      }
+
+      const stillExists = scans.some((item) => item.id === this.selectedScanId);
+      if (!stillExists) {
+        this.selectedScanId = null;
+      }
+    });
+  }
+
+  setSelectedScan(scanId: string | null): void {
+    this.selectedScanId = scanId;
   }
 
   openStartDialog(): void {

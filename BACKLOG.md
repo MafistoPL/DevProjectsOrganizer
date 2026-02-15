@@ -12,8 +12,6 @@
      * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
      * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
 3. Dopracować zachowanie `Scan` i `Live results`:
-     * Trwałość zaznaczeń checkboxów rootów między restartami aplikacji.
-     * `Live results` mają pokazywać elementy po zaznaczeniu aktywnego/zakończonego skanu.
      * Automatyczny `Rescan selected roots` przy starcie aplikacji.
 
 ## Wkrótce (2-4 tygodnie)

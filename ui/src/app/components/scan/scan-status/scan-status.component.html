@@ -2,7 +2,13 @@
   <mat-card-title class="panel-title panel-title--status">Active scans</mat-card-title>
   <mat-card-content class="status-content">
     <div class="empty" *ngIf="(scans$ | async)?.length === 0">No active scans yet.</div>
-    <div class="scan-item" *ngFor="let scan of scans$ | async" [attr.data-state]="scan.state">
+    <div
+      class="scan-item"
+      *ngFor="let scan of scans$ | async"
+      [class.is-selected]="isSelected(scan)"
+      [attr.data-state]="scan.state"
+      [attr.data-testid]="'scan-item-' + scan.id"
+    >
       <div class="scan-header">
         <div class="scan-title">
           <strong>{{ scan.rootPath }}</strong>
@@ -39,6 +45,14 @@
         [value]="scan.progress"
       ></mat-progress-bar>
       <div class="scan-actions">
+        <button
+          mat-stroked-button
+          [color]="isSelected(scan) ? 'primary' : undefined"
+          [attr.data-testid]="'scan-select-btn-' + scan.id"
+          (click)="selectScan(scan)"
+        >
+          {{ isSelected(scan) ? 'Selected' : 'Select for live results' }}
+        </button>
         <button mat-stroked-button *ngIf="scan.state === 'Running'" (click)="pause(scan)">
           Pause
         </button>

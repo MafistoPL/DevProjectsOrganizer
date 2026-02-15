@@ -102,3 +102,89 @@ test('rescan selected roots queues scan only for checked roots', async ({ page }
   await expect(statusCard).toContainText('depth-3');
   await expect(statusCard).not.toContainText('D:\\code');
 });
+
+test('live results are shown after selecting an active or completed scan', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-running-a',
+          rootPath: 'D:\\code',
+          mode: 'roots',
+          state: 'Running',
+          disk: 'D:',
+          currentPath: 'D:\\code\\dotnet-api\\Program.cs',
+          filesScanned: 10,
+          totalFiles: 40,
+          queueReason: null,
+          outputPath: null
+        },
+        {
+          id: 'scan-completed-b',
+          rootPath: 'C:\\src',
+          mode: 'roots',
+          state: 'Completed',
+          disk: 'C:',
+          currentPath: 'C:\\src\\c-labs\\main.c',
+          filesScanned: 20,
+          totalFiles: 20,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-completed-b.json'
+        }
+      ])
+    );
+    localStorage.setItem(
+      'mockSuggestions',
+      JSON.stringify([
+        {
+          id: 'sg-a',
+          scanSessionId: 'scan-running-a',
+          rootPath: 'D:\\code',
+          name: 'dotnet-api',
+          score: 0.88,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\dotnet-api',
+          reason: '.sln + csproj markers',
+          extensionsSummary: 'cs=142',
+          markers: ['.sln'],
+          techHints: ['csharp'],
+          createdAt: '2026-01-01T12:00:00.000Z',
+          status: 'Pending'
+        },
+        {
+          id: 'sg-b',
+          scanSessionId: 'scan-completed-b',
+          rootPath: 'C:\\src',
+          name: 'c-labs',
+          score: 0.73,
+          kind: 'Collection',
+          path: 'C:\\src\\c-labs',
+          reason: 'ext histogram',
+          extensionsSummary: 'c=58',
+          markers: ['Makefile'],
+          techHints: ['c'],
+          createdAt: '2026-01-01T12:10:00.000Z',
+          status: 'Pending'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  const liveResultsCard = page.getByTestId('live-results-card');
+  const liveProjectNames = liveResultsCard.getByTestId('project-name');
+
+  await expect(page.getByTestId('live-results-empty-selection')).toBeVisible();
+  await expect(liveProjectNames.filter({ hasText: 'dotnet-api' })).toHaveCount(0);
+  await expect(liveProjectNames.filter({ hasText: 'c-labs' })).toHaveCount(0);
+
+  await page.getByTestId('scan-select-btn-scan-running-a').click();
+  await expect(liveProjectNames.filter({ hasText: 'dotnet-api' })).toHaveCount(1);
+  await expect(liveProjectNames.filter({ hasText: 'c-labs' })).toHaveCount(0);
+
+  await page.getByTestId('scan-select-btn-scan-completed-b').click();
+  await expect(liveProjectNames.filter({ hasText: 'c-labs' })).toHaveCount(1);
+  await expect(liveProjectNames.filter({ hasText: 'dotnet-api' })).toHaveCount(0);
+});

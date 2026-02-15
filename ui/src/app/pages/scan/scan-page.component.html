@@ -20,8 +20,11 @@
 
   <div class="scan-grid">
     <app-scan-root-list />
-    <app-scan-status />
+    <app-scan-status
+      [selectedScanId]="selectedScanId"
+      (selectedScanIdChange)="setSelectedScan($event)"
+    />
   </div>
 
-  <app-scan-results />
+  <app-scan-results [selectedScanId]="selectedScanId" />
 </section>

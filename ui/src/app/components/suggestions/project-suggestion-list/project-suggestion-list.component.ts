@@ -42,6 +42,7 @@ export type ProjectSuggestionsScope = 'pending' | 'accepted' | 'rejected';
 })
 export class ProjectSuggestionListComponent {
   @Input() mode: 'live' | 'suggestions' = 'live';
+  @Input() liveScanSessionId: string | null = null;
   @Output() scopeChange = new EventEmitter<ProjectSuggestionsScope>();
 
   private readonly suggestionsService = inject(SuggestionsService);
@@ -73,7 +74,11 @@ export class ProjectSuggestionListComponent {
   get visibleItems(): ProjectSuggestionItem[] {
     const byScopeRaw = this.items().filter((item) => {
       if (this.mode === 'live') {
-        return item.status === 'pending';
+        if (!this.liveScanSessionId) {
+          return false;
+        }
+
+        return item.status === 'pending' && item.scanSessionId === this.liveScanSessionId;
       }
 
       if (this.scope === 'pending') {
@@ -106,6 +111,10 @@ export class ProjectSuggestionListComponent {
     });
 
     return sorted;
+  }
+
+  get showLiveEmpty(): boolean {
+    return this.mode === 'live' && this.visibleItems.length === 0;
   }
 
   get gridScaleFactor(): string {

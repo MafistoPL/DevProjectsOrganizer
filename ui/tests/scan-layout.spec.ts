@@ -23,7 +23,28 @@ test('A equals B spacing between left edge and cards', async ({ page }) => {
 });
 
 test('Live results items are not clipped', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-1',
+          rootPath: 'D:\\code',
+          mode: 'roots',
+          state: 'Completed',
+          disk: 'D:',
+          currentPath: 'D:\\code\\dotnet-api\\Program.cs',
+          filesScanned: 42,
+          totalFiles: 42,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-1.json'
+        }
+      ])
+    );
+  });
+
   await page.goto('/scan');
+  await page.getByTestId('scan-select-btn-scan-1').click();
 
   const container = page.getByTestId('live-results-content');
   await expect(container).toBeVisible();
@@ -62,7 +83,28 @@ test('Live results items are not clipped', async ({ page }) => {
 });
 
 test('Live results expands to fill available height', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-6',
+          rootPath: 'D:\\code',
+          mode: 'roots',
+          state: 'Completed',
+          disk: 'D:',
+          currentPath: 'D:\\code\\rust-playground\\main.rs',
+          filesScanned: 24,
+          totalFiles: 24,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-6.json'
+        }
+      ])
+    );
+  });
+
   await page.goto('/scan');
+  await page.getByTestId('scan-select-btn-scan-6').click();
 
   const search = page.getByTestId('project-suggest-search');
   await search.fill('rust');

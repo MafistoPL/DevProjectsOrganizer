@@ -134,4 +134,42 @@ describe('ProjectSuggestionListComponent', () => {
     expect(projectsServiceMock.runAiTagSuggestions).not.toHaveBeenCalled();
     expect(projectsServiceMock.runTagHeuristics).not.toHaveBeenCalled();
   });
+
+  it('filters live mode items by selected scan session id', () => {
+    suggestionsServiceMock.items$.next([
+      {
+        id: 's-1',
+        scanSessionId: 'scan-a',
+        status: 'pending',
+        name: 'a-project',
+        score: 0.8,
+        kind: 'ProjectRoot',
+        path: 'C:\\a',
+        reason: '',
+        markers: [],
+        techHints: [],
+        extSummary: '',
+        createdAt: '2026-01-01T00:00:00.000Z'
+      },
+      {
+        id: 's-2',
+        scanSessionId: 'scan-b',
+        status: 'pending',
+        name: 'b-project',
+        score: 0.8,
+        kind: 'ProjectRoot',
+        path: 'C:\\b',
+        reason: '',
+        markers: [],
+        techHints: [],
+        extSummary: '',
+        createdAt: '2026-01-01T00:00:01.000Z'
+      }
+    ]);
+    component.mode = 'live';
+    component.liveScanSessionId = 'scan-b';
+    fixture.detectChanges();
+
+    expect(component.visibleItems.map((item) => item.id)).toEqual(['s-2']);
+  });
 });
