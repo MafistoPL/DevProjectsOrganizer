@@ -1,6 +1,8 @@
 import { RootsService } from './roots.service';
 import { AppHostBridgeService } from './apphost-bridge.service';
 
+const selectionStateStorageKey = 'scan.selectedRoots.state.v1';
+
 class BridgeMock {
   roots: Array<any> = [
     {
@@ -25,6 +27,14 @@ class BridgeMock {
 }
 
 describe('RootsService', () => {
+  beforeEach(() => {
+    localStorage.removeItem(selectionStateStorageKey);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(selectionStateStorageKey);
+  });
+
   it('tracks selected roots and exposes selected snapshot', async () => {
     const bridge = new BridgeMock();
     const service = new RootsService(bridge as unknown as AppHostBridgeService);
@@ -90,5 +100,53 @@ describe('RootsService', () => {
 
     service.setRootDepth('root-1', '2');
     expect(service.getRootDepth('root-1')).toBe(2);
+  });
+
+  it('restores selected roots and depth from persisted storage', async () => {
+    const bridge = new BridgeMock();
+    const firstService = new RootsService(bridge as unknown as AppHostBridgeService);
+    await firstService.load();
+
+    firstService.setRootSelected('root-1', true);
+    firstService.setRootSelected('root-2', true);
+    firstService.setRootDepth('root-1', 3);
+
+    const secondService = new RootsService(bridge as unknown as AppHostBridgeService);
+    await secondService.load();
+
+    expect(secondService.getSelectedRootIdsSnapshot()).toEqual(['root-1', 'root-2']);
+    expect(secondService.getRootDepth('root-1')).toBe(3);
+    expect(secondService.getRootDepth('root-2')).toBeNull();
+  });
+
+  it('sanitizes restored persisted state when stored root is no longer available', async () => {
+    localStorage.setItem(
+      selectionStateStorageKey,
+      JSON.stringify({
+        selectedRootIds: ['root-1', 'root-missing'],
+        selectedRootDepthById: {
+          'root-1': 2,
+          'root-missing': 7
+        }
+      })
+    );
+
+    const bridge = new BridgeMock();
+    bridge.roots = [bridge.roots[0]];
+    const service = new RootsService(bridge as unknown as AppHostBridgeService);
+    await service.load();
+
+    expect(service.getSelectedRootIdsSnapshot()).toEqual(['root-1']);
+    expect(service.getRootDepth('root-1')).toBe(2);
+    expect(service.getRootDepth('root-missing')).toBeNull();
+
+    expect(localStorage.getItem(selectionStateStorageKey)).toBe(
+      JSON.stringify({
+        selectedRootIds: ['root-1'],
+        selectedRootDepthById: {
+          'root-1': 2
+        }
+      })
+    );
   });
 });

@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Scan UI: trwałość zaznaczeń rootów między restartami:
+  * Zaznaczone checkboxy rootów są persystowane i odtwarzane po restarcie aplikacji.
+  * `Depth limit` ustawiony per root jest persystowany i odtwarzany po restarcie aplikacji.
+  * Przy odczycie stanu wykonywana jest sanityzacja względem aktualnej listy rootów (usuwanie nieistniejących wpisów).
+  * Dodano testy jednostkowe `RootsService` dla restore i sanityzacji stanu persystowanego.
 * Uzupełniono backlog o nowy pakiet wymagań dla `Scan`/`Live results` (do realizacji pojedynczo):
   * Trwałość zaznaczeń checkboxów rootów między restartami aplikacji.
   * `Live results` filtrowane po zaznaczonym aktywnym/zakończonym skanie.

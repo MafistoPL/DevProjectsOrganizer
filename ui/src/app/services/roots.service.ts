@@ -15,14 +15,18 @@ export type RootItem = {
 
 @Injectable({ providedIn: 'root' })
 export class RootsService {
+  private static readonly SelectionStateStorageKey = 'scan.selectedRoots.state.v1';
+
   private readonly rootsSubject = new BehaviorSubject<RootItem[]>([]);
   readonly roots$ = this.rootsSubject.asObservable();
   private readonly selectedRootIdsSubject = new BehaviorSubject<string[]>([]);
   readonly selectedRootIds$ = this.selectedRootIdsSubject.asObservable();
   private readonly selectedRootDepthByIdSubject = new BehaviorSubject<Record<string, number | null>>({});
   readonly selectedRootDepthById$ = this.selectedRootDepthByIdSubject.asObservable();
+  private readonly storage = this.resolveStorage();
 
   constructor(private readonly bridge: AppHostBridgeService) {
+    this.restoreSelectionState();
     void this.load();
   }
 
@@ -57,11 +61,13 @@ export class RootsService {
     const hasId = current.includes(id);
     if (selected && !hasId) {
       this.selectedRootIdsSubject.next([...current, id]);
+      this.persistSelectionState();
       return;
     }
 
     if (!selected && hasId) {
       this.selectedRootIdsSubject.next(current.filter((item) => item !== id));
+      this.persistSelectionState();
     }
   }
 
@@ -105,6 +111,7 @@ export class RootsService {
 
       const { [id]: _, ...next } = current;
       this.selectedRootDepthByIdSubject.next(next);
+      this.persistSelectionState();
       return;
     }
 
@@ -112,6 +119,7 @@ export class RootsService {
       ...current,
       [id]: depth
     });
+    this.persistSelectionState();
   }
 
   getRootDepth(rootId: string): number | null {
@@ -126,14 +134,17 @@ export class RootsService {
   clearSelectedRoots(): void {
     this.selectedRootIdsSubject.next([]);
     this.selectedRootDepthByIdSubject.next({});
+    this.persistSelectionState();
   }
 
   private sanitizeSelectedRootIds(roots: RootItem[]): void {
     const allowed = new Set(roots.map((root) => root.id));
     const current = this.selectedRootIdsSubject.getValue();
     const sanitized = current.filter((id) => allowed.has(id));
+    let hasStateChanged = false;
     if (sanitized.length !== current.length) {
       this.selectedRootIdsSubject.next(sanitized);
+      hasStateChanged = true;
     }
 
     const depthCurrent = this.selectedRootDepthByIdSubject.getValue();
@@ -148,6 +159,11 @@ export class RootsService {
     );
     if (Object.keys(depthSanitized).length !== Object.keys(depthCurrent).length) {
       this.selectedRootDepthByIdSubject.next(depthSanitized);
+      hasStateChanged = true;
+    }
+
+    if (hasStateChanged) {
+      this.persistSelectionState();
     }
   }
 
@@ -165,5 +181,105 @@ export class RootsService {
     }
 
     return parsed;
+  }
+
+  private restoreSelectionState(): void {
+    if (!this.storage) {
+      return;
+    }
+
+    try {
+      const raw = this.storage.getItem(RootsService.SelectionStateStorageKey);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        selectedRootIds?: unknown;
+        selectedRootDepthById?: unknown;
+      };
+
+      const selectedRootIds = this.normalizeSelectedRootIds(parsed.selectedRootIds);
+      const selectedRootDepthById = this.normalizeSelectedRootDepthById(parsed.selectedRootDepthById);
+
+      this.selectedRootIdsSubject.next(selectedRootIds);
+      this.selectedRootDepthByIdSubject.next(selectedRootDepthById);
+    } catch {
+      // Ignore invalid persisted state.
+    }
+  }
+
+  private persistSelectionState(): void {
+    if (!this.storage) {
+      return;
+    }
+
+    try {
+      this.storage.setItem(
+        RootsService.SelectionStateStorageKey,
+        JSON.stringify({
+          selectedRootIds: this.selectedRootIdsSubject.getValue(),
+          selectedRootDepthById: this.selectedRootDepthByIdSubject.getValue()
+        })
+      );
+    } catch {
+      // Ignore persistence errors (storage quota/private mode).
+    }
+  }
+
+  private normalizeSelectedRootIds(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const output: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+      if (typeof item !== 'string') {
+        continue;
+      }
+
+      const id = item.trim();
+      if (!id || seen.has(id)) {
+        continue;
+      }
+
+      output.push(id);
+      seen.add(id);
+    }
+
+    return output;
+  }
+
+  private normalizeSelectedRootDepthById(value: unknown): Record<string, number | null> {
+    if (!value || typeof value !== 'object') {
+      return {};
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>);
+    const output: Record<string, number | null> = {};
+    for (const [rawId, rawDepth] of entries) {
+      const id = rawId.trim();
+      if (!id) {
+        continue;
+      }
+
+      const depth = this.normalizeDepth(rawDepth as number | string | null);
+      if (depth === null) {
+        continue;
+      }
+
+      output[id] = depth;
+    }
+
+    return output;
+  }
+
+  private resolveStorage(): Storage | null {
+    try {
+      return globalThis.localStorage ?? null;
+    } catch {
+      return null;
+    }
   }
 }
