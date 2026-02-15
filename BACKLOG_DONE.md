@@ -1,6 +1,10 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Dodano nowy pakiet wymagań do backlogu i sklasyfikowano go czasowo:
+  * Tryb nasłuchiwanych rootów + automatyczne/ręczne reskany (z niskim `depth limit` dla dużych katalogów typu Desktop).
+  * Nasłuchiwanie zmian w projektach i reskan per-projekt z odświeżaniem sugestii tagów.
+  * Flow ścieżki docelowej przechowywania projektów + przenoszenie przy akceptacji i ręczne `Move project` w `Project Organizer`.
 * Ograniczenie reprocessingu heurystyk tagów do tagów systemowych:
   * `projects.runTagHeuristics` pobiera teraz wyłącznie tagi z `isSystem = true`.
   * Heurystyki nie wykonują automatycznego backfillu dla tagów custom.
