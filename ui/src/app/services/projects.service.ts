@@ -25,6 +25,22 @@ export type ProjectItem = {
   tags: ProjectTagItem[];
 };
 
+export type ProjectHeuristicsBatchProgress = {
+  index: number;
+  total: number;
+  projectName: string;
+  generatedCount: number;
+  generatedTotal: number;
+  failed: number;
+};
+
+export type ProjectHeuristicsBatchResult = {
+  total: number;
+  processed: number;
+  failed: number;
+  generatedTotal: number;
+};
+
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
   private readonly projectsSubject = new BehaviorSubject<ProjectItem[]>([]);
@@ -50,6 +66,10 @@ export class ProjectsService {
     return project;
   }
 
+  getSnapshot(): ProjectItem[] {
+    return [...this.projectsSubject.getValue()];
+  }
+
   async runTagHeuristics(projectId: string): Promise<{
     generatedCount: number;
     runId?: string;
@@ -67,6 +87,46 @@ export class ProjectsService {
 
   async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {
     return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
+  }
+
+  async runTagHeuristicsForAll(
+    onProgress?: (progress: ProjectHeuristicsBatchProgress) => void
+  ): Promise<ProjectHeuristicsBatchResult> {
+    await this.load();
+    const projects = this.projectsSubject.getValue();
+    const total = projects.length;
+
+    let processed = 0;
+    let failed = 0;
+    let generatedTotal = 0;
+
+    for (const [index, project] of projects.entries()) {
+      let generatedCount = 0;
+      try {
+        const result = await this.runTagHeuristics(project.id);
+        generatedCount = result.generatedCount ?? 0;
+        generatedTotal += generatedCount;
+      } catch {
+        failed += 1;
+      } finally {
+        processed += 1;
+        onProgress?.({
+          index: index + 1,
+          total,
+          projectName: project.name,
+          generatedCount,
+          generatedTotal,
+          failed
+        });
+      }
+    }
+
+    return {
+      total,
+      processed,
+      failed,
+      generatedTotal
+    };
   }
 
   async deleteProject(projectId: string, confirmName: string): Promise<{ id: string; deleted: boolean }> {

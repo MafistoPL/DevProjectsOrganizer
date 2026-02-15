@@ -205,6 +205,7 @@ Główne zakładki:
 - **Tags**: zarządzanie tagami i backfill.
 - **Tags**: działające CRUD (lista + add/edit/delete), z ochroną tagów systemowych (`Seeded` bez opcji `Delete`).
 - **Tags**: licznik użycia (`Projects N`) i modal z listą projektów przypiętych do wybranego taga.
+- **Tags**: globalna akcja `Apply latest heuristics to all projects` uruchamia heurystyki tagów dla wszystkich projektów z potwierdzeniem i statusem postępu w GUI.
 - **Recent**: last_viewed / last_opened.
 
 Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.

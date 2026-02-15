@@ -5,15 +5,11 @@
      * Heuristics should stay scoped to seeded/system-like signals; do not imply automatic matching for custom tags after tag creation.
      * Custom tag matching should be AI-driven (manual trigger), not automatic heuristics backfill.
      * Document this explicitly in `PLAN.md`/`README.md` to avoid false expectations in UI.
-2. Add manual global action in `Tags` view for heuristics refresh.
-     * Add CTA like `Apply latest heuristics to all projects` (or equivalent wording).
-     * Scope: rerun heuristics-based tag suggestions for existing projects, with progress/status feedback in GUI.
-     * Cover with FE unit + Playwright tests (visibility, confirmation, completion feedback).
-3. Define custom-tag AI assist UX.
+2. Define custom-tag AI assist UX.
      * Add/confirm manual action for matching user-created tags to existing projects via AI.
      * Keep idempotency and dedupe guarantees for created `tag_suggestions` entries.
      * Keep explicit user accept step before attaching tags.
-4. Increase scan content sample depth.
+3. Increase scan content sample depth.
      * Raise sampled lines per file from `30` to `100` or make it configurable at scan start.
      * If configurable: expose in Scan UI, persist in scan request/snapshot metadata, and guard with tests.
 
@@ -37,6 +33,10 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Added manual global action in `Tags` view for heuristics refresh:
+  * CTA: `Apply latest heuristics to all projects`.
+  * Runs heuristics sequentially for all existing projects and reports progress/status in GUI.
+  * Tests: FE unit (`TagsPage`, `ProjectsService`) and Playwright (`tags`) cover visibility, confirmation, and completion feedback.
 * Tag heuristics were extended for beginner/sample projects:
   * Added `hello-world` and `lorem-ipsum` as seeded system tags.
   * Heuristics now detect `hello-world` from beginner chapter naming/path patterns (including `Beginning_C ...\Chapter_01`-style paths).

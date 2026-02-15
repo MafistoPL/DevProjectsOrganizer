@@ -1,5 +1,5 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,12 +8,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmDialogComponent } from '../../components/shared/confirm-dialog/confirm-dialog.component';
 import {
   TagDeleteDialogComponent
 } from '../../components/tags/tag-delete-dialog/tag-delete-dialog.component';
 import {
   TagProjectsDialogComponent
 } from '../../components/tags/tag-projects-dialog/tag-projects-dialog.component';
+import { ProjectsService } from '../../services/projects.service';
 import { TagsService, type TagItem } from '../../services/tags.service';
 
 @Component({
@@ -34,6 +36,7 @@ import { TagsService, type TagItem } from '../../services/tags.service';
 })
 export class TagsPageComponent {
   private readonly tagsService = inject(TagsService);
+  private readonly projectsService = inject(ProjectsService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
@@ -41,6 +44,8 @@ export class TagsPageComponent {
   newTagName = '';
   editTagId: string | null = null;
   editTagName = '';
+  readonly isApplyHeuristicsBusy = signal(false);
+  readonly applyHeuristicsStatus = signal('');
 
   async addTag(): Promise<void> {
     try {
@@ -107,6 +112,54 @@ export class TagsPageComponent {
       });
     } catch (error) {
       this.snackBar.open(this.getErrorMessage(error), 'Close', { duration: 1600 });
+    }
+  }
+
+  async applyLatestHeuristicsToAllProjects(): Promise<void> {
+    if (this.isApplyHeuristicsBusy()) {
+      return;
+    }
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '460px',
+      data: {
+        title: 'Apply latest heuristics to all projects',
+        message:
+          'Run tag heuristics for all existing projects now? This can take a while on large project sets.',
+        confirmText: 'Run',
+        cancelText: 'Cancel',
+        confirmColor: 'primary'
+      }
+    });
+
+    const confirmed = await firstValueFrom(ref.afterClosed());
+    if (!confirmed) {
+      return;
+    }
+
+    this.isApplyHeuristicsBusy.set(true);
+    this.applyHeuristicsStatus.set('Starting...');
+    try {
+      const summary = await this.projectsService.runTagHeuristicsForAll((progress) => {
+        this.applyHeuristicsStatus.set(
+          `[${progress.index}/${progress.total}] ${progress.projectName} - +${progress.generatedCount} (total +${progress.generatedTotal})`
+        );
+      });
+
+      if (summary.total === 0) {
+        this.applyHeuristicsStatus.set('No projects found.');
+      } else {
+        this.applyHeuristicsStatus.set(
+          `Done. Processed ${summary.processed}/${summary.total}, generated +${summary.generatedTotal}, failed ${summary.failed}.`
+        );
+      }
+
+      this.snackBar.open(this.applyHeuristicsStatus(), undefined, { duration: 2200 });
+    } catch (error) {
+      this.applyHeuristicsStatus.set(this.getErrorMessage(error));
+      this.snackBar.open(this.applyHeuristicsStatus(), 'Close', { duration: 2200 });
+    } finally {
+      this.isApplyHeuristicsBusy.set(false);
     }
   }
 

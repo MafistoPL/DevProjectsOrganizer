@@ -137,3 +137,74 @@ test('system tag hides delete and project count bubble opens modal', async ({ pa
   await expect(dialog.getByRole('heading', { name: /Projects with tag/ })).toBeVisible();
   await expect(dialog.getByTestId('tag-project-row')).toHaveCount(1);
 });
+
+test('tags page applies latest heuristics to all projects with confirmation', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockTags',
+      JSON.stringify([
+        {
+          id: 'tag-1',
+          name: 'csharp',
+          isSystem: true,
+          projectCount: 1,
+          createdAt: '2026-02-13T10:00:00.000Z',
+          updatedAt: '2026-02-13T10:00:00.000Z'
+        },
+        {
+          id: 'tag-2',
+          name: 'native',
+          isSystem: true,
+          projectCount: 0,
+          createdAt: '2026-02-13T10:00:00.000Z',
+          updatedAt: '2026-02-13T10:00:00.000Z'
+        }
+      ])
+    );
+
+    localStorage.setItem(
+      'mockSuggestions',
+      JSON.stringify([
+        {
+          id: 's-1',
+          scanSessionId: 'scan-1',
+          rootPath: 'D:\\code',
+          name: 'dotnet-api',
+          score: 0.88,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\dotnet-api',
+          reason: '.sln + csproj markers',
+          extensionsSummary: 'cs=142',
+          markers: ['.sln', '.csproj'],
+          techHints: ['csharp'],
+          createdAt: '2026-02-10T10:00:00.000Z',
+          status: 'Accepted'
+        },
+        {
+          id: 's-2',
+          scanSessionId: 'scan-2',
+          rootPath: 'D:\\code',
+          name: 'cpp-tree',
+          score: 0.82,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\cpp-tree',
+          reason: '.vcxproj marker',
+          extensionsSummary: 'cpp=38,h=4',
+          markers: ['.vcxproj'],
+          techHints: ['cpp', 'native'],
+          createdAt: '2026-02-11T10:00:00.000Z',
+          status: 'Accepted'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/tags');
+
+  await page.getByTestId('tag-apply-heuristics-all-btn').click();
+  const dialog = page.locator('mat-dialog-container').last();
+  await expect(dialog.getByRole('heading', { name: 'Apply latest heuristics to all projects' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Run' }).click();
+
+  await expect(page.getByTestId('tag-apply-heuristics-status')).toContainText('Processed 2/2');
+});

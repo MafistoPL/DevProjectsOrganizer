@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { TagsPageComponent } from './tags-page.component';
+import { ProjectsService } from '../../services/projects.service';
 import { TagsService } from '../../services/tags.service';
 
 describe('TagsPageComponent', () => {
@@ -11,6 +12,7 @@ describe('TagsPageComponent', () => {
   let updateSpy: ReturnType<typeof vi.fn>;
   let deleteSpy: ReturnType<typeof vi.fn>;
   let listProjectsSpy: ReturnType<typeof vi.fn>;
+  let runAllHeuristicsSpy: ReturnType<typeof vi.fn>;
   let dialogOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
@@ -42,13 +44,38 @@ describe('TagsPageComponent', () => {
     updateSpy = serviceMock.updateTag;
     deleteSpy = serviceMock.deleteTag;
     listProjectsSpy = serviceMock.listProjects;
+
+    const projectsServiceMock = {
+      runTagHeuristicsForAll: vi.fn().mockImplementation(async (onProgress?: (value: any) => void) => {
+        onProgress?.({
+          index: 1,
+          total: 1,
+          projectName: 'dotnet-api',
+          generatedCount: 2,
+          generatedTotal: 2,
+          failed: 0
+        });
+
+        return {
+          total: 1,
+          processed: 1,
+          failed: 0,
+          generatedTotal: 2
+        };
+      })
+    };
+    runAllHeuristicsSpy = projectsServiceMock.runTagHeuristicsForAll;
+
     dialogOpenSpy = vi.fn().mockReturnValue({
       afterClosed: () => of(true)
     });
 
     await TestBed.configureTestingModule({
       imports: [TagsPageComponent],
-      providers: [{ provide: TagsService, useValue: serviceMock }]
+      providers: [
+        { provide: TagsService, useValue: serviceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(TagsPageComponent);
@@ -97,5 +124,14 @@ describe('TagsPageComponent', () => {
     await fixture.whenStable();
     expect(listProjectsSpy).toHaveBeenCalledWith('tag-1');
     expect(dialogOpenSpy).toHaveBeenCalled();
+
+    (fixture.nativeElement.querySelector('[data-testid="tag-apply-heuristics-all-btn"]') as HTMLButtonElement)
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(runAllHeuristicsSpy).toHaveBeenCalledTimes(1);
+    const status = fixture.nativeElement.querySelector('[data-testid="tag-apply-heuristics-status"]');
+    expect(status?.textContent).toContain('Processed 1/1');
   });
 });

@@ -4,7 +4,22 @@
       <h1 class="page-title">Tags</h1>
       <p class="page-subtitle">Create and manage tag dictionary.</p>
     </div>
+    <div class="actions">
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="applyLatestHeuristicsToAllProjects()"
+        [disabled]="isApplyHeuristicsBusy()"
+        data-testid="tag-apply-heuristics-all-btn"
+      >
+        Apply latest heuristics to all projects
+      </button>
+    </div>
   </header>
+
+  <p class="apply-heuristics-status" *ngIf="applyHeuristicsStatus()" data-testid="tag-apply-heuristics-status">
+    {{ applyHeuristicsStatus() }}
+  </p>
 
   <mat-card class="add-card">
     <mat-card-title>Add tag</mat-card-title>

@@ -21,6 +21,23 @@ class BridgeMock {
       createdAt: '2026-02-13T10:00:00.000Z',
       updatedAt: '2026-02-13T10:00:00.000Z',
       tags: [{ id: 'tag-1', name: 'csharp' }]
+    },
+    {
+      id: 'proj-2',
+      sourceSuggestionId: 's2',
+      lastScanSessionId: 'scan-2',
+      rootPath: 'D:\\code',
+      name: 'cpp-tree',
+      score: 0.81,
+      kind: 'ProjectRoot',
+      path: 'D:\\code\\cpp-tree',
+      reason: 'markers: .vcxproj',
+      extensionsSummary: 'cpp=18',
+      markers: ['.vcxproj'],
+      techHints: ['cpp'],
+      createdAt: '2026-02-13T10:00:00.000Z',
+      updatedAt: '2026-02-13T10:00:00.000Z',
+      tags: []
     }
   ];
 
@@ -30,7 +47,11 @@ class BridgeMock {
       return this.projects as T;
     }
 
-    if (type === 'projects.runTagHeuristics' || type === 'projects.runAiTagSuggestions') {
+    if (type === 'projects.runTagHeuristics') {
+      return { generatedCount: 2 } as T;
+    }
+
+    if (type === 'projects.runAiTagSuggestions') {
       return {} as T;
     }
 
@@ -84,6 +105,40 @@ describe('ProjectsService', () => {
       type: 'projects.runAiTagSuggestions',
       payload: { projectId: 'proj-1' }
     });
+  });
+
+  it('runs tag heuristics for all projects and reports summary', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    const progress: Array<{ index: number; total: number; projectName: string }> = [];
+    const result = await sut.runTagHeuristicsForAll((item) => {
+      progress.push({
+        index: item.index,
+        total: item.total,
+        projectName: item.projectName
+      });
+    });
+
+    expect(result).toEqual({
+      total: 2,
+      processed: 2,
+      failed: 0,
+      generatedTotal: 4
+    });
+
+    expect(progress).toEqual([
+      { index: 1, total: 2, projectName: 'dotnet-api' },
+      { index: 2, total: 2, projectName: 'cpp-tree' }
+    ]);
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.list', payload: undefined },
+      { type: 'projects.runTagHeuristics', payload: { projectId: 'proj-1' } },
+      { type: 'projects.runTagHeuristics', payload: { projectId: 'proj-2' } }
+    ]);
   });
 
   it('deleteProject sends project id and confirm name, then reloads', async () => {
