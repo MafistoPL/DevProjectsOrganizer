@@ -9,6 +9,11 @@
   - AppHost test must assert payload parser/handler accepts the intended minimal payload and rejects invalid input.
 - Keep `PLAN.md` up to date as the spec evolves.
 - Keep `BACKLOG.md` up to date with deferred tasks and follow-ups.
+- Keep `BACKLOG.md` written in Polish.
+- For every user request/run, maintain `BACKLOG.md` lifecycle:
+  - At run start, add planned scope to `## In progress`.
+  - If user asked for more than can be done in this run, classify remaining items into appropriate backlog sections (`Now`, `Soon`, `Later`, etc.).
+  - At run end, update `BACKLOG.md` again and move completed `In progress` items to `## Done (recent)`.
 - If you execute only part of a user request, add the unimplemented remainder to `BACKLOG.md`.
 - Suggest good moments to commit when the changes form a coherent milestone.
 - If you want a PNG in `PLAN.md`, create/update the source `docs/excalidraw/*.excalidraw` and run `scripts/export-excalidraw.ps1` to generate PNGs in `docs/images`.

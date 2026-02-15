@@ -1,38 +1,49 @@
 # Backlog
 
-## Now (next 1 week)
-1. Clarify and implement tag reprocessing flow aligned with current behavior.
-     * Heuristics should stay scoped to seeded/system-like signals; do not imply automatic matching for custom tags after tag creation.
-     * Custom tag matching should be AI-driven (manual trigger), not automatic heuristics backfill.
-     * Document this explicitly in `PLAN.md`/`README.md` to avoid false expectations in UI.
-2. Define custom-tag AI assist UX.
-     * Add/confirm manual action for matching user-created tags to existing projects via AI.
-     * Keep idempotency and dedupe guarantees for created `tag_suggestions` entries.
-     * Keep explicit user accept step before attaching tags.
-3. Increase scan content sample depth.
-     * Raise sampled lines per file from `30` to `100` or make it configurable at scan start.
-     * If configurable: expose in Scan UI, persist in scan request/snapshot metadata, and guard with tests.
+## W trakcie
+* (pusto)
 
-## Soon (2-4 weeks)
-* Pre-commit: verify setup in docs (`core.hooksPath=.githooks`) for every clone/environment.
+## Teraz (najbliższy tydzień)
+1. Wdrożyć flow ponownego przetwarzania tagów zgodny z aktualnym zachowaniem.
+     * Heurystyki powinny pozostać ograniczone do sygnałów seedowanych/systemowych; nie sugerować automatycznego dopasowania dla tagów custom po ich utworzeniu.
+     * Dopasowanie tagów custom powinno być AI-driven (manualny trigger), a nie automatyczny heurystyczny backfill.
+2. Zdefiniować UX wsparcia AI dla tagów custom.
+     * Dodać/potwierdzić manualną akcję dopasowania tagów utworzonych przez użytkownika do istniejących projektów przez AI.
+     * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
+     * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
+3. Zwiększyć głębokość próbek treści skanu.
+     * Zwiększyć liczbę próbkowanych linii na plik z `30` do `100` albo zrobić to konfigurowalne przy starcie skanu.
+     * Jeśli konfigurowalne: wystawić opcję w Scan UI, utrwalać w metadanych scan request/snapshot i zabezpieczyć testami.
 
-## Soon (1-3 months)
-* AI tag suggestions using: existing tags + optional history of rejected new-tag proposals.
-* Manual split/merge of detected projects inside a root.
-* Better ranking and filtering of suggestions (score, language, age).
-* Incremental scan based on `last_modified_at` + cache.
-* Configurable heuristics (GUI or YAML) + parser and runtime.
-* Align `Engine/Scanning` interfaces with real runtime implementation in AppHost (remove duplicated scan contracts over time).
+## Wkrótce (2-4 tygodnie)
+* Pre-commit: zweryfikować konfigurację w dokumentacji (`core.hooksPath=.githooks`) dla każdego klonu/środowiska.
 
-## Later
-* AI for "one project vs many" with bounded context.
-* Remote backend + client sync.
-* Full-text search over scan metadata.
+## Wkrótce (1-3 miesiące)
+* Sugestie tagów AI z użyciem: istniejących tagów + opcjonalnej historii odrzuconych propozycji nowych tagów.
+* Ręczny split/merge wykrytych projektów wewnątrz roota.
+* Lepszy ranking i filtrowanie sugestii (score, język, wiek).
+* Skanowanie przyrostowe oparte o `last_modified_at` + cache.
+* Konfigurowalne heurystyki (GUI lub YAML) + parser i runtime.
+* Wyrównać interfejsy `Engine/Scanning` z realną implementacją runtime w AppHost (z czasem usunąć zduplikowane kontrakty skanu).
 
-## To segregate
-* Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
+## Później
+* AI dla rozstrzygania „jeden projekt vs wiele” z ograniczonym kontekstem.
+* Zdalny backend + synchronizacja klienta.
+* Wyszukiwanie pełnotekstowe po metadanych skanów.
 
-## Done (recent)
+## Do wydzielenia
+* Dodać miejsce do przechowywania PAT do pracy z gh; trzeba ustalić bezpieczny sposób.
+
+## Zrobione (ostatnio)
+* Doprecyzowano aktualne zachowanie i dokumentację reprocessingu tagów:
+  * Zweryfikowano ścieżkę implementacji: `tags.add` tylko tworzy tag; `projects.runTagHeuristics` jest manualne; `projects.runAiTagSuggestions` obecnie zwraca tylko potwierdzenie kolejki.
+  * Zaktualizowano `README.md`, dodając jawną sekcję "Tag Reprocessing (current behavior)", aby uniknąć fałszywych oczekiwań.
+  * Zaktualizowano `PLAN.md` (`Stan projektu` + `Tagowanie`) o semantykę backfillu current-vs-target oraz granice manualnych triggerów.
+* Wykonano przebieg recovery/sync po przerwanej sesji:
+  * Dodano regułę workflow w `AGENTS.md`, która wymaga cyklu `BACKLOG.md` na każdy przebieg (`In progress` na starcie, przeniesienie do `Done (recent)` na końcu, klasyfikacja pozostałego zakresu).
+  * Dodano sekcję `## W trakcie` w `BACKLOG.md` i użyto jej w tym przebiegu.
+  * Zsynchronizowano lokalną gałąź z GitHub: `git push origin main` (`8848235..15b6220`).
+  * Walidacja smoke zakończona powodzeniem: `dotnet test DevProjectsOrganizer.slnx` (`88/88` testów zielone: `33` Engine unit + `55` AppHost integration).
 * Heurystyki i metadane projektów (pakiet rozszerzeń):
   * `low-level` został zawężony do sygnałów ASM (hint/ext/kod), bez automatycznego podbijania od `c/cpp`.
   * Dodano heurystykę `pointers` dla projektów C/C++ z wykrytym użyciem wskaźników.
@@ -41,73 +52,73 @@
   * `Project Organizer` wspiera edycję opisu istniejącego projektu.
   * Zakładka `Tags` wspiera sortowanie po liczbie projektów (`Projects count`, asc/desc).
   * Testy: AppHost integration (`TagSuggestionHeuristicsServiceTests`, `ProjectStoreTests`), Angular unit/component (`ProjectsService`, `SuggestionsService`, `OrganizerPage`, `TagsPage`) oraz Playwright (`suggestions`, `organizer`).
-* Tag heuristics + tag suggestions hardening:
+* Utwardzenie heurystyk tagów + sugestii tagów:
   * `Apply latest heuristics to all projects` no longer creates duplicates for already attached/semantically accepted tag suggestions.
   * `Tag suggestions` now allow permanent delete of `Rejected` entries (archive cleanup).
   * Global tag heuristics run now returns and displays regression report in `Tags` view, based on historical `Accepted`/`Rejected` decisions.
   * Tests: AppHost integration (`TagSuggestionStore`), FE unit/component (`ProjectsService`, `TagsPage`, `TagSuggestionsService`, `TagSuggestionList`), and Playwright (`tags`, `suggestions`).
-* Added manual global action in `Tags` view for heuristics refresh:
+* Dodano manualną globalną akcję odświeżania heurystyk w widoku `Tags`:
   * CTA: `Apply latest heuristics to all projects`.
   * Runs heuristics sequentially for all existing projects and reports progress/status in GUI.
   * Tests: FE unit (`TagsPage`, `ProjectsService`) and Playwright (`tags`) cover visibility, confirmation, and completion feedback.
-* Tag heuristics were extended for beginner/sample projects:
+* Heurystyki tagów rozszerzono dla projektów beginner/sample:
   * Added `hello-world` and `lorem-ipsum` as seeded system tags.
   * Heuristics now detect `hello-world` from beginner chapter naming/path patterns (including `Beginning_C ...\Chapter_01`-style paths).
   * Heuristics now scan source content for `hello world` and `lorem ipsum` patterns and emit dedicated tag suggestions when matching tags exist.
   * Tests: added AppHost integration coverage in `TagSuggestionHeuristicsServiceTests`.
-* Tag taxonomy + ownership baseline for v1 is already in place:
+* Bazowa taksonomia i ownership tagów dla v1 są już wdrożone:
   * Heuristics-first flow generates `AssignExisting` suggestions from existing tags/signals.
   * `CreateNew` remains AI-only by design (not produced by heuristics v1).
-* Tag governance core is implemented:
+* Rdzeń governance tagów jest wdrożony:
   * Seeded/system tags are visible and protected from deletion.
   * User-created tags are deletable (with typed-name confirmation in UI).
-* Suggestions archive is split into separate scopes:
+* Archiwum sugestii jest rozdzielone na osobne scope:
   * `Pending` / `Accepted` / `Rejected` toggle in Project suggestions.
   * Bulk actions are scope-bound: `Accept all` / `Reject all` only in `Pending`, `Restore all` / `Delete all` only in `Rejected`.
   * `Accepted` scope has no mutating bulk actions and no per-item delete.
   * Tests: updated Playwright (`suggestions`, `apphost-bridge-refresh`) and unit specs for the new scope behavior.
-* Tags delete now requires typed-name confirmation:
+* Usuwanie tagów wymaga teraz potwierdzenia przez wpisanie nazwy:
   * UI: custom tag `Delete` opens modal and requires exact tag name before enabling confirmation.
   * Tests: updated tags unit + Playwright CRUD flow to validate dialog behavior.
-* Suggestions archive bulk actions are now scope-aware:
+* Bulk akcje archiwum sugestii są teraz zależne od scope:
   * `Pending` scope: `Accept all` / `Reject all`.
   * `Archive` scope: `Restore all` / `Delete all`, both targeting only `Rejected`.
   * `Accepted` archived suggestions are no longer deletable from UI.
   * Tests: updated Suggestions unit/service tests and Playwright archive scenarios.
-* Added regression guard for `projects.delete` contract mismatch (FE vs BE):
+* Dodano zabezpieczenie regresyjne dla rozjazdu kontraktu `projects.delete` (FE vs BE):
   * BE: introduced `ProjectsDeletePayloadParser` tests to enforce `{ projectId }` payload acceptance and malformed payload rejection.
   * FE: `ProjectsService` spec asserts exact delete payload shape (`{ projectId }`).
   * Docs: added IPC contract-testing guardrails in `README.md`, `PLAN.md`, and agent workflow rule in `AGENTS.md`.
-* Tags/Organizer UX updates are implemented:
+* Aktualizacje UX dla Tags/Organizer są wdrożone:
   * Tags list now shows seeded/system tags as `Seeded` and hides `Delete` for them.
   * Each tag row has `Projects N` usage bubble; clicking opens modal with linked projects.
   * Project delete in Organizer now requires typed-name confirmation in modal (`confirmName` is sent to IPC).
   * Backend `projects.delete` validates `confirmName` against current project name; deleting project marks source archived suggestion as `Rejected`.
   * Tests: updated AppHost integration, Angular unit tests, and Playwright (`tags`, `organizer`) for the new flows.
-* Tag heuristics run now writes JSON scan artifact:
+* Run heurystyk tagów zapisuje teraz artefakt skanu JSON:
   * BE: `projects.runTagHeuristics` persists `%APPDATA%\\DevProjectsOrganizer\\scans\\scan-tag-heur-<runId>.json`.
   * Artifact includes run metadata (`project`, `started/finished`, counts) and detected tag suggestions.
   * Tests: added `TagHeuristicsScanWriterTests` integration coverage for file naming/content roundtrip.
-* Scan UI supports clearing completed items in `Active scans`:
+* Scan UI wspiera czyszczenie zakończonych wpisów w `Active scans`:
   * `Completed` project scans can be removed from the list via `Clear` action with confirmation.
   * `Completed` tag heuristics runs can be removed from `Tag heuristics runs` via `Clear` action with confirmation.
   * Tests: added FE unit coverage (`ScanService.clearCompleted`, `TagHeuristicsRunsService.clearCompleted`) and Playwright coverage for both clear flows.
-* Tag heuristics runs are now visible in GUI:
+* Runy heurystyk tagów są teraz widoczne w GUI:
   * BE emits `tagHeuristics.progress` events (`Running`/`Completed`/`Failed`) during `projects.runTagHeuristics`.
   * Scan view (`Active scans` card) shows a dedicated `Tag heuristics runs` section with progress and generated-count summary.
   * FE mock bridge emits the same events for Playwright and local browser mode.
   * Tests: added FE unit test for event-driven runs service and Playwright scenario covering heuristics run visibility after project accept.
-* Tag suggestions v1 (heuristics first) is implemented:
+* Tag suggestions v1 (heuristics-first) są wdrożone:
   * BE: `TagSuggestionHeuristicsService` generates `AssignExisting` suggestions for existing tags only.
   * Persistence: new `tag_suggestions` + `project_tags` tables with status (`Pending/Accepted/Rejected`), source/type, fingerprint and dedupe/suppress flow.
   * IPC: `tagSuggestions.list` and `tagSuggestions.setStatus` handlers; accepting attaches tag to project.
   * UI: `Tag suggestions` panel is wired to real DB-backed data and supports per-item + bulk `Accept/Reject` with confirmation.
   * Tests: added AppHost integration coverage (`TagSuggestionHeuristicsService`, `TagSuggestionStore`, `ProjectTagStore`) and FE unit tests for tag suggestions service/component.
-* Post-accept project dialog is implemented:
+* Dialog po akceptacji projektu jest wdrożony:
   * UI: after project suggestion `Accept`, dialog offers `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   * BE IPC: `projects.runTagHeuristics`, `projects.runAiTagSuggestions` (validated and queued response).
   * FE: actions wired through `ProjectsService` and covered by unit + Playwright tests.
-* Tags CRUD (minimum working) is implemented:
+* CRUD tagów (minimum działające) jest wdrożony:
   * BE: `TagEntity` + `TagStore` (`list/add/update/delete`) with duplicate validation by normalized name.
   * IPC: `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
   * UI: `Tags` page now has real list + add/edit/delete form actions.
@@ -161,3 +172,5 @@
 * Per-disk lock and whole-scan blocking.
 * Scan snapshot to JSON with content samples.
 * Pulsing progress bar for `Running` scan.
+
+
