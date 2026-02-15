@@ -17,9 +17,19 @@
           <h2 class="project-name">{{ project.name }}</h2>
           <span class="project-kind">{{ project.kind }}</span>
         </div>
-        <div class="meta">
-          <span>Score {{ project.score }}</span>
-          <span>Updated {{ project.updatedAt | date:'short' }}</span>
+        <div class="header-actions">
+          <div class="meta">
+            <span>Score {{ project.score }}</span>
+            <span>Updated {{ project.updatedAt | date:'short' }}</span>
+          </div>
+          <button
+            mat-stroked-button
+            color="warn"
+            (click)="deleteProject(project)"
+            [attr.data-testid]="'project-delete-btn-' + project.id"
+          >
+            Delete
+          </button>
         </div>
       </div>
 

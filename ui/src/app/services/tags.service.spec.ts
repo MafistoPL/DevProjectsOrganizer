@@ -8,7 +8,14 @@ type BridgeRequest = {
 class BridgeMock {
   readonly requests: BridgeRequest[] = [];
   private tags: Array<any> = [
-    { id: 't1', name: 'csharp', createdAt: '2026-02-13T10:00:00.000Z', updatedAt: '2026-02-13T10:00:00.000Z' }
+    {
+      id: 't1',
+      name: 'csharp',
+      isSystem: true,
+      projectCount: 2,
+      createdAt: '2026-02-13T10:00:00.000Z',
+      updatedAt: '2026-02-13T10:00:00.000Z'
+    }
   ];
 
   async request<T>(type: string, payload?: any): Promise<T> {
@@ -22,6 +29,8 @@ class BridgeMock {
       const tag = {
         id: `t${this.tags.length + 1}`,
         name: payload.name,
+        isSystem: false,
+        projectCount: 0,
         createdAt: '2026-02-13T11:00:00.000Z',
         updatedAt: '2026-02-13T11:00:00.000Z'
       };
@@ -39,6 +48,18 @@ class BridgeMock {
     if (type === 'tags.delete') {
       this.tags = this.tags.filter((tag) => tag.id !== payload.id);
       return { id: payload.id, deleted: true } as T;
+    }
+
+    if (type === 'tags.projects') {
+      return [
+        {
+          id: 'p1',
+          name: 'dotnet-api',
+          path: 'D:\\code\\dotnet-api',
+          kind: 'ProjectRoot',
+          updatedAt: '2026-02-14T09:00:00.000Z'
+        }
+      ] as T;
     }
 
     throw new Error(`Unexpected request: ${type}`);
@@ -82,5 +103,18 @@ describe('TagsService', () => {
       'tags.delete',
       'tags.list'
     ]);
+  });
+
+  it('listProjects requests linked projects by tag id', async () => {
+    const bridge = new BridgeMock();
+    const service = new TagsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests.length = 0;
+
+    const projects = await service.listProjects('t1');
+
+    expect(bridge.requests).toEqual([{ type: 'tags.projects', payload: { id: 't1' } }]);
+    expect(projects).toHaveLength(1);
+    expect(projects[0].name).toBe('dotnet-api');
   });
 });

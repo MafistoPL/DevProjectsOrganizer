@@ -1,0 +1,16 @@
+<h2 mat-dialog-title data-testid="tag-projects-dialog-title">
+  Projects with tag "{{ data.tagName }}"
+</h2>
+<mat-dialog-content class="dialog-content">
+  <div class="empty" *ngIf="data.projects.length === 0">No projects attached to this tag.</div>
+
+  <div class="project-row" *ngFor="let project of data.projects" data-testid="tag-project-row">
+    <div class="name">{{ project.name }}</div>
+    <div class="kind">{{ project.kind }}</div>
+    <div class="path" [title]="project.path">{{ project.path }}</div>
+    <div class="updated">Updated {{ project.updatedAt | date: 'short' }}</div>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

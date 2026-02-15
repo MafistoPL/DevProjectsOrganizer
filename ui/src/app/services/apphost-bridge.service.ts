@@ -50,8 +50,14 @@ type MockProject = {
 type MockTag = {
   id: string;
   name: string;
+  isSystem: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+type MockProjectTag = {
+  projectId: string;
+  tagId: string;
 };
 
 type MockTagSuggestion = {
@@ -78,6 +84,7 @@ export class AppHostBridgeService {
   private mockProjects: MockProject[] = [];
   private mockTags: MockTag[] = [];
   private mockTagSuggestions: MockTagSuggestion[] = [];
+  private mockProjectTags: MockProjectTag[] = [];
   private readonly eventSubject = new Subject<HostEvent>();
   readonly events$ = this.eventSubject.asObservable();
 
@@ -114,6 +121,7 @@ export class AppHostBridgeService {
       this.loadMockProjects();
       this.loadMockTags();
       this.loadMockTagSuggestions();
+      this.loadMockProjectTags();
     }
   }
 
@@ -252,6 +260,50 @@ export class AppHostBridgeService {
         );
         return Promise.resolve(projects as T);
       }
+      case 'projects.delete': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        const confirmName = typeof payload?.confirmName === 'string' ? payload.confirmName : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+        if (!confirmName) {
+          return Promise.reject(new Error('Missing project name confirmation.'));
+        }
+
+        const project = this.mockProjects.find((item) => item.id === projectId);
+        if (!project) {
+          return Promise.resolve({ id: projectId, deleted: false } as T);
+        }
+        if (project.name !== confirmName) {
+          return Promise.reject(new Error('Project name confirmation does not match.'));
+        }
+
+        this.mockProjects = this.mockProjects.filter((item) => item.id !== projectId);
+        this.mockProjectTags = this.mockProjectTags.filter((item) => item.projectId !== projectId);
+        this.saveMockProjectTags();
+
+        this.mockSuggestions = this.mockSuggestions.map((item) => {
+          if (item.id !== project.sourceSuggestionId) {
+            return item;
+          }
+
+          return {
+            ...item,
+            status: 'Rejected'
+          };
+        });
+
+        this.eventSubject.next({
+          type: 'projects.changed',
+          data: { reason: 'project.deleted', projectId }
+        });
+        this.eventSubject.next({
+          type: 'suggestions.changed',
+          data: { reason: 'project.deleted', projectId, sourceSuggestionId: project.sourceSuggestionId }
+        });
+
+        return Promise.resolve({ id: projectId, deleted: true } as T);
+      }
       case 'projects.runTagHeuristics': {
         const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
         if (!projectId) {
@@ -332,8 +384,40 @@ export class AppHostBridgeService {
         } as T);
       }
       case 'tags.list': {
-        const tags = [...this.mockTags].sort((a, b) => a.name.localeCompare(b.name));
+        const counts = new Map<string, number>();
+        for (const link of this.mockProjectTags) {
+          counts.set(link.tagId, (counts.get(link.tagId) ?? 0) + 1);
+        }
+
+        const tags = [...this.mockTags]
+          .map((item) => ({
+            ...item,
+            projectCount: counts.get(item.id) ?? 0
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
         return Promise.resolve(tags as T);
+      }
+      case 'tags.projects': {
+        const id = typeof payload?.id === 'string' ? payload.id : '';
+        if (!id) {
+          return Promise.reject(new Error('Missing tag id.'));
+        }
+
+        const linkedProjectIds = this.mockProjectTags
+          .filter((item) => item.tagId === id)
+          .map((item) => item.projectId);
+        const linked = this.mockProjects
+          .filter((item) => linkedProjectIds.includes(item.id))
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            path: item.path,
+            kind: item.kind,
+            updatedAt: item.updatedAt
+          }));
+
+        return Promise.resolve(linked as T);
       }
       case 'tags.add': {
         const rawName = typeof payload?.name === 'string' ? payload.name.trim() : '';
@@ -351,6 +435,7 @@ export class AppHostBridgeService {
         const tag: MockTag = {
           id: this.createId(),
           name: rawName,
+          isSystem: false,
           createdAt: now,
           updatedAt: now
         };
@@ -401,12 +486,21 @@ export class AppHostBridgeService {
         }
 
         const exists = this.mockTags.some((tag) => tag.id === id);
-        if (exists) {
-          this.mockTags = this.mockTags.filter((tag) => tag.id !== id);
-          this.saveMockTags();
+        if (!exists) {
+          return Promise.resolve({ id, deleted: false } as T);
         }
 
-        return Promise.resolve({ id, deleted: exists } as T);
+        const tag = this.mockTags.find((item) => item.id === id)!;
+        if (tag.isSystem) {
+          return Promise.reject(new Error('System tag cannot be deleted.'));
+        }
+
+        this.mockTags = this.mockTags.filter((item) => item.id !== id);
+        this.mockProjectTags = this.mockProjectTags.filter((item) => item.tagId !== id);
+        this.saveMockTags();
+        this.saveMockProjectTags();
+
+        return Promise.resolve({ id, deleted: true } as T);
       }
       case 'tagSuggestions.list': {
         const items = [...this.mockTagSuggestions].sort(
@@ -440,6 +534,9 @@ export class AppHostBridgeService {
           ...this.mockTagSuggestions.slice(index + 1)
         ];
         this.saveMockTagSuggestions();
+        if (normalized === 'Accepted' && updated.tagId) {
+          this.attachMockProjectTag(updated.projectId, updated.tagId);
+        }
         this.eventSubject.next({
           type: 'tagSuggestions.changed',
           data: { id, status: normalized }
@@ -845,7 +942,13 @@ export class AppHostBridgeService {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          this.mockTags = parsed;
+          this.mockTags = parsed.map((item) => ({
+            id: item.id,
+            name: item.name,
+            isSystem: Boolean(item.isSystem),
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt
+          }));
           return;
         }
       } catch {
@@ -858,18 +961,21 @@ export class AppHostBridgeService {
       {
         id: this.createId(),
         name: 'csharp',
+        isSystem: true,
         createdAt: now,
         updatedAt: now
       },
       {
         id: this.createId(),
         name: 'cpp',
+        isSystem: true,
         createdAt: now,
         updatedAt: now
       },
       {
         id: this.createId(),
         name: 'web',
+        isSystem: false,
         createdAt: now,
         updatedAt: now
       }
@@ -957,12 +1063,62 @@ export class AppHostBridgeService {
     localStorage.setItem('mockTagSuggestions', JSON.stringify(this.mockTagSuggestions));
   }
 
+  private loadMockProjectTags(): void {
+    const stored = localStorage.getItem('mockProjectTags');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          this.mockProjectTags = parsed
+            .filter((item) => typeof item?.projectId === 'string' && typeof item?.tagId === 'string')
+            .map((item) => ({
+              projectId: item.projectId,
+              tagId: item.tagId
+            }));
+          return;
+        }
+      } catch {
+        // Fallback below.
+      }
+    }
+
+    const byName = new Map(this.mockTags.map((item) => [item.name.toLowerCase(), item.id]));
+    const next: MockProjectTag[] = [];
+
+    const tryAttach = (projectNamePart: string, tagName: string) => {
+      const tagId = byName.get(tagName.toLowerCase());
+      if (!tagId) {
+        return;
+      }
+
+      const project = this.mockProjects.find((item) =>
+        item.name.toLowerCase().includes(projectNamePart.toLowerCase())
+      );
+      if (!project) {
+        return;
+      }
+
+      next.push({ projectId: project.id, tagId });
+    };
+
+    tryAttach('dotnet', 'csharp');
+    tryAttach('rust', 'rust');
+    tryAttach('go', 'go');
+
+    this.mockProjectTags = next;
+    this.saveMockProjectTags();
+  }
+
+  private saveMockProjectTags(): void {
+    localStorage.setItem('mockProjectTags', JSON.stringify(this.mockProjectTags));
+  }
+
   private loadMockProjects(): void {
     const now = new Date().toISOString();
     this.mockProjects = this.mockSuggestions
       .filter((item) => String(item.status).toLowerCase() === 'accepted')
       .map((item) => ({
-        id: this.createId(),
+        id: `project-${item.id}`,
         sourceSuggestionId: item.id,
         lastScanSessionId: item.scanSessionId,
         rootPath: item.rootPath,
@@ -987,7 +1143,7 @@ export class AppHostBridgeService {
     );
 
     const mapped: MockProject = {
-      id: index >= 0 ? this.mockProjects[index].id : this.createId(),
+      id: index >= 0 ? this.mockProjects[index].id : `project-${suggestion.id}`,
       sourceSuggestionId: suggestion.id,
       lastScanSessionId: suggestion.scanSessionId,
       rootPath: suggestion.rootPath,
@@ -1113,6 +1269,22 @@ export class AppHostBridgeService {
       type: 'tagHeuristics.progress',
       data: payload
     });
+  }
+
+  private attachMockProjectTag(projectId: string, tagId: string): void {
+    if (!projectId || !tagId) {
+      return;
+    }
+
+    const exists = this.mockProjectTags.some(
+      (item) => item.projectId === projectId && item.tagId === tagId
+    );
+    if (exists) {
+      return;
+    }
+
+    this.mockProjectTags = [...this.mockProjectTags, { projectId, tagId }];
+    this.saveMockProjectTags();
   }
 
   private createId(): string {

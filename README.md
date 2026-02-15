@@ -66,3 +66,11 @@ dotnet run --project src/AppHost/AppHost.csproj
   ```powershell
   dotnet test tests/AppHost.IntegrationTests/AppHost.IntegrationTests.csproj --filter "Category=UserDataRegression"
   ```
+
+**IPC Contract Guardrails**
+- For each IPC payload change between `ui/` and `src/AppHost`, add contract tests on both layers:
+  - FE: service spec must assert the exact payload sent by `bridge.request(...)`.
+  - BE: parser/handler test must verify required fields and reject malformed payloads.
+- Example regression this prevents:
+  - FE sends `projects.delete` with `{ projectId }`, while BE still requires extra `confirmName`.
+  - Result: delete action appears broken in GUI even though FE flow looks correct.

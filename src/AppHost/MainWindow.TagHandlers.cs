@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AppHost.Persistence;
 using AppHost.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace AppHost;
 
@@ -16,7 +17,56 @@ public partial class MainWindow
 
         var store = new TagStore(_dbContext);
         var items = await store.ListAllAsync();
-        var result = items.Select(MapTagDto).ToList();
+        var projectCounts = await _dbContext.ProjectTags
+            .AsNoTracking()
+            .GroupBy(item => item.TagId)
+            .Select(group => new
+            {
+                TagId = group.Key,
+                Count = group.Count()
+            })
+            .ToDictionaryAsync(item => item.TagId, item => item.Count);
+
+        var result = items
+            .Select(item => MapTagDto(item, projectCounts.GetValueOrDefault(item.Id, 0)))
+            .ToList();
+        SendResponse(request.Id, request.Type, result);
+    }
+
+    private async Task HandleTagsProjectsAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!TryGetTagId(request.Payload, out var tagId))
+        {
+            SendError(request.Id, request.Type, "Missing tag id.");
+            return;
+        }
+
+        var tagExists = await _dbContext.Tags
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == tagId);
+        if (!tagExists)
+        {
+            SendError(request.Id, request.Type, "Tag not found.");
+            return;
+        }
+
+        var store = new ProjectStore(_dbContext);
+        var items = await store.ListByTagAsync(tagId);
+        var result = items
+            .Select(item => new TagLinkedProjectDto(
+                item.Id,
+                item.Name,
+                item.Path,
+                item.Kind,
+                item.UpdatedAt))
+            .ToList();
+
         SendResponse(request.Id, request.Type, result);
     }
 
@@ -38,7 +88,7 @@ public partial class MainWindow
         {
             var store = new TagStore(_dbContext);
             var added = await store.AddAsync(name);
-            SendResponse(request.Id, request.Type, MapTagDto(added));
+            SendResponse(request.Id, request.Type, MapTagDto(added, 0));
         }
         catch (Exception ex)
         {
@@ -70,7 +120,10 @@ public partial class MainWindow
         {
             var store = new TagStore(_dbContext);
             var updated = await store.UpdateAsync(id, name);
-            SendResponse(request.Id, request.Type, MapTagDto(updated));
+            var projectCount = await _dbContext.ProjectTags
+                .AsNoTracking()
+                .CountAsync(item => item.TagId == id);
+            SendResponse(request.Id, request.Type, MapTagDto(updated, projectCount));
         }
         catch (Exception ex)
         {
@@ -145,8 +198,14 @@ public partial class MainWindow
         return true;
     }
 
-    private static TagDto MapTagDto(TagEntity entity)
+    private static TagDto MapTagDto(TagEntity entity, int projectCount)
     {
-        return new TagDto(entity.Id, entity.Name, entity.CreatedAt, entity.UpdatedAt);
+        return new TagDto(
+            entity.Id,
+            entity.Name,
+            entity.IsSystem,
+            projectCount,
+            entity.CreatedAt,
+            entity.UpdatedAt);
     }
 }

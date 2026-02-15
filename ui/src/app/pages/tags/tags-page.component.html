@@ -18,12 +18,7 @@
           data-testid="tag-add-input"
         />
       </mat-form-field>
-      <button
-        mat-raised-button
-        color="primary"
-        (click)="addTag()"
-        data-testid="tag-add-btn"
-      >
+      <button mat-raised-button color="primary" (click)="addTag()" data-testid="tag-add-btn">
         Add
       </button>
     </mat-card-content>
@@ -36,11 +31,31 @@
 
       <div class="tag-row" *ngFor="let tag of tags()" data-testid="tag-row">
         <ng-container *ngIf="editTagId !== tag.id; else editRow">
-          <div class="name">{{ tag.name }}</div>
-          <div class="meta">Updated {{ tag.updatedAt | date:'short' }}</div>
+          <div class="name-wrap">
+            <div class="name">{{ tag.name }}</div>
+            <span class="system-badge" *ngIf="tag.isSystem" data-testid="tag-system-badge">Seeded</span>
+          </div>
+          <div class="meta">Updated {{ tag.updatedAt | date: 'short' }}</div>
+          <div class="usage">
+            <button
+              mat-stroked-button
+              (click)="openProjects(tag)"
+              [attr.data-testid]="'tag-project-count-btn-' + tag.id"
+            >
+              Projects {{ tag.projectCount }}
+            </button>
+          </div>
           <div class="actions">
             <button mat-stroked-button (click)="beginEdit(tag)" data-testid="tag-edit-btn">Edit</button>
-            <button mat-stroked-button color="warn" (click)="deleteTag(tag.id)" data-testid="tag-delete-btn">Delete</button>
+            <button
+              mat-stroked-button
+              color="warn"
+              *ngIf="!tag.isSystem"
+              (click)="deleteTag(tag.id)"
+              data-testid="tag-delete-btn"
+            >
+              Delete
+            </button>
           </div>
         </ng-container>
 
@@ -55,7 +70,9 @@
             />
           </mat-form-field>
           <div class="actions">
-            <button mat-stroked-button color="primary" (click)="saveEdit(tag.id)" data-testid="tag-save-btn">Save</button>
+            <button mat-stroked-button color="primary" (click)="saveEdit(tag.id)" data-testid="tag-save-btn">
+              Save
+            </button>
             <button mat-stroked-button (click)="cancelEdit()" data-testid="tag-cancel-btn">Cancel</button>
           </div>
         </ng-template>

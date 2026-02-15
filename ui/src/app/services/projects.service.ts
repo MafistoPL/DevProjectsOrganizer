@@ -62,4 +62,13 @@ export class ProjectsService {
   async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {
     return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
   }
+
+  async deleteProject(projectId: string, confirmName: string): Promise<{ id: string; deleted: boolean }> {
+    const result = await this.bridge.request<{ id: string; deleted: boolean }>('projects.delete', {
+      projectId,
+      confirmName
+    });
+    await this.load();
+    return result;
+  }
 }

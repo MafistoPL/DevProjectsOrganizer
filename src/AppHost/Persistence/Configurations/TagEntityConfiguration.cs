@@ -12,6 +12,7 @@ public sealed class TagEntityConfiguration : IEntityTypeConfiguration<TagEntity>
 
         entity.Property(e => e.Name).IsRequired();
         entity.Property(e => e.NormalizedName).IsRequired();
+        entity.Property(e => e.IsSystem).IsRequired();
         entity.Property(e => e.CreatedAt).IsRequired();
         entity.Property(e => e.UpdatedAt).IsRequired();
 

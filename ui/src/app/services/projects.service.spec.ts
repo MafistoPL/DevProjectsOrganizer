@@ -33,6 +33,10 @@ class BridgeMock {
       return {} as T;
     }
 
+    if (type === 'projects.delete') {
+      return { id: 'proj-1', deleted: true } as T;
+    }
+
     throw new Error(`Unexpected request: ${type}`);
   }
 }
@@ -79,5 +83,19 @@ describe('ProjectsService', () => {
       type: 'projects.runAiTagSuggestions',
       payload: { projectId: 'proj-1' }
     });
+  });
+
+  it('deleteProject sends project id and confirm name, then reloads', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    await sut.deleteProject('proj-1', 'dotnet-api');
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.delete', payload: { projectId: 'proj-1', confirmName: 'dotnet-api' } },
+      { type: 'projects.list', payload: undefined }
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 using AppHost.Persistence;
 using AppHost.Services;
+using AppHost.Contracts;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -19,6 +20,50 @@ public partial class MainWindow
         var items = await store.ListAllAsync();
         var result = items.Select(MapProjectDto).ToList();
         SendResponse(request.Id, request.Type, result);
+    }
+
+    private async Task HandleProjectsDeleteAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!ProjectsDeletePayloadParser.TryParse(request.Payload, out var projectId))
+        {
+            SendError(request.Id, request.Type, "Missing project id.");
+            return;
+        }
+
+        try
+        {
+            var store = new ProjectStore(_dbContext);
+            var deleted = await store.DeleteAsync(projectId);
+            if (deleted)
+            {
+                SendEvent("projects.changed", new
+                {
+                    reason = "project.deleted",
+                    projectId
+                });
+                SendEvent("suggestions.changed", new
+                {
+                    reason = "project.deleted",
+                    projectId
+                });
+            }
+
+            SendResponse(request.Id, request.Type, new
+            {
+                id = projectId,
+                deleted
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
     }
 
     private async Task HandleProjectsRunTagHeuristicsAsync(HostRequest request)

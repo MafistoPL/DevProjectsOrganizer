@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace AppHost.Persistence;
 
@@ -33,6 +34,9 @@ public sealed class TagStore
         "winapi",
         "gui"
     ];
+    private static readonly HashSet<string> DefaultTagNormalizedSet = DefaultTags
+        .Select(tag => tag.Trim().ToLowerInvariant())
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private readonly AppDbContext _db;
 
@@ -51,28 +55,39 @@ public sealed class TagStore
 
     public async Task<int> SeedDefaultTagsAsync(CancellationToken cancellationToken = default)
     {
-        var existingCount = await _db.Tags.CountAsync(cancellationToken);
-        if (existingCount > 0)
-        {
-            return 0;
-        }
+        var existing = await _db.Tags.ToListAsync(cancellationToken);
+        var byNormalized = existing.ToDictionary(tag => tag.NormalizedName, StringComparer.OrdinalIgnoreCase);
 
         var now = DateTimeOffset.UtcNow;
+        var added = 0;
         foreach (var name in DefaultTags)
         {
             var (raw, normalized) = NormalizeName(name);
+            if (byNormalized.TryGetValue(normalized, out var found))
+            {
+                if (!found.IsSystem)
+                {
+                    found.IsSystem = true;
+                    found.UpdatedAt = now;
+                }
+
+                continue;
+            }
+
             _db.Tags.Add(new TagEntity
             {
                 Id = Guid.NewGuid(),
                 Name = raw,
                 NormalizedName = normalized,
+                IsSystem = true,
                 CreatedAt = now,
                 UpdatedAt = now
             });
+            added++;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        return DefaultTags.Length;
+        return added;
     }
 
     public async Task<TagEntity> AddAsync(string name, CancellationToken cancellationToken = default)
@@ -93,6 +108,7 @@ public sealed class TagStore
             Id = Guid.NewGuid(),
             Name = raw,
             NormalizedName = normalized,
+            IsSystem = false,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -136,6 +152,11 @@ public sealed class TagStore
         if (entity == null)
         {
             return false;
+        }
+
+        if (entity.IsSystem || DefaultTagNormalizedSet.Contains(entity.NormalizedName))
+        {
+            throw new InvalidOperationException("System tag cannot be deleted.");
         }
 
         _db.Tags.Remove(entity);

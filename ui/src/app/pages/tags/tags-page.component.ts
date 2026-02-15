@@ -3,9 +3,13 @@ import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import {
+  TagProjectsDialogComponent
+} from '../../components/tags/tag-projects-dialog/tag-projects-dialog.component';
 import { TagsService, type TagItem } from '../../services/tags.service';
 
 @Component({
@@ -16,6 +20,7 @@ import { TagsService, type TagItem } from '../../services/tags.service';
     NgIf,
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatSnackBarModule
@@ -26,6 +31,7 @@ import { TagsService, type TagItem } from '../../services/tags.service';
 export class TagsPageComponent {
   private readonly tagsService = inject(TagsService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   readonly tags = toSignal(this.tagsService.tags$, { initialValue: [] });
   newTagName = '';
@@ -67,6 +73,22 @@ export class TagsPageComponent {
       await this.tagsService.deleteTag(tagId);
       this.cancelEdit();
       this.snackBar.open('Tag deleted', undefined, { duration: 1200 });
+    } catch (error) {
+      this.snackBar.open(this.getErrorMessage(error), 'Close', { duration: 1600 });
+    }
+  }
+
+  async openProjects(tag: TagItem): Promise<void> {
+    try {
+      const projects = await this.tagsService.listProjects(tag.id);
+      this.dialog.open(TagProjectsDialogComponent, {
+        width: '760px',
+        maxWidth: '95vw',
+        data: {
+          tagName: tag.name,
+          projects
+        }
+      });
     } catch (error) {
       this.snackBar.open(this.getErrorMessage(error), 'Close', { duration: 1600 });
     }

@@ -25,7 +25,7 @@
 
 .tag-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px auto;
+  grid-template-columns: minmax(0, 1fr) 220px auto auto;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
@@ -40,8 +40,42 @@
   font-weight: 600;
 }
 
+.name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .meta {
   color: #5f6368;
+}
+
+.system-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eceff1;
+  color: #455a64;
+}
+
+.system-badge {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eceff1;
+  color: #455a64;
+}
+
+.count-bubble {
+  min-width: 44px;
+  border-radius: 999px;
+}
+
+.usage {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .actions {
@@ -51,7 +85,7 @@
 }
 
 .edit-input {
-  grid-column: 1 / span 2;
+  grid-column: 1 / span 3;
 }
 
 @media (max-width: 900px) {

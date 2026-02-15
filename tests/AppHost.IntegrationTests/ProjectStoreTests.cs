@@ -100,6 +100,53 @@ public sealed class ProjectStoreTests
         }
     }
 
+    [Fact]
+    public async Task DeleteAsync_removes_project_and_marks_source_suggestion_as_rejected()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var suggestion = await AddSuggestionAsync(db, scanSessionId: Guid.NewGuid(), name: "dotnet-api");
+            var store = new ProjectStore(db);
+            var project = await store.UpsertFromSuggestionAsync(suggestion);
+
+            var deleted = await store.DeleteAsync(project.Id);
+
+            deleted.Should().BeTrue();
+
+            await using var checkDb = new AppDbContext(options);
+            var storedProject = await checkDb.Projects.FirstOrDefaultAsync(item => item.Id == project.Id);
+            storedProject.Should().BeNull();
+
+            var sourceSuggestion = await checkDb.ProjectSuggestions
+                .FirstOrDefaultAsync(item => item.Id == suggestion.Id);
+            sourceSuggestion.Should().NotBeNull();
+            sourceSuggestion!.Status.Should().Be(ProjectSuggestionStatus.Rejected);
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task DeleteAsync_returns_false_when_project_not_found()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var store = new ProjectStore(db);
+
+            var deleted = await store.DeleteAsync(Guid.NewGuid());
+
+            deleted.Should().BeFalse();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
     private static async Task<ProjectSuggestionEntity> AddSuggestionAsync(
         AppDbContext db,
         Guid scanSessionId,

@@ -44,6 +44,16 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Added regression guard for `projects.delete` contract mismatch (FE vs BE):
+  * BE: introduced `ProjectsDeletePayloadParser` tests to enforce `{ projectId }` payload acceptance and malformed payload rejection.
+  * FE: `ProjectsService` spec asserts exact delete payload shape (`{ projectId }`).
+  * Docs: added IPC contract-testing guardrails in `README.md`, `PLAN.md`, and agent workflow rule in `AGENTS.md`.
+* Tags/Organizer UX updates are implemented:
+  * Tags list now shows seeded/system tags as `Seeded` and hides `Delete` for them.
+  * Each tag row has `Projects N` usage bubble; clicking opens modal with linked projects.
+  * Project delete in Organizer now requires typed-name confirmation in modal (`confirmName` is sent to IPC).
+  * Backend `projects.delete` validates `confirmName` against current project name; deleting project marks source archived suggestion as `Rejected`.
+  * Tests: updated AppHost integration, Angular unit tests, and Playwright (`tags`, `organizer`) for the new flows.
 * Tag heuristics run now writes JSON scan artifact:
   * BE: `projects.runTagHeuristics` persists `%APPDATA%\\DevProjectsOrganizer\\scans\\scan-tag-heur-<runId>.json`.
   * Artifact includes run metadata (`project`, `started/finished`, counts) and detected tag suggestions.

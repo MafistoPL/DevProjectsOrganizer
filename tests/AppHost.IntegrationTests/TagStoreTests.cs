@@ -91,4 +91,26 @@ public sealed class TagStoreTests
             await RootStoreTests.DisposeDbAsync(db, path);
         }
     }
+
+    [Fact]
+    public async Task DeleteAsync_throws_for_system_tag()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var store = new TagStore(db);
+            await store.SeedDefaultTagsAsync();
+            var systemTag = (await store.ListAllAsync())
+                .First(tag => tag.Name == "csharp");
+
+            var act = () => store.DeleteAsync(systemTag.Id);
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("System tag cannot be deleted.");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
 }

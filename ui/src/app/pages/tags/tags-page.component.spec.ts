@@ -9,6 +9,8 @@ describe('TagsPageComponent', () => {
   let addSpy: ReturnType<typeof vi.fn>;
   let updateSpy: ReturnType<typeof vi.fn>;
   let deleteSpy: ReturnType<typeof vi.fn>;
+  let listProjectsSpy: ReturnType<typeof vi.fn>;
+  let dialogOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     const serviceMock = {
@@ -16,17 +18,30 @@ describe('TagsPageComponent', () => {
         {
           id: 'tag-1',
           name: 'csharp',
+          isSystem: true,
+          projectCount: 2,
+          createdAt: '2026-02-13T10:00:00.000Z',
+          updatedAt: '2026-02-13T10:00:00.000Z'
+        },
+        {
+          id: 'tag-2',
+          name: 'custom',
+          isSystem: false,
+          projectCount: 0,
           createdAt: '2026-02-13T10:00:00.000Z',
           updatedAt: '2026-02-13T10:00:00.000Z'
         }
       ]),
       addTag: vi.fn().mockResolvedValue(undefined),
       updateTag: vi.fn().mockResolvedValue(undefined),
-      deleteTag: vi.fn().mockResolvedValue(undefined)
+      deleteTag: vi.fn().mockResolvedValue(undefined),
+      listProjects: vi.fn().mockResolvedValue([])
     };
     addSpy = serviceMock.addTag;
     updateSpy = serviceMock.updateTag;
     deleteSpy = serviceMock.deleteTag;
+    listProjectsSpy = serviceMock.listProjects;
+    dialogOpenSpy = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [TagsPageComponent],
@@ -34,12 +49,14 @@ describe('TagsPageComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(TagsPageComponent);
+    (fixture.componentInstance as any).dialog = { open: dialogOpenSpy };
     fixture.detectChanges();
   });
 
-  it('renders tags and calls add/update/delete actions', async () => {
+  it('renders tags, keeps system tag non-deletable and calls add/update/delete actions', async () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('csharp');
+    expect(text).toContain('Seeded');
 
     const addInput: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="tag-add-input"]');
     addInput.value = 'cpp';
@@ -62,8 +79,20 @@ describe('TagsPageComponent', () => {
 
     expect(updateSpy).toHaveBeenCalledWith('tag-1', 'backend');
 
-    (fixture.nativeElement.querySelector('[data-testid="tag-delete-btn"]') as HTMLButtonElement).click();
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tag-row"]')) as HTMLElement[];
+    const systemRow = rows.find((row) => row.textContent?.includes('csharp'));
+    const customRow = rows.find((row) => row.textContent?.includes('custom'));
+    expect(systemRow).toBeTruthy();
+    expect(customRow).toBeTruthy();
+    expect(systemRow!.querySelector('[data-testid="tag-delete-btn"]')).toBeNull();
+
+    (customRow!.querySelector('[data-testid="tag-delete-btn"]') as HTMLButtonElement).click();
     await fixture.whenStable();
-    expect(deleteSpy).toHaveBeenCalledWith('tag-1');
+    expect(deleteSpy).toHaveBeenCalledWith('tag-2');
+
+    (systemRow!.querySelector('[data-testid="tag-project-count-btn-tag-1"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(listProjectsSpy).toHaveBeenCalledWith('tag-1');
+    expect(dialogOpenSpy).toHaveBeenCalled();
   });
 });

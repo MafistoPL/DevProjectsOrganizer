@@ -41,8 +41,11 @@ Program lokalny do porządkowania projektów na dysku:
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
+- **Tags (UI):** seedowane/systemowe tagi są widoczne na liście jako `Seeded` i nie można ich usunąć.
+- **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
+- **Project delete flow:** `Project Organizer` ma potwierdzenie usuwania przez przepisanie nazwy projektu (walidacja FE + BE); po usunięciu źródłowa sugestia trafia do `Rejected` w archiwum.
 - **Tag heuristics progress:** uruchomienie `Run tag heuristics` publikuje eventy progresu i jest widoczne w GUI (sekcja `Tag heuristics runs` na zakładce Scan).
 - **Tag heuristics scan JSON:** każdy run heurystyk tagów zapisuje debugowy JSON do `%APPDATA%\DevProjectsOrganizer\scans\scan-tag-heur-<runId>.json`.
 - **Active scans cleanup:** wpisy `Completed` (zarówno scan session, jak i tag heuristics run) można usunąć z karty `Active scans` po potwierdzeniu dialogu.
@@ -52,8 +55,8 @@ Program lokalny do porządkowania projektów na dysku:
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
-- **IPC projects:** `projects.list`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
-- **IPC tags:** `tags.list`, `tags.add`, `tags.update`, `tags.delete`.
+- **IPC projects:** `projects.list`, `projects.delete`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
+- **IPC tags:** `tags.list`, `tags.projects`, `tags.add`, `tags.update`, `tags.delete`.
 - **IPC tag suggestions:** `tagSuggestions.list`, `tagSuggestions.setStatus`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
 - **State/event consistency**: scan states and event names are centralized in shared constants.
@@ -176,6 +179,7 @@ Uwagi modelowe:
 Główne zakładki:
 - **Scan**: rooty, start skanu, kolejka, postęp.
 - **Project Organizer**: lista projektów, filtry, szczegóły.
+- **Project Organizer**: usuwanie projektu wymaga wpisania pełnej nazwy w modalu potwierdzenia (check FE + walidacja BE).
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
 - **Suggestions / Project suggestions**: przełącznik `Pending` (ze wszystkich skanów) / `Archive` (Accepted+Rejected), eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
@@ -187,7 +191,8 @@ Główne zakładki:
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
 - **Tags**: zarządzanie tagami i backfill.
-- **Tags**: działające CRUD (lista + add/edit/delete); backfill i sugestie tagów w kolejnych krokach.
+- **Tags**: działające CRUD (lista + add/edit/delete), z ochroną tagów systemowych (`Seeded` bez opcji `Delete`).
+- **Tags**: licznik użycia (`Projects N`) i modal z listą projektów przypiętych do wybranego taga.
 - **Recent**: last_viewed / last_opened.
 
 Makiety (Excalidraw) trzymamy w `docs/excalidraw/`, a PNG w `docs/images/`.
@@ -199,6 +204,7 @@ Piramida testów:
 - **Integration (AppHost)**: DB + skan + JSON + regresja heurystyk względem historycznych decyzji (`Accepted`/`Rejected`) powiązanych z konkretnym `ScanSessionId` i jego `scan-<id>.json`.
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 - **FE unit/component tests (ng test)**: pokrywają logikę bulk akcji (`setPendingStatusForAll`) i potwierdzenia dialogowe na stronie Suggestions.
+- **IPC contract tests (FE+BE)**: dla zmian payloadów IPC (np. `projects.delete`) wymagamy testu kształtu payloadu w FE oraz testu parsera/walidacji payloadu w AppHost.
 
 Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).
 User-data replay regression jest osobną kategorią testów (`Category=UserDataRegression`) i jest uruchamiany ręcznie na realnej bazie użytkownika.

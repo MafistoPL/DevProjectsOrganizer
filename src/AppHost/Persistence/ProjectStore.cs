@@ -23,6 +23,24 @@ public sealed class ProjectStore
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ProjectEntity>> ListByTagAsync(
+        Guid tagId,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await (
+            from project in _db.Projects.AsNoTracking()
+            join projectTag in _db.ProjectTags.AsNoTracking()
+                on project.Id equals projectTag.ProjectId
+            where projectTag.TagId == tagId
+            select project)
+            .ToListAsync(cancellationToken);
+
+        return items
+            .OrderBy(project => project.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(project => project.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task<ProjectEntity> UpsertFromSuggestionAsync(
         ProjectSuggestionEntity suggestion,
         CancellationToken cancellationToken = default)
@@ -75,6 +93,30 @@ public sealed class ProjectStore
 
         await _db.SaveChangesAsync(cancellationToken);
         return existing;
+    }
+
+    public async Task<bool> DeleteAsync(
+        Guid projectId,
+        CancellationToken cancellationToken = default)
+    {
+        var project = await _db.Projects
+            .FirstOrDefaultAsync(item => item.Id == projectId, cancellationToken);
+        if (project == null)
+        {
+            return false;
+        }
+
+        _db.Projects.Remove(project);
+
+        var sourceSuggestion = await _db.ProjectSuggestions
+            .FirstOrDefaultAsync(item => item.Id == project.SourceSuggestionId, cancellationToken);
+        if (sourceSuggestion != null)
+        {
+            sourceSuggestion.Status = ProjectSuggestionStatus.Rejected;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public static string BuildProjectKey(string path, string kind)

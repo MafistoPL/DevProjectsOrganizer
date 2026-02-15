@@ -73,7 +73,7 @@ export class SuggestionsService {
   ) {
     void this.load();
     this.bridge.events$.subscribe((event) => {
-      if (event?.type === 'scan.completed') {
+      if (event?.type === 'scan.completed' || event?.type === 'suggestions.changed') {
         void this.load();
       }
     });

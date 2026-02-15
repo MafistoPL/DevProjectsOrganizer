@@ -1,0 +1,15 @@
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirm-input {
+  width: 100%;
+}
+
+.warning {
+  margin: 0;
+  color: #b71c1c;
+  font-size: 12px;
+}
