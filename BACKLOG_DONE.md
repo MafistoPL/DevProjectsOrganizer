@@ -4,6 +4,8 @@
 * Scan UI: reskan zaznaczonych rootów:
   * Do każdego roota na widoku `Scan` dodano checkbox wyboru roota do zbiorczego reskanu.
   * Checkbox ma tooltip wyjaśniający, że root trafi do akcji `Rescan selected roots`.
+  * Po zaznaczeniu checkboxa pojawia się pole `Depth limit` dla konkretnego roota.
+  * Wartość `Depth limit` jest przekazywana per-root do `scan.start` podczas `Rescan selected roots`.
   * Przycisk `Import roots` został zastąpiony przez `Rescan selected roots` na stronie `Scan`.
   * Akcja uruchamia `scan.start` tylko dla zaznaczonych rootów.
   * Dodano testy: FE unit (`RootsService`) oraz Playwright (`scan.spec.ts`) dla flow zaznaczania i reskanu.

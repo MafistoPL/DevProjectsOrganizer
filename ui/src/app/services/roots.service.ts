@@ -19,6 +19,8 @@ export class RootsService {
   readonly roots$ = this.rootsSubject.asObservable();
   private readonly selectedRootIdsSubject = new BehaviorSubject<string[]>([]);
   readonly selectedRootIds$ = this.selectedRootIdsSubject.asObservable();
+  private readonly selectedRootDepthByIdSubject = new BehaviorSubject<Record<string, number | null>>({});
+  readonly selectedRootDepthById$ = this.selectedRootDepthByIdSubject.asObservable();
 
   constructor(private readonly bridge: AppHostBridgeService) {
     void this.load();
@@ -76,8 +78,54 @@ export class RootsService {
     return this.rootsSubject.getValue().filter((root) => selectedIds.has(root.id));
   }
 
+  getSelectedRescanTargetsSnapshot(): Array<{ root: RootItem; depthLimit: number | null }> {
+    const selectedIds = new Set(this.selectedRootIdsSubject.getValue());
+    const depthById = this.selectedRootDepthByIdSubject.getValue();
+    return this.rootsSubject
+      .getValue()
+      .filter((root) => selectedIds.has(root.id))
+      .map((root) => ({
+        root,
+        depthLimit: depthById[root.id] ?? null
+      }));
+  }
+
+  setRootDepth(rootId: string, rawDepth: number | string | null): void {
+    const id = rootId.trim();
+    if (!id) {
+      return;
+    }
+
+    const depth = this.normalizeDepth(rawDepth);
+    const current = this.selectedRootDepthByIdSubject.getValue();
+    if (depth === null) {
+      if (!(id in current)) {
+        return;
+      }
+
+      const { [id]: _, ...next } = current;
+      this.selectedRootDepthByIdSubject.next(next);
+      return;
+    }
+
+    this.selectedRootDepthByIdSubject.next({
+      ...current,
+      [id]: depth
+    });
+  }
+
+  getRootDepth(rootId: string): number | null {
+    const id = rootId.trim();
+    if (!id) {
+      return null;
+    }
+
+    return this.selectedRootDepthByIdSubject.getValue()[id] ?? null;
+  }
+
   clearSelectedRoots(): void {
     this.selectedRootIdsSubject.next([]);
+    this.selectedRootDepthByIdSubject.next({});
   }
 
   private sanitizeSelectedRootIds(roots: RootItem[]): void {
@@ -87,5 +135,35 @@ export class RootsService {
     if (sanitized.length !== current.length) {
       this.selectedRootIdsSubject.next(sanitized);
     }
+
+    const depthCurrent = this.selectedRootDepthByIdSubject.getValue();
+    const depthSanitized = Object.entries(depthCurrent).reduce<Record<string, number | null>>(
+      (acc, [id, depth]) => {
+        if (allowed.has(id)) {
+          acc[id] = depth;
+        }
+        return acc;
+      },
+      {}
+    );
+    if (Object.keys(depthSanitized).length !== Object.keys(depthCurrent).length) {
+      this.selectedRootDepthByIdSubject.next(depthSanitized);
+    }
+  }
+
+  private normalizeDepth(rawDepth: number | string | null): number | null {
+    if (rawDepth === null) {
+      return null;
+    }
+
+    const parsed =
+      typeof rawDepth === 'number'
+        ? rawDepth
+        : Number.parseInt(String(rawDepth).trim(), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+
+    return parsed;
   }
 }

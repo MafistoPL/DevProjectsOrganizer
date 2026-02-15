@@ -57,23 +57,24 @@ export class ScanPageComponent {
   }
 
   async rescanSelectedRoots(): Promise<void> {
-    const selectedRoots = this.rootsService.getSelectedRootsSnapshot();
-    if (selectedRoots.length === 0) {
+    const selectedTargets = this.rootsService.getSelectedRescanTargetsSnapshot();
+    if (selectedTargets.length === 0) {
       this.snackBar.open('Select at least one root to rescan.', undefined, { duration: 1500 });
       return;
     }
 
     let queued = 0;
-    for (const root of selectedRoots) {
+    for (const target of selectedTargets) {
       try {
         await this.scanService.startScan({
           mode: 'roots',
-          rootId: root.id
+          rootId: target.root.id,
+          depthLimit: target.depthLimit
         });
         queued += 1;
       } catch (error) {
         const message = error instanceof Error && error.message ? error.message : 'Rescan request failed';
-        this.snackBar.open(`${message}: ${root.path}`, 'Close', { duration: 2500 });
+        this.snackBar.open(`${message}: ${target.root.path}`, 'Close', { duration: 2500 });
       }
     }
 

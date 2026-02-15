@@ -90,11 +90,15 @@ test('rescan selected roots queues scan only for checked roots', async ({ page }
   const rescanButton = page.getByRole('button', { name: 'Rescan selected roots' });
   await expect(rescanButton).toBeDisabled();
 
+  await expect(page.getByTestId('scan-root-depth-field-root-b')).toHaveCount(0);
   await page.getByTestId('scan-root-select-root-b').click();
+  await expect(page.getByTestId('scan-root-depth-field-root-b')).toBeVisible();
+  await page.getByTestId('scan-root-depth-input-root-b').fill('3');
   await expect(rescanButton).toBeEnabled();
   await rescanButton.click();
 
   const statusCard = page.getByTestId('status-card');
   await expect(statusCard).toContainText('C:\\src');
+  await expect(statusCard).toContainText('depth-3');
   await expect(statusCard).not.toContainText('D:\\code');
 });

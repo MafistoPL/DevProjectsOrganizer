@@ -227,13 +227,15 @@ export class AppHostBridgeService {
           : null;
         const rootPath = selectedRoot?.path ?? 'C:\\src';
         const disk = /^[A-Za-z]:/.test(rootPath) ? rootPath.slice(0, 2) : 'C:';
+        const rawDepth = Number.parseInt(String(payload?.depthLimit ?? ''), 10);
+        const depthLabel = Number.isFinite(rawDepth) && rawDepth > 0 ? `depth-${rawDepth}` : 'depth-auto';
         const scan = {
           id: this.createId(),
           rootPath,
           mode: payload?.mode ?? 'roots',
           state: 'Running',
           disk,
-          currentPath: `${rootPath}\\project\\file.cs`,
+          currentPath: `${rootPath}\\project\\${depthLabel}\\file.cs`,
           filesScanned: 120,
           totalFiles: 480,
           queueReason: null,

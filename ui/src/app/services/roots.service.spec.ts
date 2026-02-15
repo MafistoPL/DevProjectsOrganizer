@@ -52,4 +52,43 @@ describe('RootsService', () => {
     expect(service.isRootSelected('root-1')).toBe(false);
     expect(service.isRootSelected('root-2')).toBe(true);
   });
+
+  it('stores depth limit per selected root and exposes rescan targets', async () => {
+    const bridge = new BridgeMock();
+    const service = new RootsService(bridge as unknown as AppHostBridgeService);
+    await service.load();
+
+    service.setRootSelected('root-1', true);
+    service.setRootDepth('root-1', '3');
+    service.setRootSelected('root-2', true);
+    service.setRootDepth('root-2', 1);
+
+    const targets = service.getSelectedRescanTargetsSnapshot();
+    expect(targets).toEqual([
+      {
+        root: bridge.roots[0],
+        depthLimit: 3
+      },
+      {
+        root: bridge.roots[1],
+        depthLimit: 1
+      }
+    ]);
+  });
+
+  it('treats invalid depth values as null', async () => {
+    const bridge = new BridgeMock();
+    const service = new RootsService(bridge as unknown as AppHostBridgeService);
+    await service.load();
+
+    service.setRootSelected('root-1', true);
+    service.setRootDepth('root-1', '0');
+    expect(service.getRootDepth('root-1')).toBeNull();
+
+    service.setRootDepth('root-1', 'abc');
+    expect(service.getRootDepth('root-1')).toBeNull();
+
+    service.setRootDepth('root-1', '2');
+    expect(service.getRootDepth('root-1')).toBe(2);
+  });
 });

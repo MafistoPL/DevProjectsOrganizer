@@ -22,6 +22,23 @@
             <ng-template #noScanSummary>
               <span class="summary summary--empty">No scans yet</span>
             </ng-template>
+            <mat-form-field
+              appearance="outline"
+              class="depth-field"
+              *ngIf="isSelected(root.id)"
+              [attr.data-testid]="'scan-root-depth-field-' + root.id"
+            >
+              <mat-label>Depth limit</mat-label>
+              <input
+                matInput
+                type="number"
+                min="1"
+                step="1"
+                [value]="getDepthInputValue(root.id)"
+                (input)="onDepthInput(root.id, $any($event.target).value)"
+                [attr.data-testid]="'scan-root-depth-input-' + root.id"
+              />
+            </mat-form-field>
           </div>
 
           <div class="root-meta">
