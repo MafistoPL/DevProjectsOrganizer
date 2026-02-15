@@ -136,7 +136,7 @@ Tag taxonomy v1 (draft):
   - aliases kept only as input-mapping (not stored as final tag names).
 - Heuristics input sources:
   - marker files (`.sln`, `*.csproj`, `*.vcxproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`),
-  - extension histogram (`*.ts`, `*.tsx`, `*.jsx`, `*.cpp`, `*.h`, `*.ps1`, etc.),
+  - extension histogram (`*.ts`, `*.tsx`, `*.jsx`, `*.cpp`, `*.h`, `*.ps1`, `*.java`, etc.),
   - path/name hints (`winapi`, `gui`, `console`, `katas`, `tutorial`, beginner chapter patterns),
   - source content token hints (`hello world`, `lorem ipsum`, pointer syntax, asm keywords) scanned with bounded limits.
   - project size bucket from estimated source line count (`lines-*` tags).

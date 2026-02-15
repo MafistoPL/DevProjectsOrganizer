@@ -1,6 +1,9 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Rozszerzono heurystykę sugerowania tagu `java`:
+  * Dodano sygnał `java` z histogramu rozszerzeń (`ext:java=<n>`), więc sugestia `java` pojawia się także bez markerów `pom.xml`/`build.gradle`.
+  * Dodano test integracyjny `TagSuggestionHeuristicsServiceTests` dla scenariusza z plikami `.java`.
 * Scan UI: reskan zaznaczonych rootów:
   * Do każdego roota na widoku `Scan` dodano checkbox wyboru roota do zbiorczego reskanu.
   * Checkbox ma tooltip wyjaśniający, że root trafi do akcji `Rescan selected roots`.

@@ -60,6 +60,32 @@ public sealed class TagSuggestionHeuristicsServiceTests
     }
 
     [Fact]
+    public void Detect_adds_java_from_extension_histogram_when_java_files_exist()
+    {
+        var project = CreateProject(
+            markersJson: """[]""",
+            techHintsJson: """[]""",
+            extensionsSummary: "java=5,xml=1",
+            name: "java-sample",
+            path: @"D:\code\java-sample",
+            reason: "detected by structure");
+
+        var tags =
+            new[]
+            {
+                CreateTag("java")
+            };
+
+        var sut = new TagSuggestionHeuristicsService();
+
+        var result = sut.Detect(project, tags);
+
+        result.Should().Contain(item =>
+            item.TagName == "java"
+            && item.Reason.Contains("ext:java=5", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Detect_generates_stable_fingerprint_for_same_project_and_tag()
     {
         var project = CreateProject(

@@ -234,11 +234,13 @@ public sealed class TagSuggestionHeuristicsService
                 case "go":
                 case "rs":
                 case "py":
+                case "java":
                     var mapped = ext switch
                     {
                         "go" => "go",
                         "rs" => "rust",
                         "py" => "python",
+                        "java" => "java",
                         _ => ext
                     };
                     AddSignal(mapped, Math.Min(0.82, 0.58 + count * 0.03), $"ext:{ext}={count}");
