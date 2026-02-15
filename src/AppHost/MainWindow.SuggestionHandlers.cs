@@ -53,9 +53,10 @@ public partial class MainWindow
                 {
                     updated.Name = acceptedProjectName;
                 }
+                var acceptedProjectDescription = GetAcceptedProjectDescription(request.Payload);
 
                 var projectStore = new ProjectStore(_dbContext);
-                await projectStore.UpsertFromSuggestionAsync(updated);
+                await projectStore.UpsertFromSuggestionAsync(updated, acceptedProjectDescription);
                 SendEvent("projects.changed", new { reason = "suggestion.accepted", suggestionId = updated.Id });
             }
             SendResponse(request.Id, request.Type, MapSuggestionDto(updated));
@@ -309,6 +310,28 @@ public partial class MainWindow
         if (string.IsNullOrWhiteSpace(raw))
         {
             return null;
+        }
+
+        return raw.Trim();
+    }
+
+    private static string? GetAcceptedProjectDescription(JsonElement? payload)
+    {
+        if (!payload.HasValue)
+        {
+            return null;
+        }
+
+        var element = payload.Value;
+        if (!element.TryGetProperty("projectDescription", out var descriptionElement))
+        {
+            return null;
+        }
+
+        var raw = descriptionElement.GetString();
+        if (raw is null)
+        {
+            return string.Empty;
         }
 
         return raw.Trim();

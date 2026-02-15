@@ -11,6 +11,7 @@ public sealed record ProjectDto(
     Guid LastScanSessionId,
     string RootPath,
     string Name,
+    string Description,
     string Path,
     string Kind,
     double Score,

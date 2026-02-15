@@ -7,6 +7,7 @@ import { ProjectsService } from '../../services/projects.service';
 describe('OrganizerPageComponent', () => {
   let fixture: ComponentFixture<OrganizerPageComponent>;
   let deleteProjectSpy: ReturnType<typeof vi.fn>;
+  let updateDescriptionSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     const projectsServiceMock = {
@@ -17,6 +18,7 @@ describe('OrganizerPageComponent', () => {
           lastScanSessionId: 'scan-1',
           rootPath: 'D:\\code',
           name: 'dotnet-api',
+          description: 'Initial description',
           score: 0.88,
           kind: 'ProjectRoot',
           path: 'D:\\code\\dotnet-api',
@@ -32,9 +34,15 @@ describe('OrganizerPageComponent', () => {
           ]
         }
       ]),
-      deleteProject: vi.fn().mockResolvedValue({ id: 'proj-1', deleted: true })
+      deleteProject: vi.fn().mockResolvedValue({ id: 'proj-1', deleted: true }),
+      updateProjectDescription: vi.fn().mockResolvedValue({
+        id: 'proj-1',
+        updated: true,
+        description: 'Updated description'
+      })
     };
     deleteProjectSpy = projectsServiceMock.deleteProject;
+    updateDescriptionSpy = projectsServiceMock.updateProjectDescription;
 
     await TestBed.configureTestingModule({
       imports: [OrganizerPageComponent],
@@ -51,6 +59,7 @@ describe('OrganizerPageComponent', () => {
     expect(text).toContain('D:\\code\\dotnet-api');
     expect(text).toContain('csharp');
     expect(text).toContain('backend');
+    expect(text).toContain('Initial description');
   });
 
   it('delete action deletes project after typed-name confirmation', async () => {
@@ -65,5 +74,15 @@ describe('OrganizerPageComponent', () => {
 
     expect(dialogOpenSpy).toHaveBeenCalled();
     expect(deleteProjectSpy).toHaveBeenCalledWith('proj-1', 'dotnet-api');
+  });
+
+  it('allows editing project description', async () => {
+    const project = fixture.componentInstance.projects()[0];
+    fixture.componentInstance.beginEditDescription(project);
+    fixture.componentInstance.editDescriptionValue = 'Updated description';
+
+    await fixture.componentInstance.saveDescription(project);
+
+    expect(updateDescriptionSpy).toHaveBeenCalledWith('proj-1', 'Updated description');
   });
 });

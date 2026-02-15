@@ -94,6 +94,48 @@ public partial class MainWindow
         }
     }
 
+    private async Task HandleProjectsUpdateAsync(HostRequest request)
+    {
+        if (_dbContext == null)
+        {
+            SendError(request.Id, request.Type, "Database not ready.");
+            return;
+        }
+
+        if (!TryGetProjectId(request.Payload, out var projectId))
+        {
+            SendError(request.Id, request.Type, "Missing project id.");
+            return;
+        }
+
+        if (!TryGetProjectDescription(request.Payload, out var description))
+        {
+            SendError(request.Id, request.Type, "Missing project description.");
+            return;
+        }
+
+        try
+        {
+            var store = new ProjectStore(_dbContext);
+            var updated = await store.UpdateDescriptionAsync(projectId, description);
+            SendEvent("projects.changed", new
+            {
+                reason = "project.updated",
+                projectId = updated.Id
+            });
+            SendResponse(request.Id, request.Type, new
+            {
+                id = updated.Id,
+                updated = true,
+                description = updated.Description
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
+    }
+
     private async Task HandleProjectsRunTagHeuristicsAsync(HostRequest request)
     {
         if (_dbContext == null)
@@ -259,6 +301,24 @@ public partial class MainWindow
         return Guid.TryParse(idElement.GetString(), out projectId);
     }
 
+    private static bool TryGetProjectDescription(JsonElement? payload, out string description)
+    {
+        description = string.Empty;
+        if (!payload.HasValue)
+        {
+            return false;
+        }
+
+        var element = payload.Value;
+        if (!element.TryGetProperty("description", out var descriptionElement))
+        {
+            return false;
+        }
+
+        description = descriptionElement.GetString() ?? string.Empty;
+        return true;
+    }
+
     private static ProjectDto MapProjectDto(ProjectEntity entity, IReadOnlyList<ProjectTagDto> tags)
     {
         return new ProjectDto(
@@ -267,6 +327,7 @@ public partial class MainWindow
             entity.LastScanSessionId,
             entity.RootPath,
             entity.Name,
+            entity.Description,
             entity.Path,
             entity.Kind,
             entity.Score,

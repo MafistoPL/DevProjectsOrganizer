@@ -129,12 +129,17 @@ export class ProjectSuggestionListComponent {
       return;
     }
 
-    const decision = await this.promptAcceptDecision(item?.name ?? '');
+    const decision = await this.promptAcceptDecision(item?.name ?? '', '');
     if (!decision) {
       return;
     }
 
-    await this.suggestionsService.setStatus(id, status, decision.projectName);
+    await this.suggestionsService.setStatus(
+      id,
+      status,
+      decision.projectName,
+      decision.projectDescription
+    );
 
     const project = this.projectsService.findBySourceSuggestionId(id);
     if (!project) {
@@ -268,7 +273,10 @@ export class ProjectSuggestionListComponent {
     return copied;
   }
 
-  private async promptAcceptDecision(projectName: string): Promise<ProjectAcceptDialogResult | null> {
+  private async promptAcceptDecision(
+    projectName: string,
+    projectDescription: string
+  ): Promise<ProjectAcceptDialogResult | null> {
     const normalizedProjectName = projectName.trim();
     if (!normalizedProjectName) {
       return null;
@@ -278,7 +286,8 @@ export class ProjectSuggestionListComponent {
       width: '560px',
       disableClose: false,
       data: {
-        projectName: normalizedProjectName
+        projectName: normalizedProjectName,
+        projectDescription: projectDescription.trim()
       }
     });
 
@@ -290,7 +299,8 @@ export class ProjectSuggestionListComponent {
     if (typeof selected === 'string') {
       return {
         action: selected as ProjectAcceptAction,
-        projectName: normalizedProjectName
+        projectName: normalizedProjectName,
+        projectDescription: projectDescription.trim()
       };
     }
 
@@ -301,7 +311,8 @@ export class ProjectSuggestionListComponent {
 
     return {
       action: selected.action,
-      projectName: selectedName
+      projectName: selectedName,
+      projectDescription: selected.projectDescription?.trim() ?? ''
     };
   }
 

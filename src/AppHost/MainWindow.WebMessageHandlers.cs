@@ -23,6 +23,7 @@ public partial class MainWindow
             ["scan.stop"] = HandleScanStopAsync,
             ["projects.list"] = HandleProjectsListAsync,
             ["projects.delete"] = HandleProjectsDeleteAsync,
+            ["projects.update"] = HandleProjectsUpdateAsync,
             ["projects.runTagHeuristics"] = HandleProjectsRunTagHeuristicsAsync,
             ["projects.runAiTagSuggestions"] = HandleProjectsRunAiTagSuggestionsAsync,
             ["tags.list"] = HandleTagsListAsync,

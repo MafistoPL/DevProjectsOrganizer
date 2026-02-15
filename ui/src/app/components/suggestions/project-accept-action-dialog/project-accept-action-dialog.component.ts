@@ -8,11 +8,13 @@ export type ProjectAcceptAction = 'heuristics' | 'ai' | 'skip';
 
 export type ProjectAcceptActionDialogData = {
   projectName: string;
+  projectDescription?: string;
 };
 
 export type ProjectAcceptDialogResult = {
   action: ProjectAcceptAction;
   projectName: string;
+  projectDescription: string;
 };
 
 @Component({
@@ -23,16 +25,22 @@ export type ProjectAcceptDialogResult = {
 })
 export class ProjectAcceptActionDialogComponent {
   projectName: string;
+  projectDescription: string;
 
   constructor(
     private readonly dialogRef: MatDialogRef<ProjectAcceptActionDialogComponent, ProjectAcceptDialogResult>,
     @Inject(MAT_DIALOG_DATA) readonly data: ProjectAcceptActionDialogData
   ) {
     this.projectName = data.projectName;
+    this.projectDescription = data.projectDescription ?? '';
   }
 
   get normalizedProjectName(): string {
     return this.projectName.trim();
+  }
+
+  get normalizedProjectDescription(): string {
+    return this.projectDescription.trim();
   }
 
   choose(action: ProjectAcceptAction): void {
@@ -41,7 +49,11 @@ export class ProjectAcceptActionDialogComponent {
       return;
     }
 
-    this.dialogRef.close({ action, projectName });
+    this.dialogRef.close({
+      action,
+      projectName,
+      projectDescription: this.normalizedProjectDescription
+    });
   }
 
   cancel(): void {

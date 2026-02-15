@@ -37,6 +37,57 @@
         <span class="label">Path</span>
         <strong>{{ project.path }}</strong>
       </div>
+      <div class="detail-row description-row">
+        <span class="label">Description</span>
+        <ng-container *ngIf="editDescriptionProjectId !== project.id; else editDescriptionBlock">
+          <div class="description-value-wrap">
+            <strong class="description-value" *ngIf="project.description; else emptyDescription">
+              {{ project.description }}
+            </strong>
+            <ng-template #emptyDescription>
+              <strong class="description-empty">No description</strong>
+            </ng-template>
+            <button
+              mat-stroked-button
+              (click)="beginEditDescription(project)"
+              [attr.data-testid]="'project-edit-description-btn-' + project.id"
+            >
+              Edit description
+            </button>
+          </div>
+        </ng-container>
+        <ng-template #editDescriptionBlock>
+          <div class="description-edit-wrap">
+            <mat-form-field appearance="outline" class="description-input">
+              <mat-label>Project description</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                [value]="editDescriptionValue"
+                (input)="editDescriptionValue = $any($event.target).value"
+                [attr.data-testid]="'project-description-input-' + project.id"
+              ></textarea>
+            </mat-form-field>
+            <div class="description-edit-actions">
+              <button
+                mat-stroked-button
+                color="primary"
+                (click)="saveDescription(project)"
+                [attr.data-testid]="'project-save-description-btn-' + project.id"
+              >
+                Save
+              </button>
+              <button
+                mat-stroked-button
+                (click)="cancelEditDescription()"
+                [attr.data-testid]="'project-cancel-description-btn-' + project.id"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </ng-template>
+      </div>
       <div class="detail-row">
         <span class="label">Reason</span>
         <strong>{{ project.reason }}</strong>

@@ -87,17 +87,27 @@ export class SuggestionsService {
   async setStatus(
     id: string,
     status: SuggestionStatus,
-    projectName?: string
+    projectName?: string,
+    projectDescription?: string
   ): Promise<ProjectSuggestionItem> {
     const payloadStatus: SuggestionStatusPayload =
       status === 'accepted' ? 'Accepted' : status === 'rejected' ? 'Rejected' : 'Pending';
-    const payload: { id: string; status: SuggestionStatusPayload; projectName?: string } = {
+    const payload: {
+      id: string;
+      status: SuggestionStatusPayload;
+      projectName?: string;
+      projectDescription?: string;
+    } = {
       id,
       status: payloadStatus
     };
     const normalizedProjectName = projectName?.trim();
     if (payloadStatus === 'Accepted' && normalizedProjectName) {
       payload.projectName = normalizedProjectName;
+    }
+
+    if (payloadStatus === 'Accepted' && typeof projectDescription === 'string') {
+      payload.projectDescription = projectDescription.trim();
     }
 
     const updated = await this.bridge.request<HostSuggestionDto>('suggestions.setStatus', payload);

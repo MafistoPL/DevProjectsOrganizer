@@ -11,6 +11,7 @@ class BridgeMock {
       lastScanSessionId: 'scan-1',
       rootPath: 'D:\\code',
       name: 'dotnet-api',
+      description: 'Sample API project',
       score: 0.88,
       kind: 'ProjectRoot',
       path: 'D:\\code\\dotnet-api',
@@ -28,6 +29,7 @@ class BridgeMock {
       lastScanSessionId: 'scan-2',
       rootPath: 'D:\\code',
       name: 'cpp-tree',
+      description: '',
       score: 0.81,
       kind: 'ProjectRoot',
       path: 'D:\\code\\cpp-tree',
@@ -75,6 +77,15 @@ class BridgeMock {
 
     if (type === 'projects.delete') {
       return { id: 'proj-1', deleted: true } as T;
+    }
+
+    if (type === 'projects.update') {
+      const updatePayload = payload as any;
+      return {
+        id: updatePayload?.projectId ?? 'proj-1',
+        updated: true,
+        description: updatePayload?.description ?? ''
+      } as T;
     }
 
     throw new Error(`Unexpected request: ${type}`);
@@ -197,6 +208,20 @@ describe('ProjectsService', () => {
 
     expect(bridge.requests).toEqual([
       { type: 'projects.delete', payload: { projectId: 'proj-1', confirmName: 'dotnet-api' } },
+      { type: 'projects.list', payload: undefined }
+    ]);
+  });
+
+  it('updateProjectDescription sends payload and reloads list', async () => {
+    const bridge = new BridgeMock();
+    const sut = new ProjectsService(bridge as any);
+    await Promise.resolve();
+    bridge.requests = [];
+
+    await sut.updateProjectDescription('proj-1', 'updated description');
+
+    expect(bridge.requests).toEqual([
+      { type: 'projects.update', payload: { projectId: 'proj-1', description: 'updated description' } },
       { type: 'projects.list', payload: undefined }
     ]);
   });

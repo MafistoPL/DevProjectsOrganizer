@@ -43,6 +43,7 @@ public sealed class ProjectStore
 
     public async Task<ProjectEntity> UpsertFromSuggestionAsync(
         ProjectSuggestionEntity suggestion,
+        string? acceptedDescription = null,
         CancellationToken cancellationToken = default)
     {
         var key = BuildProjectKey(suggestion.Path, suggestion.Kind);
@@ -63,6 +64,7 @@ public sealed class ProjectStore
                 Path = suggestion.Path,
                 Kind = suggestion.Kind,
                 ProjectKey = key,
+                Description = NormalizeDescription(acceptedDescription) ?? string.Empty,
                 Score = suggestion.Score,
                 Reason = suggestion.Reason,
                 ExtensionsSummary = suggestion.ExtensionsSummary,
@@ -84,6 +86,12 @@ public sealed class ProjectStore
         existing.Path = suggestion.Path;
         existing.Kind = suggestion.Kind;
         existing.ProjectKey = key;
+        var normalizedDescription = NormalizeDescription(acceptedDescription);
+        if (normalizedDescription is not null)
+        {
+            existing.Description = normalizedDescription;
+        }
+
         existing.Score = suggestion.Score;
         existing.Reason = suggestion.Reason;
         existing.ExtensionsSummary = suggestion.ExtensionsSummary;
@@ -119,8 +127,36 @@ public sealed class ProjectStore
         return true;
     }
 
+    public async Task<ProjectEntity> UpdateDescriptionAsync(
+        Guid projectId,
+        string description,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.Projects
+            .FirstOrDefaultAsync(item => item.Id == projectId, cancellationToken);
+        if (entity == null)
+        {
+            throw new InvalidOperationException("Project not found.");
+        }
+
+        entity.Description = NormalizeDescription(description) ?? string.Empty;
+        entity.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        return entity;
+    }
+
     public static string BuildProjectKey(string path, string kind)
     {
         return $"{kind.Trim().ToLowerInvariant()}::{path.Trim().ToLowerInvariant()}";
+    }
+
+    private static string? NormalizeDescription(string? description)
+    {
+        if (description is null)
+        {
+            return null;
+        }
+
+        return description.Trim();
     }
 }

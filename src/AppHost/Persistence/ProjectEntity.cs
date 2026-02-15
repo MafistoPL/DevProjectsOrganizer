@@ -10,6 +10,7 @@ public sealed class ProjectEntity
     public string Path { get; set; } = string.Empty;
     public string Kind { get; set; } = string.Empty;
     public string ProjectKey { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public double Score { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string ExtensionsSummary { get; set; } = string.Empty;

@@ -36,6 +36,7 @@ type MockProject = {
   lastScanSessionId: string;
   rootPath: string;
   name: string;
+  description: string;
   score: number;
   kind: string;
   path: string;
@@ -326,6 +327,35 @@ export class AppHostBridgeService {
 
         return Promise.resolve({ id: projectId, deleted: true } as T);
       }
+      case 'projects.update': {
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
+        const description = typeof payload?.description === 'string' ? payload.description.trim() : '';
+        if (!projectId) {
+          return Promise.reject(new Error('Missing project id.'));
+        }
+
+        const index = this.mockProjects.findIndex((item) => item.id === projectId);
+        if (index < 0) {
+          return Promise.reject(new Error('Project not found.'));
+        }
+
+        const updated: MockProject = {
+          ...this.mockProjects[index],
+          description,
+          updatedAt: new Date().toISOString()
+        };
+        this.mockProjects = [
+          ...this.mockProjects.slice(0, index),
+          updated,
+          ...this.mockProjects.slice(index + 1)
+        ];
+        this.eventSubject.next({
+          type: 'projects.changed',
+          data: { reason: 'project.updated', projectId }
+        });
+
+        return Promise.resolve({ id: projectId, updated: true, description } as T);
+      }
       case 'projects.runTagHeuristics': {
         const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
         if (!projectId) {
@@ -602,6 +632,10 @@ export class AppHostBridgeService {
         const statusRaw = typeof payload?.status === 'string' ? payload.status : '';
         const projectNameRaw =
           typeof payload?.projectName === 'string' ? payload.projectName.trim() : '';
+        const hasProjectDescription = typeof payload?.projectDescription === 'string';
+        const projectDescriptionRaw = hasProjectDescription
+          ? String(payload.projectDescription).trim()
+          : null;
         if (!id) {
           return Promise.reject(new Error('Missing suggestion id.'));
         }
@@ -621,7 +655,8 @@ export class AppHostBridgeService {
         const updated = {
           ...this.mockSuggestions[index],
           status: normalized,
-          name: normalized === 'Accepted' && projectNameRaw ? projectNameRaw : this.mockSuggestions[index].name
+          name: normalized === 'Accepted' && projectNameRaw ? projectNameRaw : this.mockSuggestions[index].name,
+          projectDescription: normalized === 'Accepted' ? projectDescriptionRaw : null
         };
         this.mockSuggestions = [
           ...this.mockSuggestions.slice(0, index),
@@ -1024,29 +1059,55 @@ export class AppHostBridgeService {
     }
 
     const now = new Date().toISOString();
-    this.mockTags = [
-      {
-        id: this.createId(),
-        name: 'csharp',
-        isSystem: true,
-        createdAt: now,
-        updatedAt: now
-      },
-      {
-        id: this.createId(),
-        name: 'cpp',
-        isSystem: true,
-        createdAt: now,
-        updatedAt: now
-      },
-      {
-        id: this.createId(),
-        name: 'web',
-        isSystem: false,
-        createdAt: now,
-        updatedAt: now
-      }
+    const defaultTags = [
+      'csharp',
+      'dotnet',
+      'cpp',
+      'c',
+      'native',
+      'vs-solution',
+      'vs-project',
+      'node',
+      'react',
+      'angular',
+      'html',
+      'json',
+      'git',
+      'cmake',
+      'makefile',
+      'java',
+      'gradle',
+      'maven',
+      'python',
+      'rust',
+      'go',
+      'powershell',
+      'low-level',
+      'pointers',
+      'console',
+      'winapi',
+      'gui',
+      'hello-world',
+      'lorem-ipsum',
+      'lines-lt-100',
+      'lines-100-200',
+      'lines-200-500',
+      'lines-500-1k',
+      'lines-1k-2k',
+      'lines-2k-5k',
+      'lines-10k-20k',
+      'lines-20k-50k',
+      'lines-50k-100k',
+      'lines-gt-100k'
     ];
+
+    this.mockTags = defaultTags.map((name) => ({
+      id: this.createId(),
+      name,
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now
+    }));
     this.saveMockTags();
   }
 
@@ -1190,6 +1251,7 @@ export class AppHostBridgeService {
         lastScanSessionId: item.scanSessionId,
         rootPath: item.rootPath,
         name: item.name,
+        description: '',
         score: item.score,
         kind: item.kind,
         path: item.path,
@@ -1216,6 +1278,7 @@ export class AppHostBridgeService {
       lastScanSessionId: suggestion.scanSessionId,
       rootPath: suggestion.rootPath,
       name: suggestion.name,
+      description: suggestion.projectDescription ?? (index >= 0 ? this.mockProjects[index].description : ''),
       score: suggestion.score,
       kind: suggestion.kind,
       path: suggestion.path,

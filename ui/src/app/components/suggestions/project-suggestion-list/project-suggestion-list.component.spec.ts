@@ -47,7 +47,7 @@ describe('ProjectSuggestionListComponent', () => {
 
     const matDialogMock = {
       open: vi.fn().mockReturnValue({
-        afterClosed: () => of({ action: 'skip', projectName: 'dotnet-api' })
+        afterClosed: () => of({ action: 'skip', projectName: 'dotnet-api', projectDescription: '' })
       })
     };
     dialogOpenSpy = matDialogMock.open;
@@ -74,7 +74,11 @@ describe('ProjectSuggestionListComponent', () => {
 
   it('runs tag heuristics when accepted and selected in dialog', async () => {
     dialogOpenSpy.mockReturnValue({
-      afterClosed: () => of({ action: 'heuristics', projectName: 'dotnet-api-renamed' })
+      afterClosed: () => of({
+        action: 'heuristics',
+        projectName: 'dotnet-api-renamed',
+        projectDescription: 'updated desc'
+      })
     });
 
     await component.setStatus('suggestion-1', 'accepted', {
@@ -85,7 +89,8 @@ describe('ProjectSuggestionListComponent', () => {
     expect(suggestionsServiceMock.setStatus).toHaveBeenCalledWith(
       'suggestion-1',
       'accepted',
-      'dotnet-api-renamed'
+      'dotnet-api-renamed',
+      'updated desc'
     );
     expect(projectsServiceMock.findBySourceSuggestionId).toHaveBeenCalledWith('suggestion-1');
     expect(projectsServiceMock.runTagHeuristics).toHaveBeenCalledWith('project-1');
@@ -94,7 +99,7 @@ describe('ProjectSuggestionListComponent', () => {
 
   it('runs AI action when selected in dialog', async () => {
     dialogOpenSpy.mockReturnValue({
-      afterClosed: () => of({ action: 'ai', projectName: 'dotnet-api' })
+      afterClosed: () => of({ action: 'ai', projectName: 'dotnet-api', projectDescription: '' })
     });
 
     await component.setStatus('suggestion-1', 'accepted', {

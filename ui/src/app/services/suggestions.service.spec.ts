@@ -138,19 +138,20 @@ describe('SuggestionsService', () => {
     expect(projects.loadCalls).toBe(1);
   });
 
-  it('setStatus accepted sends edited project name when provided', async () => {
+  it('setStatus accepted sends edited project name and description when provided', async () => {
     const bridge = new BridgeMock();
     const projects = new ProjectsServiceMock();
     const sut = new SuggestionsService(bridge as any, projects as any);
     await sut.load();
 
-    await sut.setStatus('p1', 'accepted', 'alpha-renamed');
+    await sut.setStatus('p1', 'accepted', 'alpha-renamed', 'project description');
 
     const setStatusCall = [...bridge.requests]
       .reverse()
       .find((item) => item.type === 'suggestions.setStatus');
     expect(setStatusCall).toBeDefined();
     expect((setStatusCall!.payload as any).projectName).toBe('alpha-renamed');
+    expect((setStatusCall!.payload as any).projectDescription).toBe('project description');
   });
 
   it('restoreRejectedFromArchive updates only rejected suggestions to pending', async () => {

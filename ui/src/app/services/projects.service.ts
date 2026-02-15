@@ -13,6 +13,7 @@ export type ProjectItem = {
   lastScanSessionId: string;
   rootPath: string;
   name: string;
+  description: string;
   score: number;
   kind: string;
   path: string;
@@ -212,6 +213,21 @@ export class ProjectsService {
       projectId,
       confirmName
     });
+    await this.load();
+    return result;
+  }
+
+  async updateProjectDescription(
+    projectId: string,
+    description: string
+  ): Promise<{ id: string; updated: boolean; description: string }> {
+    const result = await this.bridge.request<{ id: string; updated: boolean; description: string }>(
+      'projects.update',
+      {
+        projectId,
+        description
+      }
+    );
     await this.load();
     return result;
   }

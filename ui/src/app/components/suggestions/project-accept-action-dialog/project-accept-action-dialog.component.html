@@ -13,6 +13,16 @@
       data-testid="project-accept-name-input"
     />
   </mat-form-field>
+  <mat-form-field appearance="outline" class="project-name-input">
+    <mat-label>Project description (optional)</mat-label>
+    <textarea
+      matInput
+      rows="3"
+      [value]="projectDescription"
+      (input)="projectDescription = $any($event.target).value"
+      data-testid="project-accept-description-input"
+    ></textarea>
+  </mat-form-field>
   <p>Choose what to run next for tags:</p>
 </mat-dialog-content>
 

@@ -101,6 +101,54 @@ public sealed class ProjectStoreTests
     }
 
     [Fact]
+    public async Task UpsertFromSuggestionAsync_sets_or_preserves_description_based_on_payload()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var suggestion = await AddSuggestionAsync(db, Guid.NewGuid(), "sample");
+            var store = new ProjectStore(db);
+
+            var created = await store.UpsertFromSuggestionAsync(suggestion, "first description");
+            created.Description.Should().Be("first description");
+
+            var updatedWithoutDescription = await store.UpsertFromSuggestionAsync(suggestion, null);
+            updatedWithoutDescription.Description.Should().Be("first description");
+
+            var updatedWithDescription = await store.UpsertFromSuggestionAsync(suggestion, "second description");
+            updatedWithDescription.Description.Should().Be("second description");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateDescriptionAsync_updates_project_description()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var suggestion = await AddSuggestionAsync(db, Guid.NewGuid(), "sample");
+            var store = new ProjectStore(db);
+            var project = await store.UpsertFromSuggestionAsync(suggestion);
+
+            var updated = await store.UpdateDescriptionAsync(project.Id, "edited description");
+
+            updated.Description.Should().Be("edited description");
+
+            await using var checkDb = new AppDbContext(options);
+            var persisted = await checkDb.Projects.FirstAsync(item => item.Id == project.Id);
+            persisted.Description.Should().Be("edited description");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
     public async Task DeleteAsync_removes_project_and_marks_source_suggestion_as_rejected()
     {
         var (options, db, path) = await RootStoreTests.CreateDbAsync();

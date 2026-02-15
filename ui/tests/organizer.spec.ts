@@ -45,3 +45,41 @@ test('project delete requires typed name confirmation', async ({ page }) => {
 
   await expect(page.getByText('No accepted projects yet.')).toBeVisible();
 });
+
+test('project organizer allows editing project description', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockSuggestions',
+      JSON.stringify([
+        {
+          id: 's1',
+          scanSessionId: 'scan-1',
+          rootPath: 'D:\\code',
+          name: 'dotnet-api',
+          score: 0.88,
+          kind: 'ProjectRoot',
+          path: 'D:\\code\\dotnet-api',
+          reason: 'markers: .sln',
+          extensionsSummary: 'cs=10',
+          markers: ['.sln'],
+          techHints: ['csharp'],
+          createdAt: '2026-02-15T10:00:00.000Z',
+          status: 'Accepted'
+        }
+      ])
+    );
+  });
+
+  await page.goto('/organizer');
+
+  const editButton = page.getByRole('button', { name: 'Edit description' }).first();
+  await expect(editButton).toBeVisible();
+  await editButton.click();
+
+  const input = page.getByTestId('project-description-input-project-s1');
+  await expect(input).toBeVisible();
+  await input.fill('Updated project description');
+
+  await page.getByTestId('project-save-description-btn-project-s1').click();
+  await expect(page.getByText('Updated project description')).toBeVisible();
+});
