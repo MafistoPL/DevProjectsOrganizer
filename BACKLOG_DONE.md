@@ -1,6 +1,10 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Uzupełniono backlog o nowy pakiet wymagań dla `Scan`/`Live results` (do realizacji pojedynczo):
+  * Trwałość zaznaczeń checkboxów rootów między restartami aplikacji.
+  * `Live results` filtrowane po zaznaczonym aktywnym/zakończonym skanie.
+  * Automatyczny `Rescan selected roots` przy starcie aplikacji.
 * Rozszerzono heurystykę sugerowania tagu `java`:
   * Dodano sygnał `java` z histogramu rozszerzeń (`ext:java=<n>`), więc sugestia `java` pojawia się także bez markerów `pom.xml`/`build.gradle`.
   * Dodano test integracyjny `TagSuggestionHeuristicsServiceTests` dla scenariusza z plikami `.java`.
