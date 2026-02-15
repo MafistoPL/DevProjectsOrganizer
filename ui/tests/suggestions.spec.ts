@@ -19,6 +19,18 @@ const setMockSuggestions = async (page: Page, items: unknown[]) => {
   }, items);
 };
 
+const setMockRegressionReportError = async (page: Page, message: string) => {
+  await page.addInitScript((errorMessage) => {
+    localStorage.setItem('mockRegressionReportError', errorMessage);
+  }, message);
+};
+
+const setMockTagSuggestions = async (page: Page, items: unknown[]) => {
+  await page.addInitScript((mockItems) => {
+    localStorage.setItem('mockTagSuggestions', JSON.stringify(mockItems));
+  }, items);
+};
+
 const selectSort = async (page: Page, label: string) => {
   await page.getByTestId('project-suggest-sort').click();
   await page.getByRole('option', { name: label }).click();
@@ -30,6 +42,120 @@ const setSortDir = async (page: Page, dirLabel: 'Asc' | 'Desc') => {
 
 const getNames = async (page: Page) => {
   return page.getByTestId('project-suggest-list').locator('[data-testid="project-name"]').allTextContents();
+};
+
+const expectHeadingInViewport = async (page: Page, heading: string) => {
+  const title = page.getByRole('heading', { name: heading });
+  await expect(title).toBeVisible();
+  const tabs = page.locator('nav.tabs');
+  await expect(tabs).toBeVisible();
+
+  const bounds = await title.boundingBox();
+  const tabsBounds = await tabs.boundingBox();
+  if (!bounds) {
+    throw new Error(`Missing heading bounds: ${heading}`);
+  }
+  if (!tabsBounds) {
+    throw new Error('Missing tabs bounds');
+  }
+
+  expect(bounds.y).toBeGreaterThanOrEqual(tabsBounds.y + tabsBounds.height + 4);
+  expect(bounds.y).toBeLessThan(240);
+};
+
+const expectRegressionPanelInShellViewport = async (page: Page) => {
+  const shellViewport = page.locator('mat-tab-nav-panel.content-inner');
+  await expect(shellViewport).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      return await page.evaluate(() => {
+        const panel = document.querySelector('[data-testid="regression-panel"]');
+        const shell = document.querySelector('mat-tab-nav-panel.content-inner');
+        if (!(panel instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+          return false;
+        }
+
+        const panelRect = panel.getBoundingClientRect();
+        const shellRect = shell.getBoundingClientRect();
+        return panelRect.top >= shellRect.top - 2 && panelRect.top < shellRect.bottom - 36;
+      });
+    })
+    .toBe(true);
+};
+
+const getBottomGapToShell = async (page: Page, selector: string): Promise<number | null> => {
+  return await page.evaluate(async (targetSelector) => {
+    const shell = document.querySelector('mat-tab-nav-panel.content-inner');
+    const target = document.querySelector(targetSelector);
+    if (!(shell instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+      return null;
+    }
+
+    shell.scrollTop = shell.scrollHeight;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    const shellRect = shell.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    return Number((shellRect.bottom - targetRect.bottom).toFixed(2));
+  }, selector);
+};
+
+const getBottomGapToListViewport = async (page: Page, testId: string): Promise<number | null> => {
+  return await page.evaluate(async (id) => {
+    const list = document.querySelector(`[data-testid="${id}"]`);
+    if (!(list instanceof HTMLElement)) {
+      return null;
+    }
+
+    const cards = Array.from(list.querySelectorAll('.suggestion-card')).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement
+    );
+    if (cards.length === 0) {
+      return null;
+    }
+
+    list.scrollTop = list.scrollHeight;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    const listRect = list.getBoundingClientRect();
+    const lastRect = cards[cards.length - 1].getBoundingClientRect();
+    return Number((listRect.bottom - lastRect.bottom).toFixed(2));
+  }, testId);
+};
+
+const buildLongMockSuggestions = (count: number) => {
+  return Array.from({ length: count }, (_, idx) => ({
+    id: `long-${idx + 1}`,
+    scanSessionId: `scan-long-${idx + 1}`,
+    rootPath: 'D:\\bulk',
+    name: `bulk-project-${String(idx + 1).padStart(3, '0')}`,
+    score: 0.5 + ((idx % 40) * 0.01),
+    kind: idx % 2 === 0 ? 'ProjectRoot' : 'Collection',
+    path: `D:\\bulk\\project-${idx + 1}`,
+    reason: 'generated for regression panel viewport test',
+    extensionsSummary: 'cs=10,json=2',
+    markers: ['.sln'],
+    techHints: ['csharp'],
+    createdAt: new Date(Date.UTC(2025, 0, 1, 12, 0, idx)).toISOString(),
+    status: 'Pending'
+  }));
+};
+
+const buildLongMockTagSuggestions = (count: number) => {
+  return Array.from({ length: count }, (_, idx) => ({
+    id: `tag-long-${idx + 1}`,
+    projectId: `project-long-${idx + 1}`,
+    projectName: `project-long-${String(idx + 1).padStart(3, '0')}`,
+    tagId: `tag-${(idx % 10) + 1}`,
+    tagName: `tag-${(idx % 10) + 1}`,
+    type: 'AssignExisting',
+    source: 'Heuristic',
+    confidence: 0.55 + ((idx % 40) * 0.01),
+    reason: `generated-tag-suggestion-${idx + 1}`,
+    createdAt: new Date(Date.UTC(2025, 0, 1, 12, 0, idx)).toISOString(),
+    status: 'Pending'
+  }));
 };
 
 const handleProjectAcceptDialog = async (
@@ -375,14 +501,51 @@ test('pending scope deduplicates newest suggestion by path and kind', async ({ p
   await expect(names.first()).toHaveText('2Dsource');
 });
 
-test('suggestions archive export shows exported popup and open folder action', async ({ page }) => {
+test('suggestions archive export shows exported snackbar and open folder action', async ({ page }) => {
   await gotoSuggestions(page);
 
   await page.getByTestId('project-suggest-export-archive').click();
-  await expect(page.locator('.cdk-overlay-container .mat-mdc-tooltip-surface', { hasText: 'Exported' })).toBeVisible();
+  await expect(page.getByText(/Exported \d+ archived suggestion\(s\)/)).toBeVisible();
 
   await page.getByTestId('project-suggest-open-archive-folder').click();
   await expect(page.getByText(/Opened:/)).toBeVisible();
+});
+
+test('tag suggestions place scope row below search and support grid card resize', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const search = page.getByTestId('tag-suggest-search');
+  const scope = page.getByTestId('tag-suggest-scope');
+  await expect(search).toBeVisible();
+  await expect(scope).toBeVisible();
+
+  const searchBox = await search.boundingBox();
+  const scopeBox = await scope.boundingBox();
+  if (!searchBox || !scopeBox) {
+    throw new Error('Missing tag suggestion control bounds');
+  }
+
+  expect(scopeBox.y).toBeGreaterThan(searchBox.y + searchBox.height - 2);
+
+  const list = page.getByTestId('tag-suggest-list');
+  await expect(page.getByTestId('tag-suggest-grid-size')).toBeDisabled();
+  await page.getByTestId('tag-suggest-layout').getByText('Grid').click();
+  await expect(list).toHaveClass(/layout-grid/);
+  await expect(page.getByTestId('tag-suggest-grid-size')).toBeEnabled();
+
+  const firstCard = list.locator('.suggestion-card').first();
+  const before = await firstCard.boundingBox();
+  if (!before) {
+    throw new Error('Missing initial tag card bounds');
+  }
+
+  await page.getByTestId('tag-suggest-grid-size').fill('130');
+  const after = await firstCard.boundingBox();
+  if (!after) {
+    throw new Error('Missing resized tag card bounds');
+  }
+
+  expect(after.height).toBeGreaterThan(before.height + 20);
 });
 
 test('suggestions page panels expand with viewport height', async ({ page }) => {
@@ -411,9 +574,146 @@ test('suggestions regression actions show summary and allow export', async ({ pa
   await page.getByTestId('project-suggestions-run-regression-btn').click();
   await expect(page.getByTestId('regression-report-summary')).toBeVisible();
   await expect(page.getByTestId('regression-report-roots').locator('.regression-root')).toHaveCount(2);
+  await expectRegressionPanelInShellViewport(page);
 
   await page.getByTestId('project-suggestions-export-regression-btn').click();
   await expect(page.getByText(/Exported:/)).toBeVisible();
+});
+
+test('regression report is placed in GUI viewport for long suggestions list', async ({ page }) => {
+  await setMockSuggestions(page, buildLongMockSuggestions(120));
+  await gotoSuggestions(page);
+
+  const shellViewport = page.locator('mat-tab-nav-panel.content-inner');
+  await expect(shellViewport).toBeVisible();
+  await expect
+    .poll(async () => {
+      return await shellViewport.evaluate((el) => el.scrollTop);
+    })
+    .toBe(0);
+
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+  await expectRegressionPanelInShellViewport(page);
+
+  const scrolledTop = await shellViewport.evaluate((el) => el.scrollTop);
+  expect(scrolledTop).toBeGreaterThan(200);
+});
+
+test('run regression report renders immediately without extra GUI interaction', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 760 });
+  await setMockSuggestions(page, buildLongMockSuggestions(120));
+  await gotoSuggestions(page);
+
+  const shellViewport = page.locator('mat-tab-nav-panel.content-inner');
+  const initialTop = await shellViewport.evaluate((el) => el.scrollTop);
+
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible({ timeout: 4000 });
+  await expectRegressionPanelInShellViewport(page);
+
+  const finalTop = await shellViewport.evaluate((el) => el.scrollTop);
+  expect(finalTop).toBeGreaterThan(initialTop + 120);
+});
+
+test('regression report error is placed in GUI viewport for long suggestions list', async ({ page }) => {
+  await setMockSuggestions(page, buildLongMockSuggestions(120));
+  await setMockRegressionReportError(page, 'Forced regression error for viewport test');
+  await gotoSuggestions(page);
+
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-error')).toBeVisible();
+  await expect(page.getByTestId('regression-report-error')).toContainText(
+    'Forced regression error for viewport test'
+  );
+  await expectRegressionPanelInShellViewport(page);
+});
+
+test('suggestions page keeps bottom margin without regression report', async ({ page }) => {
+  await gotoSuggestions(page);
+  await expect(page.getByTestId('regression-panel')).toHaveCount(0);
+
+  const gap = await getBottomGapToShell(page, '[data-testid="suggestions-card-grid"]');
+  if (gap == null) {
+    throw new Error('Cannot compute bottom gap for suggestions card grid');
+  }
+
+  expect(gap).toBeGreaterThanOrEqual(16);
+});
+
+test('suggestions page keeps bottom margin with regression report', async ({ page }) => {
+  await gotoSuggestions(page);
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+
+  const gap = await getBottomGapToShell(page, '[data-testid="regression-panel"]');
+  if (gap == null) {
+    throw new Error('Cannot compute bottom gap for regression panel');
+  }
+
+  expect(gap).toBeGreaterThanOrEqual(16);
+});
+
+test('suggestions lists keep inner bottom gap at end of scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 760 });
+  await setMockSuggestions(page, buildLongMockSuggestions(80));
+  await setMockTagSuggestions(page, buildLongMockTagSuggestions(80));
+  await gotoSuggestions(page);
+
+  const projectGap = await getBottomGapToListViewport(page, 'project-suggest-list');
+  const tagGap = await getBottomGapToListViewport(page, 'tag-suggest-list');
+  if (projectGap == null || tagGap == null) {
+    throw new Error('Cannot compute list bottom gap');
+  }
+
+  expect(projectGap).toBeGreaterThanOrEqual(12);
+  expect(tagGap).toBeGreaterThanOrEqual(12);
+});
+
+test('page headers stay visible across all tabs after regression and deep scroll', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  await page.getByTestId('project-suggestions-run-regression-btn').click();
+  await expect(page.getByTestId('regression-report-summary')).toBeVisible();
+
+  await page.locator('app-suggestions-page .page').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await page.locator('mat-tab-nav-panel.content-inner').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+
+  await page.getByRole('tab', { name: 'Scan' }).click();
+  await expectHeadingInViewport(page, 'Scan');
+
+  await page.getByRole('tab', { name: 'Project Organizer' }).click();
+  await expectHeadingInViewport(page, 'Project Organizer');
+
+  await page.getByRole('tab', { name: 'Suggestions' }).click();
+  await expectHeadingInViewport(page, 'Suggestions');
+
+  await page.getByRole('tab', { name: 'Tags' }).click();
+  await expectHeadingInViewport(page, 'Tags');
+
+  await page.getByRole('tab', { name: 'Recent' }).click();
+  await expectHeadingInViewport(page, 'Recent');
+});
+
+test('clicking active tab resets shell scroll and shows page heading', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  await page.locator('mat-tab-nav-panel.content-inner').evaluate((el) => {
+    el.scrollTop = 120;
+  });
+
+  await page.getByRole('tab', { name: 'Suggestions' }).click();
+
+  await expect
+    .poll(async () => {
+      return await page.locator('mat-tab-nav-panel.content-inner').evaluate((el) => el.scrollTop);
+    })
+    .toBe(0);
+  await expectHeadingInViewport(page, 'Suggestions');
 });
 
 test('project suggestions accept all and reject all require confirmation dialog', async ({ page }) => {

@@ -11,13 +11,14 @@
   flex: 1 1 auto;
   min-height: 0;
   gap: 16px;
+  box-sizing: border-box;
 }
 
 .card-grid {
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
   gap: 16px;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -51,13 +52,26 @@
 
 .regression-panel {
   margin-top: 4px;
+  margin-bottom: 16px;
+}
+
+.page-bottom-spacer {
+  flex: 0 0 24px;
+  height: 24px;
 }
 
 .regression-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px 16px;
   margin-bottom: 12px;
+}
+
+.regression-summary-grid > div {
+  padding: 8px 10px;
+  border: 1px solid #e6e8ec;
+  border-radius: 8px;
+  background: #fafbfc;
 }
 
 .regression-roots {
@@ -75,12 +89,14 @@
 .regression-root-title {
   font-weight: 600;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .regression-root-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px 12px;
   color: #4b5563;
   font-size: 13px;
 }

@@ -45,6 +45,7 @@ type MockProject = {
   techHints: string[];
   createdAt: string;
   updatedAt: string;
+  tags: Array<{ id: string; name: string }>;
 };
 
 type MockTag = {
@@ -255,9 +256,22 @@ export class AppHostBridgeService {
         return Promise.resolve({ id } as T);
       }
       case 'projects.list': {
-        const projects = [...this.mockProjects].sort(
-          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
+        const tagNamesById = new Map(this.mockTags.map((item) => [item.id, item.name]));
+        const projects = [...this.mockProjects]
+          .map((project) => {
+            const tags = this.mockProjectTags
+              .filter((item) => item.projectId === project.id)
+              .map((item) => ({
+                id: item.tagId,
+                name: tagNamesById.get(item.tagId) ?? '(unknown tag)'
+              }))
+              .sort((a, b) => a.name.localeCompare(b.name));
+            return {
+              ...project,
+              tags
+            };
+          })
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         return Promise.resolve(projects as T);
       }
       case 'projects.delete': {
@@ -636,6 +650,11 @@ export class AppHostBridgeService {
         } as T);
       }
       case 'suggestions.regressionReport': {
+        const forcedError = localStorage.getItem('mockRegressionReportError');
+        if (forcedError && forcedError.trim().length > 0) {
+          return Promise.reject(new Error(forcedError.trim()));
+        }
+
         return Promise.resolve({
           rootsAnalyzed: 2,
           baselineAcceptedCount: 3,
@@ -1131,7 +1150,8 @@ export class AppHostBridgeService {
         markers: item.markers ?? [],
         techHints: item.techHints ?? [],
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        tags: []
       }));
   }
 
@@ -1156,7 +1176,8 @@ export class AppHostBridgeService {
       markers: suggestion.markers ?? [],
       techHints: suggestion.techHints ?? [],
       createdAt: index >= 0 ? this.mockProjects[index].createdAt : now,
-      updatedAt: now
+      updatedAt: now,
+      tags: index >= 0 ? this.mockProjects[index].tags : []
     };
 
     if (index < 0) {

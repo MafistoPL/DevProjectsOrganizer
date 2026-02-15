@@ -1,5 +1,10 @@
 namespace AppHost.Services;
 
+public sealed record ProjectTagDto(
+    Guid Id,
+    string Name
+);
+
 public sealed record ProjectDto(
     Guid Id,
     Guid SourceSuggestionId,
@@ -14,5 +19,6 @@ public sealed record ProjectDto(
     IReadOnlyList<string> Markers,
     IReadOnlyList<string> TechHints,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<ProjectTagDto> Tags
 );

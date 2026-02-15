@@ -25,7 +25,11 @@ describe('OrganizerPageComponent', () => {
           markers: ['.sln'],
           techHints: ['csharp'],
           createdAt: '2026-02-13T10:00:00.000Z',
-          updatedAt: '2026-02-13T10:00:00.000Z'
+          updatedAt: '2026-02-13T10:00:00.000Z',
+          tags: [
+            { id: 'tag-1', name: 'csharp' },
+            { id: 'tag-2', name: 'backend' }
+          ]
         }
       ]),
       deleteProject: vi.fn().mockResolvedValue({ id: 'proj-1', deleted: true })
@@ -45,6 +49,8 @@ describe('OrganizerPageComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('dotnet-api');
     expect(text).toContain('D:\\code\\dotnet-api');
+    expect(text).toContain('csharp');
+    expect(text).toContain('backend');
   });
 
   it('delete action deletes project after typed-name confirmation', async () => {

@@ -6,7 +6,7 @@
     </div>
   </header>
 
-  <div class="card-grid">
+  <div class="card-grid" data-testid="suggestions-card-grid">
     <mat-card class="panel">
       <mat-card-title>Project suggestions</mat-card-title>
       <mat-card-content>
@@ -14,6 +14,7 @@
           <button
             mat-stroked-button
             data-testid="project-suggestions-run-regression-btn"
+            matTooltip="Replay archived decisions on latest scans to detect heuristics drift. Summary appears below in the Heuristics regression report panel."
             [disabled]="isRegressionBusy"
             (click)="runRegressionReport()"
           >
@@ -22,6 +23,7 @@
           <button
             mat-stroked-button
             data-testid="project-suggestions-export-regression-btn"
+            matTooltip="Export the last regression report as JSON. A path bubble is shown after export; use Open JSON folder to jump directly to the file location."
             [disabled]="isRegressionBusy"
             (click)="exportRegressionReport()"
           >
@@ -78,7 +80,12 @@
     </mat-card>
   </div>
 
-  <mat-card class="panel regression-panel" *ngIf="regressionReport || regressionError">
+  <mat-card
+    #regressionPanel
+    class="panel regression-panel"
+    data-testid="regression-panel"
+    *ngIf="regressionReport || regressionError"
+  >
     <mat-card-title>Heuristics regression report</mat-card-title>
     <mat-card-content>
       <p class="regression-error" *ngIf="regressionError" data-testid="regression-report-error">
@@ -108,4 +115,6 @@
       </div>
     </mat-card-content>
   </mat-card>
+
+  <div class="page-bottom-spacer" data-testid="suggestions-bottom-spacer" aria-hidden="true"></div>
 </section>

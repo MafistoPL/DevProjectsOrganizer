@@ -78,10 +78,9 @@
     *ngIf="mode === 'suggestions'"
     mat-stroked-button
     data-testid="project-suggest-export-archive"
-    #exportDone="matTooltip"
-    matTooltip="Exported"
+    matTooltip="Create a backup/audit snapshot of accepted and rejected decisions before heuristics tuning, migration, or sharing results."
     matTooltipPosition="above"
-    (click)="exportArchiveJson(exportDone)"
+    (click)="exportArchiveJson()"
   >
     Export archive JSON
   </button>
@@ -89,9 +88,11 @@
     *ngIf="mode === 'suggestions'"
     mat-stroked-button
     data-testid="project-suggest-open-archive-folder"
+    matTooltip="Open the folder that stores exported archive and regression JSON files."
+    matTooltipPosition="above"
     (click)="openArchiveFolder()"
   >
-    Open export folder
+    Open JSON folder
   </button>
 </div>
 

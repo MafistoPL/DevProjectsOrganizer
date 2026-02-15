@@ -13,6 +13,7 @@ describe('SuggestionsPageComponent', () => {
   let setPendingSpy: ReturnType<typeof vi.fn>;
   let restoreRejectedSpy: ReturnType<typeof vi.fn>;
   let deleteRejectedSpy: ReturnType<typeof vi.fn>;
+  let runRegressionSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     const suggestionsServiceMock = {
@@ -34,6 +35,7 @@ describe('SuggestionsPageComponent', () => {
       restoreRejectedFromArchive: vi.fn().mockResolvedValue(2),
       deleteRejectedFromArchive: vi.fn().mockResolvedValue(2)
     };
+    runRegressionSpy = suggestionsServiceMock.runRegressionReport;
     setPendingSpy = suggestionsServiceMock.setPendingStatusForAll;
     restoreRejectedSpy = suggestionsServiceMock.restoreRejectedFromArchive;
     deleteRejectedSpy = suggestionsServiceMock.deleteRejectedFromArchive;
@@ -116,5 +118,105 @@ describe('SuggestionsPageComponent', () => {
 
     expect(dialogOpenSpy).toHaveBeenCalled();
     expect(deleteRejectedSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders regression summary panel after successful run', async () => {
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[data-testid="project-suggestions-run-regression-btn"]'
+    );
+    button.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(runRegressionSpy).toHaveBeenCalledTimes(1);
+    const summary = fixture.nativeElement.querySelector('[data-testid="regression-report-summary"]');
+    expect(summary).not.toBeNull();
+  });
+
+  it('scrolls to regression panel after successful run', async () => {
+    const originalScrollIntoView = (HTMLElement.prototype as any).scrollIntoView;
+    const scrollMock = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollMock
+    });
+
+    try {
+      const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '[data-testid="project-suggestions-run-regression-btn"]'
+      );
+      button.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(scrollMock).toHaveBeenCalled();
+    } finally {
+      if (typeof originalScrollIntoView === 'function') {
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+          configurable: true,
+          writable: true,
+          value: originalScrollIntoView
+        });
+      } else {
+        delete (HTMLElement.prototype as any).scrollIntoView;
+      }
+    }
+  });
+
+  it('scrolls shell content container to regression panel when container exists', async () => {
+    const shellContainer = document.createElement('mat-tab-nav-panel');
+    shellContainer.classList.add('content-inner');
+    let containerScrollTop = 120;
+    Object.defineProperty(shellContainer, 'scrollTop', {
+      configurable: true,
+      get: () => containerScrollTop,
+      set: (value: number) => {
+        containerScrollTop = Number(value);
+      }
+    });
+
+    const scrollToMock = vi.fn((options?: ScrollToOptions | number) => {
+      if (typeof options === 'number') {
+        containerScrollTop = options;
+        return;
+      }
+
+      if (options && typeof options.top === 'number') {
+        containerScrollTop = options.top;
+      }
+    });
+    (shellContainer as unknown as { scrollTo: typeof scrollToMock }).scrollTo = scrollToMock;
+    document.body.appendChild(shellContainer);
+
+    try {
+      const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '[data-testid="project-suggestions-run-regression-btn"]'
+      );
+      button.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(scrollToMock).toHaveBeenCalled();
+    } finally {
+      shellContainer.remove();
+    }
+  });
+
+  it('renders regression error panel when run fails', async () => {
+    runRegressionSpy.mockRejectedValueOnce(new Error('Regression failed for test'));
+
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '[data-testid="project-suggestions-run-regression-btn"]'
+    );
+    button.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('[data-testid="regression-report-error"]');
+    expect(error).not.toBeNull();
+    expect((error.textContent as string).trim()).toContain('Regression failed for test');
   });
 });

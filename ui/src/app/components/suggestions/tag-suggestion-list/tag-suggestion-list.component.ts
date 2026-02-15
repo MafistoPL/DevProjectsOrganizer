@@ -3,8 +3,11 @@ import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { TagSuggestionItem, TagSuggestionsService } from '../../../services/tag-suggestions.service';
@@ -12,7 +15,16 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
 
 @Component({
   selector: 'app-tag-suggestion-list',
-  imports: [NgFor, NgIf, MatButtonModule, MatButtonToggleModule, MatExpansionModule],
+  imports: [
+    NgFor,
+    NgIf,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule
+  ],
   templateUrl: './tag-suggestion-list.component.html',
   styleUrl: './tag-suggestion-list.component.scss'
 })
@@ -20,14 +32,60 @@ export class TagSuggestionListComponent {
   private readonly suggestionsService = inject(TagSuggestionsService);
   private readonly snackBar = inject(MatSnackBar);
   layout: 'list' | 'grid' = 'list';
+  scope: 'pending' | 'accepted' | 'rejected' = 'pending';
+  sortKey: 'projectName' | 'tagName' | 'createdAt' = 'createdAt';
+  sortDir: 'asc' | 'desc' = 'desc';
+  searchTerm = '';
+  openId: string | null = null;
+  gridCardSizePercent = 100;
   private readonly itemsSignal = toSignal(this.suggestionsService.items$, { initialValue: [] as TagSuggestionItem[] });
 
   constructor(private readonly dialog: MatDialog) {}
 
-  get items(): TagSuggestionItem[] {
-    return [...this.itemsSignal()].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  get isSearchEnabled(): boolean {
+    return this.sortKey !== 'createdAt';
+  }
+
+  get gridScaleFactor(): string {
+    return (this.gridCardSizePercent / 100).toFixed(2);
+  }
+
+  get visibleItems(): TagSuggestionItem[] {
+    const byScope = this.itemsSignal().filter((item) => item.status === this.scope);
+
+    const term = this.searchTerm.trim().toLowerCase();
+    const filtered = !this.isSearchEnabled || !term
+      ? byScope
+      : byScope.filter((item) =>
+          this.sortKey === 'projectName'
+            ? item.projectName.toLowerCase().includes(term)
+            : item.tagName.toLowerCase().includes(term)
+        );
+
+    return [...filtered].sort((a, b) => {
+      let result = 0;
+      if (this.sortKey === 'projectName') {
+        result = a.projectName.localeCompare(b.projectName, undefined, { sensitivity: 'base' });
+      } else if (this.sortKey === 'tagName') {
+        result = a.tagName.localeCompare(b.tagName, undefined, { sensitivity: 'base' });
+      } else {
+        result = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+
+      return this.sortDir === 'asc' ? result : -result;
+    });
+  }
+
+  onSortKeyChange(nextKey: 'projectName' | 'tagName' | 'createdAt'): void {
+    this.sortKey = nextKey;
+    if (nextKey === 'createdAt') {
+      this.sortDir = 'desc';
+      this.searchTerm = '';
+    }
+  }
+
+  toggleDetails(id: string): void {
+    this.openId = this.openId === id ? null : id;
   }
 
   async accept(item: TagSuggestionItem): Promise<void> {

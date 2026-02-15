@@ -45,11 +45,14 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
+- **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
 - **Project delete flow:** `Project Organizer` ma potwierdzenie usuwania przez przepisanie nazwy projektu (walidacja FE + BE); po usunięciu źródłowa sugestia trafia do `Rejected` w archiwum.
+- **Project Organizer (tags):** karta projektu pokazuje przypięte tagi bezpośrednio pod metadanymi projektu.
 - **Tag heuristics progress:** uruchomienie `Run tag heuristics` publikuje eventy progresu i jest widoczne w GUI (sekcja `Tag heuristics runs` na zakładce Scan).
 - **Tag heuristics scan JSON:** każdy run heurystyk tagów zapisuje debugowy JSON do `%APPDATA%\DevProjectsOrganizer\scans\scan-tag-heur-<runId>.json`.
 - **Active scans cleanup:** wpisy `Completed` (zarówno scan session, jak i tag heuristics run) można usunąć z karty `Active scans` po potwierdzeniu dialogu.
+- **Suggestions (tooltips):** akcje `Run regression report`, `Export regression JSON`, `Export archive JSON` i `Open JSON folder` mają opisowe tooltipy.
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
@@ -181,11 +184,15 @@ Główne zakładki:
 - **Scan**: rooty, start skanu, kolejka, postęp.
 - **Project Organizer**: lista projektów, filtry, szczegóły.
 - **Project Organizer**: usuwanie projektu wymaga wpisania pełnej nazwy w modalu potwierdzenia (check FE + walidacja BE).
+- **Project Organizer**: karta projektu pokazuje również przypięte tagi (chipy).
 - **Suggestions**: akceptacja/odrzucanie sugestii projektów i tagów.
 - **Suggestions / Project suggestions**: przełącznik `Pending` / `Accepted` / `Rejected`, eksport archiwum do JSON i szybkie otwieranie folderu eksportów.
+- **Suggestions / Project suggestions**: akcje regresji/eksportu mają tooltipy opisujące działanie, w tym gdzie pojawia się wynik raportu i jak przejść do folderu JSON (`Open JSON folder`).
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
+- **Suggestions / Regression**: po `Run regression report` GUI automatycznie przewija do panelu raportu na dole (również dla błędu).
 - **Suggestions / panel actions**: akcje działają per panel (Project vs Tag); w `Pending` są `Accept all` / `Reject all`, a w `Rejected` są `Restore all` / `Delete all`; widok `Accepted` nie ma bulk mutacji.
 - **Tag suggestions panel:** działa na realnych danych z DB (bez mocków), wspiera `Accept/Reject` per wpis i bulk.
+- **Tag suggestions panel:** ma scope (`Pending/Accepted/Rejected`), wyszukiwarkę zależną od sortu (`Project` lub `Tag`) i sortowanie (`Project`, `Tag`, `Created`, `Asc/Desc`), a sterowanie layoutem (`List/Grid` + suwak `Card size`) jest w analogicznym miejscu i zachowuje się jak w `Project suggestions`.
 - **Scan / status card:** zawiera także sekcję przebiegu heurystyk tagów (`Running/Completed/Failed`, progress, generated count).
 - **Scan / status card:** wpisy `Completed` mają akcję `Clear` z potwierdzeniem (zarówno skany, jak i runy heurystyk tagów).
 - **Suggestions / Project suggestions**: w widokach archiwalnych `Reject` jest ukryty; `Accept` może odwrócić `Rejected`; usuwanie dotyczy tylko `Rejected` (brak usuwania `Accepted`).
@@ -205,6 +212,12 @@ Piramida testów:
 - **Integration (AppHost)**: DB + skan + JSON + regresja heurystyk względem historycznych decyzji (`Accepted`/`Rejected`) powiązanych z konkretnym `ScanSessionId` i jego `scan-<id>.json`.
 - **E2E/Visual (Playwright)**: kluczowe ścieżki UI + snapshoty.
 - **FE unit/component tests (ng test)**: pokrywają logikę bulk akcji (`setPendingStatusForAll`) i potwierdzenia dialogowe na stronie Suggestions.
+- **FE unit/component tests (ng test)**: obejmują też render przypiętych tagów w `Project Organizer`, filtrowanie/sortowanie/scope w `Tag suggestions` oraz widoczność panelu `Heuristics regression report` (success/failure).
+- **E2E layout guards (Playwright)**: po uruchomieniu regresji i głębokim scrollu nagłówki stron (`Scan`, `Project Organizer`, `Suggestions`, `Tags`, `Recent`) muszą pozostać w viewport po przełączaniu zakładek.
+- **E2E layout guards (Playwright)**: nagłówek strony (`h1`) musi być renderowany poniżej paska zakładek (brak nakładania/ucięcia przez sticky tabs).
+- **E2E regression guards (Playwright)**: panel `Heuristics regression report` musi zostać doscrollowany i widoczny w kontenerze GUI zarówno dla sukcesu raportu, jak i dla błędu.
+- **E2E spacing guards (Playwright)**: widok `Suggestions` musi mieć dolny margines przy końcu scrolla zarówno bez raportu, jak i z panelem `Heuristics regression report`.
+- **E2E responsiveness guards (Playwright)**: po kliknięciu `Run regression report` panel raportu ma pojawić się od razu (bez dodatkowej akcji użytkownika) i automatycznie przewinąć widok.
 - **IPC contract tests (FE+BE)**: dla zmian payloadów IPC (np. `projects.delete`) wymagamy testu kształtu payloadu w FE oraz testu parsera/walidacji payloadu w AppHost.
 
 Pre-commit jest realizowany przez `.githooks/pre-commit` (wymaga `core.hooksPath=.githooks`).

@@ -18,7 +18,35 @@ public partial class MainWindow
 
         var store = new ProjectStore(_dbContext);
         var items = await store.ListAllAsync();
-        var result = items.Select(MapProjectDto).ToList();
+        var projectIds = items.Select(item => item.Id).ToList();
+        var tagRows = await (
+            from projectTag in _dbContext.ProjectTags.AsNoTracking()
+            join tag in _dbContext.Tags.AsNoTracking()
+                on projectTag.TagId equals tag.Id
+            where projectIds.Contains(projectTag.ProjectId)
+            orderby tag.Name
+            select new
+            {
+                projectTag.ProjectId,
+                TagId = tag.Id,
+                TagName = tag.Name
+            })
+            .ToListAsync();
+        var tagsByProjectId = tagRows
+            .GroupBy(item => item.ProjectId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ProjectTagDto>)group
+                    .Select(item => new ProjectTagDto(item.TagId, item.TagName))
+                    .ToList());
+
+        var result = items
+            .Select(item =>
+            {
+                var tags = tagsByProjectId.GetValueOrDefault(item.Id, Array.Empty<ProjectTagDto>());
+                return MapProjectDto(item, tags);
+            })
+            .ToList();
         SendResponse(request.Id, request.Type, result);
     }
 
@@ -222,7 +250,7 @@ public partial class MainWindow
         return Guid.TryParse(idElement.GetString(), out projectId);
     }
 
-    private static ProjectDto MapProjectDto(ProjectEntity entity)
+    private static ProjectDto MapProjectDto(ProjectEntity entity, IReadOnlyList<ProjectTagDto> tags)
     {
         return new ProjectDto(
             entity.Id,
@@ -238,7 +266,8 @@ public partial class MainWindow
             DeserializeStringList(entity.MarkersJson),
             DeserializeStringList(entity.TechHintsJson),
             entity.CreatedAt,
-            entity.UpdatedAt);
+            entity.UpdatedAt,
+            tags);
     }
 
     private void PublishTagHeuristicsProgress(

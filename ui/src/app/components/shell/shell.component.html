@@ -5,6 +5,7 @@
       mat-tab-link
       *ngFor="let item of navItems"
       [routerLink]="item.route"
+      (click)="onNavTabClick()"
       routerLinkActive
       #rla="routerLinkActive"
       [active]="rla.isActive"
@@ -12,7 +13,7 @@
       {{ item.label }}
     </a>
   </nav>
-  <mat-tab-nav-panel #tabPanel class="content-inner">
+  <mat-tab-nav-panel #tabPanel class="content-inner" #contentInner>
     <router-outlet />
   </mat-tab-nav-panel>
 </div>

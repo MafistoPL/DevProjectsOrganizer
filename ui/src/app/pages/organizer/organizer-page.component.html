@@ -45,6 +45,15 @@
         <span class="label">Extensions</span>
         <strong>{{ project.extensionsSummary }}</strong>
       </div>
+      <div class="detail-row tag-row">
+        <span class="label">Tags</span>
+        <div class="tag-chips" *ngIf="project.tags.length > 0; else noTags">
+          <span class="tag-chip" *ngFor="let tag of project.tags">{{ tag.name }}</span>
+        </div>
+        <ng-template #noTags>
+          <strong class="empty-tags">No tags</strong>
+        </ng-template>
+      </div>
     </mat-card>
   </div>
 </section>

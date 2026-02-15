@@ -19,7 +19,8 @@ class BridgeMock {
       markers: ['.sln'],
       techHints: ['csharp'],
       createdAt: '2026-02-13T10:00:00.000Z',
-      updatedAt: '2026-02-13T10:00:00.000Z'
+      updatedAt: '2026-02-13T10:00:00.000Z',
+      tags: [{ id: 'tag-1', name: 'csharp' }]
     }
   ];
 

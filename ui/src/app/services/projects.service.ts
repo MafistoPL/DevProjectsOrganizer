@@ -2,6 +2,11 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AppHostBridgeService } from './apphost-bridge.service';
 
+export type ProjectTagItem = {
+  id: string;
+  name: string;
+};
+
 export type ProjectItem = {
   id: string;
   sourceSuggestionId: string;
@@ -17,6 +22,7 @@ export type ProjectItem = {
   techHints: string[];
   createdAt: string;
   updatedAt: string;
+  tags: ProjectTagItem[];
 };
 
 @Injectable({ providedIn: 'root' })

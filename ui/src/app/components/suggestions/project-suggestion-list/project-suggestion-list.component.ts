@@ -1,5 +1,5 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, OnDestroy, Output, effect, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTooltip, MatTooltipModule } from '@angular/material/tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { ProjectsService } from '../../../services/projects.service';
 import { ProjectSuggestionItem, SuggestionsService, type SuggestionStatus } from '../../../services/suggestions.service';
@@ -39,7 +39,7 @@ export type ProjectSuggestionsScope = 'pending' | 'accepted' | 'rejected';
   templateUrl: './project-suggestion-list.component.html',
   styleUrl: './project-suggestion-list.component.scss'
 })
-export class ProjectSuggestionListComponent implements OnDestroy {
+export class ProjectSuggestionListComponent {
   @Input() mode: 'live' | 'suggestions' = 'live';
   @Output() scopeChange = new EventEmitter<ProjectSuggestionsScope>();
 
@@ -55,7 +55,6 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   sortDir: 'asc' | 'desc' = 'asc';
   searchTerm = '';
   gridCardSizePercent = 100;
-  private exportTooltipTimer: number | null = null;
 
   private readonly items = toSignal(this.suggestionsService.items$, {
     initialValue: [] as ProjectSuggestionItem[]
@@ -215,17 +214,10 @@ export class ProjectSuggestionListComponent implements OnDestroy {
     }
   }
 
-  async exportArchiveJson(doneTooltip: MatTooltip): Promise<void> {
+  async exportArchiveJson(): Promise<void> {
     try {
-      await this.suggestionsService.exportArchiveJson();
-      doneTooltip.show();
-      if (this.exportTooltipTimer !== null) {
-        window.clearTimeout(this.exportTooltipTimer);
-      }
-      this.exportTooltipTimer = window.setTimeout(() => {
-        doneTooltip.hide();
-        this.exportTooltipTimer = null;
-      }, 1400);
+      const result = await this.suggestionsService.exportArchiveJson();
+      this.snackBar.open(`Exported ${result.count} archived suggestion(s)`, undefined, { duration: 1400 });
     } catch {
       this.snackBar.open('Archive export failed', 'Close', { duration: 1500 });
     }
@@ -243,13 +235,6 @@ export class ProjectSuggestionListComponent implements OnDestroy {
   async deleteSuggestion(item: ProjectSuggestionItem): Promise<void> {
     await this.suggestionsService.deleteSuggestion(item.id);
     this.snackBar.open('Suggestion deleted', undefined, { duration: 1200 });
-  }
-
-  ngOnDestroy(): void {
-    if (this.exportTooltipTimer !== null) {
-      window.clearTimeout(this.exportTooltipTimer);
-      this.exportTooltipTimer = null;
-    }
   }
 
   private async writeClipboard(text: string): Promise<boolean> {

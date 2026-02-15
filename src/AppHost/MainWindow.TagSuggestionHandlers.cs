@@ -45,14 +45,24 @@ public partial class MainWindow
         {
             var store = new TagSuggestionStore(_dbContext);
             var updated = await store.SetStatusAsync(suggestionId, status);
+            var projectTagsChanged = false;
             if (status == TagSuggestionStatus.Accepted && updated.TagId.HasValue)
             {
                 var projectTagStore = new ProjectTagStore(_dbContext);
-                await projectTagStore.AttachAsync(updated.ProjectId, updated.TagId.Value);
+                projectTagsChanged = await projectTagStore.AttachAsync(updated.ProjectId, updated.TagId.Value);
             }
 
             var mapped = await MapTagSuggestionDtosAsync([updated]);
             SendEvent("tagSuggestions.changed", new { id = updated.Id, status = updated.Status.ToString() });
+            if (projectTagsChanged && updated.TagId.HasValue)
+            {
+                SendEvent("projects.changed", new
+                {
+                    reason = "project.tagAttached",
+                    projectId = updated.ProjectId,
+                    tagId = updated.TagId.Value
+                });
+            }
             SendResponse(request.Id, request.Type, mapped[0]);
         }
         catch (Exception ex)

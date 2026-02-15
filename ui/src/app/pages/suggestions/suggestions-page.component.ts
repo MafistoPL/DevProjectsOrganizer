@@ -1,9 +1,10 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   ConfirmDialogComponent
 } from '../../components/shared/confirm-dialog/confirm-dialog.component';
@@ -26,6 +27,7 @@ import { firstValueFrom } from 'rxjs';
     MatButtonModule,
     MatCardModule,
     MatSnackBarModule,
+    MatTooltipModule,
     ProjectSuggestionListComponent,
     TagSuggestionListComponent
   ],
@@ -33,6 +35,8 @@ import { firstValueFrom } from 'rxjs';
   styleUrl: './suggestions-page.component.scss'
 })
 export class SuggestionsPageComponent {
+  @ViewChild('regressionPanel') private regressionPanel?: ElementRef<HTMLElement>;
+
   projectScope: ProjectSuggestionsScope = 'pending';
   regressionReport: SuggestionsRegressionReport | null = null;
   regressionError: string | null = null;
@@ -41,7 +45,8 @@ export class SuggestionsPageComponent {
   constructor(
     private readonly suggestionsService: SuggestionsService,
     private readonly snackBar: MatSnackBar,
-    private readonly dialog: MatDialog
+    private readonly dialog: MatDialog,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   async runRegressionReport(): Promise<void> {
@@ -49,10 +54,14 @@ export class SuggestionsPageComponent {
     this.regressionError = null;
     try {
       this.regressionReport = await this.suggestionsService.runRegressionReport();
+      this.cdr.detectChanges();
+      void this.scrollToRegressionPanel();
       this.snackBar.open('Regression report ready', undefined, { duration: 1400 });
     } catch (error) {
       this.regressionReport = null;
       this.regressionError = this.getErrorMessage(error);
+      this.cdr.detectChanges();
+      void this.scrollToRegressionPanel();
       this.snackBar.open('Regression report failed', 'Close', { duration: 1800 });
     } finally {
       this.isRegressionBusy = false;
@@ -163,5 +172,81 @@ export class SuggestionsPageComponent {
       return error.message;
     }
     return 'Unknown error';
+  }
+
+  private async scrollToRegressionPanel(): Promise<void> {
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      await this.waitForNextFrame();
+      const panel = this.findRegressionPanel();
+      if (!panel) {
+        continue;
+      }
+
+      const shellScrollContainer = this.findShellScrollContainer();
+      if (shellScrollContainer) {
+        if (this.isElementTopVisibleInContainer(panel, shellScrollContainer)) {
+          return;
+        }
+
+        const containerRect = shellScrollContainer.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        const targetTop = Math.max(
+          0,
+          shellScrollContainer.scrollTop + (panelRect.top - containerRect.top) - 8
+        );
+        shellScrollContainer.scrollTo({
+          top: targetTop,
+          behavior: 'auto'
+        });
+        await this.waitForNextFrame();
+        if (this.isElementTopVisibleInContainer(panel, shellScrollContainer)) {
+          return;
+        }
+        continue;
+      } else if (typeof panel.scrollIntoView === 'function') {
+        panel.scrollIntoView({
+          behavior: 'auto',
+          block: 'start'
+        });
+      }
+      return;
+    }
+  }
+
+  private findRegressionPanel(): HTMLElement | null {
+    if (this.regressionPanel?.nativeElement) {
+      return this.regressionPanel.nativeElement;
+    }
+
+    if (typeof document === 'undefined') {
+      return null;
+    }
+
+    return document.querySelector('[data-testid="regression-panel"]') as HTMLElement | null;
+  }
+
+  private findShellScrollContainer(): HTMLElement | null {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+
+    return document.querySelector('mat-tab-nav-panel.content-inner') as HTMLElement | null;
+  }
+
+  private isElementTopVisibleInContainer(element: HTMLElement, container: HTMLElement): boolean {
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return elementRect.top >= containerRect.top - 2 && elementRect.top < containerRect.bottom - 36;
+  }
+
+  private waitForNextFrame(): Promise<void> {
+    return new Promise((resolve) => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => resolve());
+        return;
+      }
+
+      window.setTimeout(() => resolve(), 0);
+    });
   }
 }

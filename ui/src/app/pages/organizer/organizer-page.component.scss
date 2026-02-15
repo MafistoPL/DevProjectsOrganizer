@@ -71,6 +71,33 @@
   font-weight: 600;
 }
 
+.tag-row {
+  align-items: center;
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.empty-tags {
+  color: #9aa0a6;
+  font-weight: 500;
+}
+
 @media (max-width: 900px) {
   .header-row {
     flex-direction: column;
