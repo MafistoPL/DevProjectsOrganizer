@@ -427,6 +427,40 @@ test('project accept dialog allows choosing heuristics or AI action', async ({ p
   await expect(page.getByText('AI tag suggestions queued')).toBeVisible();
 });
 
+test('tag heuristics run is visible in scan status with progress', async ({ page }) => {
+  await gotoSuggestions(page);
+
+  const list = page.getByTestId('project-suggest-list');
+  const firstCard = list.locator('.suggestion-card').first();
+  const projectName = (await firstCard.getByTestId('project-name').innerText()).trim();
+
+  await firstCard.locator('.header-row').click();
+  await firstCard.getByRole('button', { name: /^Accept$/ }).click();
+  await handleProjectAcceptDialog(page, 'heuristics');
+  await expect(page.getByText(/Tag heuristics generated/)).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Scan' }).click();
+  const section = page.getByTestId('tag-heuristics-section');
+  await expect(section).toBeVisible();
+
+  const firstRun = section.locator('[data-testid^="tag-heuristics-run-"]').first();
+  await expect(firstRun).toBeVisible();
+  await expect(firstRun).toContainText(projectName);
+  await expect(firstRun).toContainText('Progress');
+  await expect(firstRun).toContainText('100%');
+
+  const clearBtn = firstRun.locator('[data-testid^="tag-heuristics-clear-btn-"]');
+  await expect(clearBtn).toBeVisible();
+  await clearBtn.click();
+
+  const clearDialog = page.locator('mat-dialog-container');
+  await expect(clearDialog.getByRole('heading', { name: 'Clear completed tag heuristics run' })).toBeVisible();
+  await clearDialog.getByRole('button', { name: 'Clear' }).click();
+
+  await expect(section.locator('[data-testid^="tag-heuristics-run-"]')).toHaveCount(0);
+  await expect(section).toContainText('No tag heuristics runs yet.');
+});
+
 test('tag suggestions accept all requires confirmation dialog', async ({ page }) => {
   await gotoSuggestions(page);
 

@@ -263,7 +263,47 @@ export class AppHostBridgeService {
           return Promise.reject(new Error('Project not found.'));
         }
 
+        const runId = this.createId();
+        const startedAt = new Date().toISOString();
+        this.emitTagHeuristicsProgress({
+          runId,
+          projectId,
+          projectName: project.name,
+          state: 'Running',
+          progress: 20,
+          message: 'Analyzing project signals',
+          startedAt,
+          finishedAt: null,
+          generatedCount: null
+        });
+
         const generated = this.generateMockTagSuggestionsForProject(project);
+
+        this.emitTagHeuristicsProgress({
+          runId,
+          projectId,
+          projectName: project.name,
+          state: 'Running',
+          progress: 80,
+          message: `Saving ${generated} suggestion(s)`,
+          startedAt,
+          finishedAt: null,
+          generatedCount: null
+        });
+
+        const finishedAt = new Date().toISOString();
+        this.emitTagHeuristicsProgress({
+          runId,
+          projectId,
+          projectName: project.name,
+          state: 'Completed',
+          progress: 100,
+          message: `Completed. Generated ${generated} suggestion(s)`,
+          startedAt,
+          finishedAt,
+          generatedCount: generated
+        });
+
         if (generated > 0) {
           this.eventSubject.next({
             type: 'tagSuggestions.changed',
@@ -272,10 +312,12 @@ export class AppHostBridgeService {
         }
 
         return Promise.resolve({
+          runId,
           projectId,
           action: 'TagHeuristicsCompleted',
           generatedCount: generated,
-          finishedAt: new Date().toISOString()
+          outputPath: `C:\\Users\\Mock\\AppData\\Roaming\\DevProjectsOrganizer\\scans\\scan-tag-heur-${runId}.json`,
+          finishedAt
         } as T);
       }
       case 'projects.runAiTagSuggestions': {
@@ -1054,6 +1096,23 @@ export class AppHostBridgeService {
 
   private createMockProjectKey(path: string, kind: string): string {
     return `${(kind ?? '').trim().toLowerCase()}::${(path ?? '').trim().toLowerCase()}`;
+  }
+
+  private emitTagHeuristicsProgress(payload: {
+    runId: string;
+    projectId: string;
+    projectName: string;
+    state: 'Running' | 'Completed' | 'Failed';
+    progress: number;
+    message: string;
+    startedAt: string;
+    finishedAt: string | null;
+    generatedCount: number | null;
+  }): void {
+    this.eventSubject.next({
+      type: 'tagHeuristics.progress',
+      data: payload
+    });
   }
 
   private createId(): string {

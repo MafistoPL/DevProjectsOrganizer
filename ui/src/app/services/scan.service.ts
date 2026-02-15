@@ -61,6 +61,13 @@ export class ScanService {
     await this.bridge.request('scan.stop', { id: scanId });
   }
 
+  clearCompleted(scanId: string): void {
+    const current = this.scansSubject.getValue();
+    this.scansSubject.next(
+      current.filter((scan) => !(scan.id === scanId && scan.state === 'Completed'))
+    );
+  }
+
   private handleEvent(event: ScanEvent): void {
     if (!event?.type) {
       return;

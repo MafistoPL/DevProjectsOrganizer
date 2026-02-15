@@ -43,29 +43,91 @@ public partial class MainWindow
             return;
         }
 
-        var tags = await _dbContext.Tags
-            .AsNoTracking()
-            .ToListAsync();
-        var heuristics = new TagSuggestionHeuristicsService();
-        var detected = heuristics.Detect(project, tags);
+        var runId = Guid.NewGuid();
+        var startedAt = DateTimeOffset.UtcNow;
 
-        var store = new TagSuggestionStore(_dbContext);
-        var generated = await store.ReplaceForProjectAsync(project.Id, detected);
-
-        SendEvent("tagSuggestions.changed", new
+        try
         {
-            reason = "project.tagHeuristics",
-            projectId = project.Id,
-            generatedCount = generated
-        });
+            PublishTagHeuristicsProgress(runId, project, "Running", 10, "Loading tags", startedAt, null, null);
+            var tags = await _dbContext.Tags
+                .AsNoTracking()
+                .ToListAsync();
 
-        SendResponse(request.Id, request.Type, new
+            PublishTagHeuristicsProgress(runId, project, "Running", 40, "Detecting tag suggestions", startedAt, null, null);
+            var heuristics = new TagSuggestionHeuristicsService();
+            var detected = heuristics.Detect(project, tags);
+
+            PublishTagHeuristicsProgress(
+                runId,
+                project,
+                "Running",
+                75,
+                $"Persisting {detected.Count} suggestion(s)",
+                startedAt,
+                null,
+                null);
+            var store = new TagSuggestionStore(_dbContext);
+            var generated = await store.ReplaceForProjectAsync(project.Id, detected);
+
+            PublishTagHeuristicsProgress(
+                runId,
+                project,
+                "Running",
+                90,
+                "Saving run scan JSON",
+                startedAt,
+                null,
+                generated);
+            var finishedAt = DateTimeOffset.UtcNow;
+            var outputPath = await SaveTagHeuristicsScanAsync(
+                runId,
+                project,
+                tags.Count,
+                detected,
+                generated,
+                startedAt,
+                finishedAt);
+
+            PublishTagHeuristicsProgress(
+                runId,
+                project,
+                "Completed",
+                100,
+                $"Completed. Generated {generated} suggestion(s)",
+                startedAt,
+                finishedAt,
+                generated);
+
+            SendEvent("tagSuggestions.changed", new
+            {
+                reason = "project.tagHeuristics",
+                projectId = project.Id,
+                generatedCount = generated
+            });
+
+            SendResponse(request.Id, request.Type, new
+            {
+                runId,
+                projectId = project.Id,
+                action = "TagHeuristicsCompleted",
+                generatedCount = generated,
+                outputPath,
+                finishedAt
+            });
+        }
+        catch (Exception ex)
         {
-            projectId = project.Id,
-            action = "TagHeuristicsCompleted",
-            generatedCount = generated,
-            finishedAt = DateTimeOffset.UtcNow
-        });
+            PublishTagHeuristicsProgress(
+                runId,
+                project,
+                "Failed",
+                100,
+                ex.Message,
+                startedAt,
+                DateTimeOffset.UtcNow,
+                null);
+            SendError(request.Id, request.Type, ex.Message);
+        }
     }
 
     private async Task HandleProjectsRunAiTagSuggestionsAsync(HostRequest request)
@@ -132,5 +194,66 @@ public partial class MainWindow
             DeserializeStringList(entity.TechHintsJson),
             entity.CreatedAt,
             entity.UpdatedAt);
+    }
+
+    private void PublishTagHeuristicsProgress(
+        Guid runId,
+        ProjectEntity project,
+        string state,
+        int progress,
+        string message,
+        DateTimeOffset startedAt,
+        DateTimeOffset? finishedAt,
+        int? generatedCount)
+    {
+        SendEvent("tagHeuristics.progress", new
+        {
+            runId,
+            projectId = project.Id,
+            projectName = project.Name,
+            state,
+            progress = Math.Clamp(progress, 0, 100),
+            message,
+            startedAt,
+            finishedAt,
+            generatedCount
+        });
+    }
+
+    private static async Task<string> SaveTagHeuristicsScanAsync(
+        Guid runId,
+        ProjectEntity project,
+        int availableTags,
+        IReadOnlyList<DetectedTagSuggestion> detected,
+        int generated,
+        DateTimeOffset startedAt,
+        DateTimeOffset finishedAt)
+    {
+        var scanSnapshot = new TagHeuristicsScanSnapshot
+        {
+            RunId = runId,
+            ProjectId = project.Id,
+            ProjectName = project.Name,
+            ProjectPath = project.Path,
+            StartedAt = startedAt,
+            FinishedAt = finishedAt,
+            AvailableTags = availableTags,
+            DetectedSuggestions = detected.Count,
+            GeneratedSuggestions = generated,
+            Suggestions = detected.Select(item => new TagHeuristicsScanSuggestion
+            {
+                TagId = item.TagId,
+                TagName = item.TagName,
+                Type = item.Type,
+                Source = item.Source,
+                Confidence = item.Confidence,
+                Reason = item.Reason,
+                Fingerprint = item.Fingerprint,
+                CreatedAt = item.CreatedAt
+            }).ToList()
+        };
+
+        var writer = new TagHeuristicsScanWriter();
+        return await writer.SaveAsync(scanSnapshot, runId, CancellationToken.None);
     }
 }

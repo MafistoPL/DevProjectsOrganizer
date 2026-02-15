@@ -1,9 +1,7 @@
 <mat-card class="panel" data-testid="status-card">
   <mat-card-title class="panel-title panel-title--status">Active scans</mat-card-title>
   <mat-card-content class="status-content">
-    <div class="empty" *ngIf="(scans$ | async)?.length === 0">
-      No active scans yet.
-    </div>
+    <div class="empty" *ngIf="(scans$ | async)?.length === 0">No active scans yet.</div>
     <div class="scan-item" *ngFor="let scan of scans$ | async" [attr.data-state]="scan.state">
       <div class="scan-header">
         <div class="scan-title">
@@ -56,7 +54,54 @@
         >
           Stop
         </button>
+        <button
+          mat-stroked-button
+          *ngIf="scan.state === 'Completed'"
+          [attr.data-testid]="'scan-clear-btn-' + scan.id"
+          (click)="clearScan(scan)"
+        >
+          Clear
+        </button>
       </div>
     </div>
+
+    <section class="tag-runs-section" data-testid="tag-heuristics-section">
+      <div class="section-header">Tag heuristics runs</div>
+      <div class="empty" *ngIf="(tagHeuristicsRuns$ | async)?.length === 0">
+        No tag heuristics runs yet.
+      </div>
+      <div
+        class="tag-run-item"
+        *ngFor="let run of tagHeuristicsRuns$ | async"
+        [attr.data-state]="run.state"
+        [attr.data-testid]="'tag-heuristics-run-' + run.runId"
+      >
+        <div class="scan-header">
+          <div class="scan-title">
+            <strong>{{ run.projectName }}</strong>
+            <span class="scan-meta">{{ run.message }}</span>
+          </div>
+          <span class="scan-state" [attr.data-state]="run.state">{{ run.state }}</span>
+        </div>
+        <div class="scan-row">
+          <span>Progress</span>
+          <strong>{{ run.progress }}%</strong>
+        </div>
+        <div class="scan-row" *ngIf="run.generatedCount !== null">
+          <span>Generated tags</span>
+          <strong>{{ run.generatedCount }}</strong>
+        </div>
+        <mat-progress-bar [mode]="'determinate'" [value]="run.progress"></mat-progress-bar>
+        <div class="scan-actions" *ngIf="run.state === 'Completed'">
+          <button
+            mat-stroked-button
+            [attr.data-testid]="'tag-heuristics-clear-btn-' + run.runId"
+            (click)="clearTagHeuristicsRun(run)"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </section>
   </mat-card-content>
 </mat-card>

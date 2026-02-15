@@ -6,5 +6,6 @@
 - If changing tests to match implementation behavior (instead of fixing implementation), ask for explicit user confirmation first.
 - Keep `PLAN.md` up to date as the spec evolves.
 - Keep `BACKLOG.md` up to date with deferred tasks and follow-ups.
+- If you execute only part of a user request, add the unimplemented remainder to `BACKLOG.md`.
 - Suggest good moments to commit when the changes form a coherent milestone.
 - If you want a PNG in `PLAN.md`, create/update the source `docs/excalidraw/*.excalidraw` and run `scripts/export-excalidraw.ps1` to generate PNGs in `docs/images`.

@@ -1,8 +1,9 @@
 import { NgFor } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TopbarComponent } from '../topbar/topbar.component';
+import { TagHeuristicsRunsService } from '../../services/tag-heuristics-runs.service';
 
 @Component({
   selector: 'app-shell',
@@ -11,6 +12,8 @@ import { TopbarComponent } from '../topbar/topbar.component';
   styleUrl: './shell.component.scss'
 })
 export class ShellComponent {
+  private readonly _tagHeuristicsRunsService = inject(TagHeuristicsRunsService);
+
   readonly navItems = [
     { label: 'Scan', route: '/scan' },
     { label: 'Project Organizer', route: '/organizer' },

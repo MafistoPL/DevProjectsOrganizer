@@ -44,8 +44,19 @@ export class ProjectsService {
     return project;
   }
 
-  async runTagHeuristics(projectId: string): Promise<{ generatedCount: number }> {
-    return await this.bridge.request<{ generatedCount: number }>('projects.runTagHeuristics', { projectId });
+  async runTagHeuristics(projectId: string): Promise<{
+    generatedCount: number;
+    runId?: string;
+    outputPath?: string;
+  }> {
+    return await this.bridge.request<{
+      generatedCount: number;
+      runId?: string;
+      outputPath?: string;
+    }>(
+      'projects.runTagHeuristics',
+      { projectId }
+    );
   }
 
   async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {

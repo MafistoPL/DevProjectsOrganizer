@@ -2,9 +2,12 @@ import { AsyncPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ScanService, type ScanSessionView } from '../../../services/scan.service';
-import { Observable } from 'rxjs';
+import { TagHeuristicsRunsService, type TagHeuristicsRun } from '../../../services/tag-heuristics-runs.service';
+import { Observable, firstValueFrom } from 'rxjs';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-scan-status',
@@ -23,9 +26,15 @@ import { Observable } from 'rxjs';
 export class ScanStatusComponent {
   private static readonly terminalStates = new Set(['Completed', 'Failed', 'Stopped']);
   readonly scans$: Observable<ScanSessionView[]>;
+  readonly tagHeuristicsRuns$: Observable<TagHeuristicsRun[]>;
 
-  constructor(private readonly scanService: ScanService) {
+  constructor(
+    private readonly scanService: ScanService,
+    private readonly tagHeuristicsRunsService: TagHeuristicsRunsService,
+    private readonly dialog: MatDialog
+  ) {
     this.scans$ = this.scanService.scans$;
+    this.tagHeuristicsRuns$ = this.tagHeuristicsRunsService.runs$;
   }
 
   isIndeterminate(scan: ScanSessionView): boolean {
@@ -46,5 +55,53 @@ export class ScanStatusComponent {
 
   canStop(scan: ScanSessionView): boolean {
     return !ScanStatusComponent.terminalStates.has(scan.state);
+  }
+
+  async clearScan(scan: ScanSessionView): Promise<void> {
+    if (scan.state !== 'Completed') {
+      return;
+    }
+
+    const confirmed = await this.confirmClear(
+      'Clear completed scan',
+      `Remove completed scan item for "${scan.rootPath}" from this view?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.scanService.clearCompleted(scan.id);
+  }
+
+  async clearTagHeuristicsRun(run: TagHeuristicsRun): Promise<void> {
+    if (run.state !== 'Completed') {
+      return;
+    }
+
+    const confirmed = await this.confirmClear(
+      'Clear completed tag heuristics run',
+      `Remove completed tag heuristics run for "${run.projectName}" from this view?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.tagHeuristicsRunsService.clearCompleted(run.runId);
+  }
+
+  private async confirmClear(title: string, message: string): Promise<boolean> {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title,
+        message,
+        confirmText: 'Clear',
+        cancelText: 'Cancel',
+        confirmColor: 'warn'
+      }
+    });
+
+    const result = await firstValueFrom(ref.afterClosed());
+    return result === true;
   }
 }

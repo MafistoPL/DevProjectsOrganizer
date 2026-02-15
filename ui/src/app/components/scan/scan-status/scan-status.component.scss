@@ -8,6 +8,22 @@
   gap: 16px;
 }
 
+.tag-runs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid #edf0f2;
+  padding-top: 8px;
+}
+
+.section-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .empty {
   font-size: 13px;
   color: #5f6368;
@@ -23,6 +39,19 @@
 }
 
 .scan-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.tag-run-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.tag-run-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
@@ -70,6 +99,16 @@
   color: #6a1b9a;
 }
 
+.scan-state[data-state='Completed'] {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.scan-state[data-state='Failed'] {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
 .scan-row {
   display: flex;
   justify-content: space-between;
@@ -113,6 +152,10 @@
 }
 
 .scan-item[data-state='Running'] mat-progress-bar {
+  animation: scan-pulse 1.2s ease-in-out infinite;
+}
+
+.tag-run-item[data-state='Running'] mat-progress-bar {
   animation: scan-pulse 1.2s ease-in-out infinite;
 }
 

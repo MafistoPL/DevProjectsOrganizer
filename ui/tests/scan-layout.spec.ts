@@ -140,6 +140,16 @@ test('completed scan does not show stop button', async ({ page }) => {
   const statusCard = page.getByTestId('status-card');
   await expect(statusCard).toContainText('Completed');
   await expect(page.getByTestId('scan-stop-btn-scan-completed-1')).toHaveCount(0);
+  const clearBtn = page.getByTestId('scan-clear-btn-scan-completed-1');
+  await expect(clearBtn).toBeVisible();
+
+  await clearBtn.click();
+  const dialog = page.locator('mat-dialog-container');
+  await expect(dialog.getByRole('heading', { name: 'Clear completed scan' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Clear' }).click();
+
+  await expect(page.locator('.scan-item')).toHaveCount(0);
+  await expect(statusCard).toContainText('No active scans yet.');
 });
 
 test('active scan current path supports horizontal scroll for long paths', async ({ page }) => {

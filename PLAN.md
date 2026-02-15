@@ -43,6 +43,9 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
+- **Tag heuristics progress:** uruchomienie `Run tag heuristics` publikuje eventy progresu i jest widoczne w GUI (sekcja `Tag heuristics runs` na zakładce Scan).
+- **Tag heuristics scan JSON:** każdy run heurystyk tagów zapisuje debugowy JSON do `%APPDATA%\DevProjectsOrganizer\scans\scan-tag-heur-<runId>.json`.
+- **Active scans cleanup:** wpisy `Completed` (zarówno scan session, jak i tag heuristics run) można usunąć z karty `Active scans` po potwierdzeniu dialogu.
 
 ## 3. Architektura (FE/BE)
 - **Engine**: logika domenowa i skanowanie (docelowo heurystyki detekcji i tagów).
@@ -66,6 +69,9 @@ Snapshot JSON:
 - drzewo folderów + pliki,
 - próbki treści (limit linii i rozmiaru),
 - ignorowanie artefaktów build/IDE jest już wdrożone.
+- pliki wyjściowe:
+  - skan projektów: `%APPDATA%\DevProjectsOrganizer\scans\scan-<id>.json`,
+  - run heurystyk tagów: `%APPDATA%\DevProjectsOrganizer\scans\scan-tag-heur-<runId>.json`.
 
 Uwaga: snapshot JSON to **feature debugowy** na czas dopracowania heurystyk.
 Docelowym produktem skanowania są **ProjectSuggestion** (i później projekty + tagi),
@@ -175,6 +181,8 @@ Główne zakładki:
 - **Suggestions / Regression**: dostępne akcje `Run regression report` oraz `Export regression JSON` (replay historycznych decyzji usera na `scan-<id>.json`).
 - **Suggestions / panel actions**: akcje działają per panel (Project vs Tag), a bulk `Accept all` / `Reject all` są zabezpieczone dialogiem potwierdzenia.
 - **Tag suggestions panel:** działa na realnych danych z DB (bez mocków), wspiera `Accept/Reject` per wpis i bulk.
+- **Scan / status card:** zawiera także sekcję przebiegu heurystyk tagów (`Running/Completed/Failed`, progress, generated count).
+- **Scan / status card:** wpisy `Completed` mają akcję `Clear` z potwierdzeniem (zarówno skany, jak i runy heurystyk tagów).
 - **Suggestions / Project suggestions**: w archiwum `Reject` jest ukryty; `Accept` może odwrócić wcześniejszy `Rejected`.
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
