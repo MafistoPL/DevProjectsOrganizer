@@ -4,9 +4,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmDialogComponent } from '../../components/shared/confirm-dialog/confirm-dialog.component';
 import {
@@ -25,10 +27,12 @@ import { TagsService, type TagItem } from '../../services/tags.service';
     NgFor,
     NgIf,
     MatButtonModule,
+    MatButtonToggleModule,
     MatCardModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSnackBarModule
   ],
   templateUrl: './tags-page.component.html',
@@ -41,12 +45,39 @@ export class TagsPageComponent {
   private readonly dialog = inject(MatDialog);
 
   readonly tags = toSignal(this.tagsService.tags$, { initialValue: [] });
+  sortKey: 'name' | 'projectCount' = 'name';
+  sortDirection: 'asc' | 'desc' = 'asc';
   newTagName = '';
   editTagId: string | null = null;
   editTagName = '';
   readonly isApplyHeuristicsBusy = signal(false);
   readonly applyHeuristicsStatus = signal('');
   readonly heuristicsRegressionReport = signal<TagHeuristicsRegressionReport | null>(null);
+
+  get visibleTags(): TagItem[] {
+    const items = [...this.tags()];
+    return items.sort((a, b) => {
+      if (this.sortKey === 'projectCount') {
+        const countDiff = a.projectCount - b.projectCount;
+        if (countDiff !== 0) {
+          return this.sortDirection === 'asc' ? countDiff : -countDiff;
+        }
+
+        const fallback = a.name.localeCompare(b.name, undefined, { sensitivity: 'accent' });
+        return this.sortDirection === 'asc' ? fallback : -fallback;
+      }
+
+      const nameDiff = a.name.localeCompare(b.name, undefined, { sensitivity: 'accent' });
+      return this.sortDirection === 'asc' ? nameDiff : -nameDiff;
+    });
+  }
+
+  setSortKey(value: 'name' | 'projectCount'): void {
+    this.sortKey = value;
+    if (value === 'projectCount') {
+      this.sortDirection = 'desc';
+    }
+  }
 
   async addTag(): Promise<void> {
     try {

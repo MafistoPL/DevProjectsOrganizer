@@ -42,9 +42,31 @@
   <mat-card class="list-card">
     <mat-card-title>Tag list</mat-card-title>
     <mat-card-content>
+      <div class="list-toolbar" data-testid="tag-list-toolbar">
+        <mat-form-field appearance="outline" class="sort-field">
+          <mat-label>Sort by</mat-label>
+          <mat-select
+            [value]="sortKey"
+            (selectionChange)="setSortKey($event.value)"
+            data-testid="tag-sort-key"
+          >
+            <mat-option value="name">Name</mat-option>
+            <mat-option value="projectCount">Projects count</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-button-toggle-group
+          [value]="sortDirection"
+          (change)="sortDirection = $event.value"
+          data-testid="tag-sort-direction"
+        >
+          <mat-button-toggle value="asc">Asc</mat-button-toggle>
+          <mat-button-toggle value="desc">Desc</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
       <div class="empty" *ngIf="tags().length === 0">No tags yet.</div>
 
-      <div class="tag-row" *ngFor="let tag of tags()" data-testid="tag-row">
+      <div class="tag-row" *ngFor="let tag of visibleTags" data-testid="tag-row">
         <ng-container *ngIf="editTagId !== tag.id; else editRow">
           <div class="name-wrap">
             <div class="name">{{ tag.name }}</div>

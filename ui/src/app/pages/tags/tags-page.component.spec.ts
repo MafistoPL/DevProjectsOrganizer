@@ -33,6 +33,14 @@ describe('TagsPageComponent', () => {
           projectCount: 0,
           createdAt: '2026-02-13T10:00:00.000Z',
           updatedAt: '2026-02-13T10:00:00.000Z'
+        },
+        {
+          id: 'tag-3',
+          name: 'backend',
+          isSystem: false,
+          projectCount: 7,
+          createdAt: '2026-02-13T10:00:00.000Z',
+          updatedAt: '2026-02-13T10:00:00.000Z'
         }
       ]),
       addTag: vi.fn().mockResolvedValue(undefined),
@@ -116,7 +124,10 @@ describe('TagsPageComponent', () => {
 
     expect(addSpy).toHaveBeenCalledWith('cpp');
 
-    (fixture.nativeElement.querySelector('[data-testid="tag-edit-btn"]') as HTMLButtonElement).click();
+    const preEditRows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tag-row"]')) as HTMLElement[];
+    const preEditSystemRow = preEditRows.find((row) => row.textContent?.includes('csharp'));
+    expect(preEditSystemRow).toBeTruthy();
+    (preEditSystemRow!.querySelector('[data-testid="tag-edit-btn"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     const editInput: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="tag-edit-input"]');
@@ -154,5 +165,13 @@ describe('TagsPageComponent', () => {
     expect(status?.textContent).toContain('Processed 1/1');
     const regression = fixture.nativeElement.querySelector('[data-testid="tag-heuristics-regression-report"]');
     expect(regression?.textContent).toContain('Projects analyzed: 1');
+  });
+
+  it('supports sorting tags by project count', () => {
+    fixture.componentInstance.setSortKey('projectCount');
+    fixture.detectChanges();
+
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tag-row"]')) as HTMLElement[];
+    expect(rows[0].textContent).toContain('backend');
   });
 });
