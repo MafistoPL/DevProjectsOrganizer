@@ -188,3 +188,51 @@ test('live results are shown after selecting an active or completed scan', async
   await expect(liveProjectNames.filter({ hasText: 'c-labs' })).toHaveCount(1);
   await expect(liveProjectNames.filter({ hasText: 'dotnet-api' })).toHaveCount(0);
 });
+
+test('selected roots are auto-rescanned on app start', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockRoots',
+      JSON.stringify([
+        {
+          id: 'root-a',
+          path: 'D:\\code',
+          status: 'scanned',
+          projectCount: 2,
+          ongoingSuggestionCount: 0,
+          lastScanState: null,
+          lastScanAt: null,
+          lastScanFiles: null
+        },
+        {
+          id: 'root-b',
+          path: 'C:\\src',
+          status: 'changed',
+          projectCount: 1,
+          ongoingSuggestionCount: 0,
+          lastScanState: null,
+          lastScanAt: null,
+          lastScanFiles: null
+        }
+      ])
+    );
+    localStorage.setItem('mockScans', JSON.stringify([]));
+    localStorage.setItem(
+      'scan.selectedRoots.state.v1',
+      JSON.stringify({
+        selectedRootIds: ['root-a', 'root-b'],
+        selectedRootDepthById: {
+          'root-b': 2
+        }
+      })
+    );
+  });
+
+  await page.goto('/scan');
+
+  const statusCard = page.getByTestId('status-card');
+  await expect(statusCard).toContainText('D:\\code');
+  await expect(statusCard).toContainText('C:\\src');
+  await expect(statusCard).toContainText('depth-auto');
+  await expect(statusCard).toContainText('depth-2');
+});

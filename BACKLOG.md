@@ -11,9 +11,6 @@
      * Dodać/potwierdzić manualną akcję dopasowania tagów utworzonych przez użytkownika do istniejących projektów przez AI.
      * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
      * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
-3. Dopracować zachowanie `Scan` i `Live results`:
-     * Automatyczny `Rescan selected roots` przy starcie aplikacji.
-
 ## Wkrótce (2-4 tygodnie)
 * Pre-commit: zweryfikować konfigurację w dokumentacji (`core.hooksPath=.githooks`) dla każdego klonu/środowiska.
 * Tryb „nasłuchiwany root” + automatyczne reskany:

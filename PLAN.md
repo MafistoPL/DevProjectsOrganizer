@@ -32,12 +32,17 @@ Program lokalny do porządkowania projektów na dysku:
 - **Heurystyki solution/module:** katalog z `.sln` jest traktowany jako jeden projekt; `*.csproj/*.vcxproj/*.vcproj` pod nim są modułami (nie osobnymi sugestiami), z wyjątkiem zagnieżdżonych `.sln` (osobny projekt).
 - **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
 - **Persistencja decyzji:** sugestia ma fingerprint; odrzucone (`Rejected`) wpisy z tym samym (`path`,`kind`,`fingerprint`) są automatycznie pomijane przy kolejnych skanach.
+- **Suppress po akceptacji/materializacji:** kandydat sugerowany heurystycznie jest pomijany, jeśli:
+  - istnieje już materializowany `Project` z tą samą znormalizowaną ścieżką (niezależnie od `kind`),
+  - albo latest decyzja sugestii dla tej samej znormalizowanej ścieżki ma status `Accepted`.
+  - normalizacja ścieżki obejmuje m.in. końcowe separatory i różnice `\\` vs `/`.
 - **Kasowanie archiwum:** usunięcie wpisu z archiwum zdejmuje baseline odrzucenia (sugestia może wrócić przy kolejnym skanie).
 - **Tryby skanu:** `roots`, `changed`, `whole`.
 - **Harmonogram:** per‑disk lock; whole‑scan blokuje inne skany.
 - **UI:** Scan view z start/stop/pause/resume, stanami i kolejką.
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Scan UI (root selection):** każdy root ma checkbox do zbiorczego reskanu; akcja `Rescan selected roots` uruchamia `scan.start` tylko dla zaznaczonych rootów (zastępuje wcześniejszy placeholder `Import roots`), a po zaznaczeniu roota pojawia się per-root input `Depth limit` przekazywany do payloadu skanu; zaznaczenia rootów i `Depth limit` są trwałe między restartami aplikacji.
+- **Scan UI (startup rescan):** przy starcie aplikacji automatycznie uruchamia się `Rescan selected roots` dla wcześniej zaznaczonych rootów (z zachowaniem per-root `Depth limit`).
 - **Scan UI (live results selection):** `Live results` są filtrowane po ręcznie wybranym skanie z karty `Active scans` (działa dla skanów aktywnych i zakończonych).
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).

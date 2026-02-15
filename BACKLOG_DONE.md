@@ -1,6 +1,22 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Domknięto deduplikację sugestii projektów po akceptacji/materializacji:
+  * `ProjectSuggestionStore.ReplaceForScanAsync` pomija kandydatów, które:
+    * mają już materializowany `Project` z tą samą ścieżką (niezależnie od `kind`),
+    * albo mają latest decyzję `Accepted` dla tej samej ścieżki (nawet gdy `kind` się zmienił).
+  * Normalizacja ścieżki uwzględnia m.in. końcowe separatory oraz różnice `\\` vs `/`.
+  * `suggestions.list` ukrywa `Pending`, jeśli:
+    * dla tej samej ścieżki latest decyzja to `Accepted`,
+    * albo ścieżka jest już materializowana w `projects` (sprzątanie historycznych duplikatów w GUI).
+  * Dodano/rozszerzono testy integracyjne `ProjectSuggestionStoreTests`:
+    * suppress przy różnym `kind` dla tej samej ścieżki,
+    * suppress przy mieszanych separatorach ścieżki,
+    * ukrywanie historycznego `Pending`, gdy projekt jest już w `projects`.
+* Scan UI: automatyczny `Rescan selected roots` przy starcie aplikacji:
+  * Przy starcie aplikacji automatycznie kolejkowany jest reskan dla wcześniej zaznaczonych rootów (z uwzględnieniem per-root `Depth limit`).
+  * Auto-rescan uruchamia się tylko raz na sesję aplikacji (bez ponownego triggera przy ponownym wejściu na zakładkę `Scan`).
+  * Dodano test Playwright `scan.spec.ts` dla scenariusza auto-rescanu po starcie.
 * Scan UI: `Live results` powiązano z wybranym skanem:
   * Na liście `Active scans` dodano wybór skanu (`Select for live results`), także dla skanów zakończonych.
   * `Live results` wyświetla sugestie tylko dla zaznaczonego `scanSessionId`.

@@ -281,6 +281,316 @@ public sealed class ProjectSuggestionStoreTests
         }
     }
 
+    [Fact]
+    public async Task ReplaceForScanAsync_skips_pending_when_project_with_same_path_already_exists_even_if_kind_changed()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var rootPath = @"D:\code";
+            var previousScanId = Guid.NewGuid();
+            var currentScanId = Guid.NewGuid();
+            var acceptedSuggestionId = Guid.NewGuid();
+
+            db.ScanSessions.AddRange(
+                new ScanSessionEntity
+                {
+                    Id = previousScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new ScanSessionEntity
+                {
+                    Id = currentScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+
+            db.ProjectSuggestions.Add(new ProjectSuggestionEntity
+            {
+                Id = acceptedSuggestionId,
+                ScanSessionId = previousScanId,
+                RootPath = rootPath,
+                Name = "2Dsource",
+                Path = @"D:\code\2Dsource",
+                Kind = "SingleFileMiniProject",
+                Score = 0.7,
+                Reason = "markers: .vcxproj",
+                ExtensionsSummary = "cpp=4",
+                Fingerprint = "fp-2dsource-v1",
+                MarkersJson = "[\".vcxproj\"]",
+                TechHintsJson = "[\"cpp\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4),
+                Status = ProjectSuggestionStatus.Accepted
+            });
+
+            db.Projects.Add(new ProjectEntity
+            {
+                Id = Guid.NewGuid(),
+                SourceSuggestionId = acceptedSuggestionId,
+                LastScanSessionId = previousScanId,
+                RootPath = rootPath,
+                Name = "2Dsource",
+                Path = @"D:\code\2Dsource",
+                Kind = "SingleFileMiniProject",
+                ProjectKey = ProjectStore.BuildProjectKey(@"D:\code\2Dsource", "SingleFileMiniProject"),
+                Description = string.Empty,
+                FileCount = 12,
+                Score = 0.7,
+                Reason = "markers: .vcxproj",
+                ExtensionsSummary = "cpp=4",
+                MarkersJson = "[\".vcxproj\"]",
+                TechHintsJson = "[\"cpp\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4),
+                UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-4)
+            });
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            await store.ReplaceForScanAsync(
+                currentScanId,
+                new[]
+                {
+                    CreateDetectedSuggestion(
+                        name: "2Dsource",
+                        path: @"D:/code/2Dsource/",
+                        kind: "ProjectRoot",
+                        fingerprint: "fp-2dsource-v2")
+                });
+
+            await using var checkDb = new AppDbContext(options);
+            var currentScanSuggestions = await checkDb.ProjectSuggestions
+                .Where(item => item.ScanSessionId == currentScanId)
+                .ToListAsync();
+
+            currentScanSuggestions.Should().BeEmpty();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task ReplaceForScanAsync_skips_pending_when_latest_status_for_same_path_is_accepted_even_if_kind_changed()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var rootPath = @"D:\code";
+            var previousScanId = Guid.NewGuid();
+            var currentScanId = Guid.NewGuid();
+
+            db.ScanSessions.AddRange(
+                new ScanSessionEntity
+                {
+                    Id = previousScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new ScanSessionEntity
+                {
+                    Id = currentScanId,
+                    RootPath = rootPath,
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+
+            db.ProjectSuggestions.Add(new ProjectSuggestionEntity
+            {
+                Id = Guid.NewGuid(),
+                ScanSessionId = previousScanId,
+                RootPath = rootPath,
+                Name = "aleksandra-wiejaczka-strona",
+                Path = @"D:\code\aleksandra-wiejaczka-strona",
+                Kind = "SingleFileMiniProject",
+                Score = 0.66,
+                Reason = "markers: package.json",
+                ExtensionsSummary = "ts=11",
+                Fingerprint = "fp-aleksandra-v1",
+                MarkersJson = "[\"package.json\"]",
+                TechHintsJson = "[\"node\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-4),
+                Status = ProjectSuggestionStatus.Accepted
+            });
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            await store.ReplaceForScanAsync(
+                currentScanId,
+                new[]
+                {
+                    CreateDetectedSuggestion(
+                        name: "aleksandra-wiejaczka-strona",
+                        path: @"D:/code/aleksandra-wiejaczka-strona/",
+                        kind: "ProjectRoot",
+                        fingerprint: "fp-aleksandra-v2")
+                });
+
+            await using var checkDb = new AppDbContext(options);
+            var currentScanSuggestions = await checkDb.ProjectSuggestions
+                .Where(item => item.ScanSessionId == currentScanId)
+                .ToListAsync();
+
+            currentScanSuggestions.Should().BeEmpty();
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task ListAllAsync_hides_pending_when_latest_status_for_same_path_is_accepted_even_if_kind_changed()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var scanId = Guid.NewGuid();
+            db.ScanSessions.Add(new ScanSessionEntity
+            {
+                Id = scanId,
+                RootPath = @"D:\code",
+                Mode = "roots",
+                State = ScanSessionStates.Completed,
+                DiskKey = "D:",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+
+            db.ProjectSuggestions.AddRange(
+                new ProjectSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ScanSessionId = scanId,
+                    RootPath = @"D:\code",
+                    Name = "aleksandra-wiejaczka-strona",
+                    Path = @"D:\code\aleksandra-wiejaczka-strona",
+                    Kind = "SingleFileMiniProject",
+                    Score = 0.66,
+                    Reason = "markers: package.json",
+                    ExtensionsSummary = "ts=11",
+                    Fingerprint = "fp-aleksandra-v1",
+                    MarkersJson = "[\"package.json\"]",
+                    TechHintsJson = "[\"node\"]",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+                    Status = ProjectSuggestionStatus.Accepted
+                },
+                new ProjectSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ScanSessionId = scanId,
+                    RootPath = @"D:\code",
+                    Name = "aleksandra-wiejaczka-strona",
+                    Path = @"D:/code/aleksandra-wiejaczka-strona/",
+                    Kind = "ProjectRoot",
+                    Score = 0.64,
+                    Reason = "markers: package.json",
+                    ExtensionsSummary = "ts=11",
+                    Fingerprint = "fp-aleksandra-v2",
+                    MarkersJson = "[\"package.json\"]",
+                    TechHintsJson = "[\"node\"]",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                    Status = ProjectSuggestionStatus.Pending
+                });
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            var all = await store.ListAllAsync();
+
+            all.Should().ContainSingle(item => item.Status == ProjectSuggestionStatus.Accepted);
+            all.Should().NotContain(item => item.Status == ProjectSuggestionStatus.Pending);
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task ListAllAsync_hides_pending_when_project_with_same_path_already_exists()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var scanId = Guid.NewGuid();
+            var sourceSuggestionId = Guid.NewGuid();
+
+            db.ScanSessions.Add(new ScanSessionEntity
+            {
+                Id = scanId,
+                RootPath = @"D:\code",
+                Mode = "roots",
+                State = ScanSessionStates.Completed,
+                DiskKey = "D:",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+
+            db.ProjectSuggestions.Add(new ProjectSuggestionEntity
+            {
+                Id = sourceSuggestionId,
+                ScanSessionId = scanId,
+                RootPath = @"D:\code",
+                Name = "aleksandra-wiejaczka-strona",
+                Path = @"D:\code\aleksandra-wiejaczka-strona",
+                Kind = "ProjectRoot",
+                Score = 0.64,
+                Reason = "markers: package.json",
+                ExtensionsSummary = "ts=11",
+                Fingerprint = "fp-aleksandra-v2",
+                MarkersJson = "[\"package.json\"]",
+                TechHintsJson = "[\"node\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                Status = ProjectSuggestionStatus.Pending
+            });
+
+            db.Projects.Add(new ProjectEntity
+            {
+                Id = Guid.NewGuid(),
+                SourceSuggestionId = sourceSuggestionId,
+                LastScanSessionId = scanId,
+                RootPath = @"D:\code",
+                Name = "aleksandra-wiejaczka-strona",
+                Path = @"D:/code/aleksandra-wiejaczka-strona/",
+                Kind = "SingleFileMiniProject",
+                ProjectKey = ProjectStore.BuildProjectKey(@"D:/code/aleksandra-wiejaczka-strona/", "SingleFileMiniProject"),
+                Description = string.Empty,
+                FileCount = 123,
+                Score = 0.66,
+                Reason = "markers: package.json",
+                ExtensionsSummary = "ts=11",
+                MarkersJson = "[\"package.json\"]",
+                TechHintsJson = "[\"node\"]",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+                UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-2)
+            });
+
+            await db.SaveChangesAsync();
+
+            var store = new ProjectSuggestionStore(new AppDbContext(options));
+            var all = await store.ListAllAsync();
+
+            all.Should().NotContain(item => item.Status == ProjectSuggestionStatus.Pending);
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
     private static DetectedProjectSuggestion CreateDetectedSuggestion(
         string name,
         string path,

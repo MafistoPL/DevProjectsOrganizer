@@ -38,7 +38,11 @@ public sealed class ProjectSuggestionStore
             _db.ProjectSuggestions.RemoveRange(existing);
         }
 
-        var filteredSuggestions = await FilterByHistoricalRejectionsAsync(suggestions, cancellationToken);
+        var filteredByRejections = await FilterByHistoricalRejectionsAsync(suggestions, cancellationToken);
+        var filteredByAccepted = await FilterByHistoricalAcceptedAsync(filteredByRejections, cancellationToken);
+        var filteredSuggestions = await FilterAlreadyMaterializedProjectsAsync(
+            filteredByAccepted,
+            cancellationToken);
 
         var entities = filteredSuggestions.Select(item => new ProjectSuggestionEntity
         {
@@ -79,7 +83,49 @@ public sealed class ProjectSuggestionStore
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return items
+        var latestDecisionByPath = items
+            .Where(item => item.Status != ProjectSuggestionStatus.Pending)
+            .GroupBy(item => BuildPathKey(item.Path), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(item => item.CreatedAt)
+                .First())
+            .ToDictionary(
+                item => BuildPathKey(item.Path),
+                item => item.Status,
+                StringComparer.OrdinalIgnoreCase);
+
+        var existingProjectPathKeys = await _db.Projects
+            .AsNoTracking()
+            .Select(item => item.Path)
+            .ToListAsync(cancellationToken);
+
+        var materializedPathKeys = existingProjectPathKeys
+            .Select(BuildPathKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var filtered = items
+            .Where(item =>
+            {
+                if (item.Status != ProjectSuggestionStatus.Pending)
+                {
+                    return true;
+                }
+
+                var pathKey = BuildPathKey(item.Path);
+                if (materializedPathKeys.Contains(pathKey))
+                {
+                    return false;
+                }
+
+                if (!latestDecisionByPath.TryGetValue(pathKey, out var latestStatus))
+                {
+                    return true;
+                }
+
+                return latestStatus != ProjectSuggestionStatus.Accepted;
+            });
+
+        return filtered
             .OrderByDescending(item => item.CreatedAt)
             .ToList();
     }
@@ -135,16 +181,13 @@ public sealed class ProjectSuggestionStore
             return suggestions;
         }
 
-        var candidatePaths = suggestions
-            .Select(item => item.Path)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var candidatePathKindKeys = suggestions
+            .Select(item => BuildPathKindKey(item.Path, item.Kind))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var historicalDecisions = await _db.ProjectSuggestions
             .AsNoTracking()
-            .Where(item =>
-                item.Status != ProjectSuggestionStatus.Pending
-                && candidatePaths.Contains(item.Path))
+            .Where(item => item.Status != ProjectSuggestionStatus.Pending)
             .Select(item => new
             {
                 item.Path,
@@ -156,6 +199,7 @@ public sealed class ProjectSuggestionStore
             .ToListAsync(cancellationToken);
 
         var rejectedKeys = historicalDecisions
+            .Where(item => candidatePathKindKeys.Contains(BuildPathKindKey(item.Path, item.Kind)))
             .GroupBy(
                 item => BuildDecisionKey(item.Path, item.Kind, item.Fingerprint),
                 StringComparer.OrdinalIgnoreCase)
@@ -171,8 +215,114 @@ public sealed class ProjectSuggestionStore
             .ToList();
     }
 
+    private async Task<IReadOnlyList<Services.DetectedProjectSuggestion>> FilterByHistoricalAcceptedAsync(
+        IReadOnlyList<Services.DetectedProjectSuggestion> suggestions,
+        CancellationToken cancellationToken)
+    {
+        if (suggestions.Count == 0)
+        {
+            return suggestions;
+        }
+
+        var candidatePathKeys = suggestions
+            .Select(item => BuildPathKey(item.Path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var historicalDecisions = await _db.ProjectSuggestions
+            .AsNoTracking()
+            .Where(item => item.Status != ProjectSuggestionStatus.Pending)
+            .Select(item => new
+            {
+                item.Path,
+                item.Status,
+                item.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var acceptedPathKeys = historicalDecisions
+            .Where(item => candidatePathKeys.Contains(BuildPathKey(item.Path)))
+            .GroupBy(item => BuildPathKey(item.Path), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(item => item.CreatedAt)
+                .First())
+            .Where(item => item.Status == ProjectSuggestionStatus.Accepted)
+            .Select(item => BuildPathKey(item.Path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return suggestions
+            .Where(item => !acceptedPathKeys.Contains(BuildPathKey(item.Path)))
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<Services.DetectedProjectSuggestion>> FilterAlreadyMaterializedProjectsAsync(
+        IReadOnlyList<Services.DetectedProjectSuggestion> suggestions,
+        CancellationToken cancellationToken)
+    {
+        if (suggestions.Count == 0)
+        {
+            return suggestions;
+        }
+
+        var candidatePathKeys = suggestions
+            .Select(item => BuildPathKey(item.Path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var existingProjectPaths = await _db.Projects
+            .AsNoTracking()
+            .Select(item => item.Path)
+            .ToListAsync(cancellationToken);
+
+        var existingPathKeys = existingProjectPaths
+            .Select(BuildPathKey)
+            .Where(candidatePathKeys.Contains)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (existingPathKeys.Count == 0)
+        {
+            return suggestions;
+        }
+
+        return suggestions
+            .Where(item => !existingPathKeys.Contains(BuildPathKey(item.Path)))
+            .ToList();
+    }
+
     private static string BuildDecisionKey(string path, string kind, string fingerprint)
     {
-        return $"{path.Trim().ToLowerInvariant()}::{kind.Trim().ToLowerInvariant()}::{fingerprint.Trim().ToLowerInvariant()}";
+        return $"{BuildPathKindKey(path, kind)}::{NormalizeFingerprint(fingerprint)}";
+    }
+
+    private static string BuildPathKindKey(string path, string kind)
+    {
+        return $"{BuildPathKey(path)}::{NormalizeKind(kind)}";
+    }
+
+    private static string BuildPathKey(string path)
+    {
+        return NormalizePath(path);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+
+        return path
+            .Trim()
+            .Replace('\\', '/')
+            .TrimEnd('/')
+            .ToLowerInvariant();
+    }
+
+    private static string NormalizeKind(string kind)
+    {
+        return kind.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeFingerprint(string fingerprint)
+    {
+        return fingerprint.Trim().ToLowerInvariant();
     }
 }

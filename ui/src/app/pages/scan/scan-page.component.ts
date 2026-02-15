@@ -25,6 +25,8 @@ import { ScanService, type ScanSessionView } from '../../services/scan.service';
   styleUrl: './scan-page.component.scss'
 })
 export class ScanPageComponent {
+  private static startupRescanQueued = false;
+
   private readonly selectedRootIds: Signal<string[]>;
   private readonly scans: Signal<ScanSessionView[]>;
   readonly selectedRootCount: Signal<number>;
@@ -54,6 +56,7 @@ export class ScanPageComponent {
         this.selectedScanId = null;
       }
     });
+    void this.queueStartupRescansIfNeeded();
   }
 
   setSelectedScan(scanId: string | null): void {
@@ -77,10 +80,38 @@ export class ScanPageComponent {
   }
 
   async rescanSelectedRoots(): Promise<void> {
-    const selectedTargets = this.rootsService.getSelectedRescanTargetsSnapshot();
-    if (selectedTargets.length === 0) {
+    const queued = await this.queueSelectedRootRescans();
+    if (queued <= 0) {
       this.snackBar.open('Select at least one root to rescan.', undefined, { duration: 1500 });
       return;
+    }
+
+    this.snackBar.open(`Queued rescans for ${queued} root(s).`, undefined, { duration: 1700 });
+  }
+
+  private async queueStartupRescansIfNeeded(): Promise<void> {
+    if (ScanPageComponent.startupRescanQueued) {
+      return;
+    }
+    ScanPageComponent.startupRescanQueued = true;
+
+    try {
+      await this.rootsService.load();
+      const queued = await this.queueSelectedRootRescans();
+      if (queued > 0) {
+        this.snackBar.open(`Auto-queued rescans for ${queued} root(s).`, undefined, {
+          duration: 1800
+        });
+      }
+    } catch {
+      // Startup auto-rescan is best-effort.
+    }
+  }
+
+  private async queueSelectedRootRescans(): Promise<number> {
+    const selectedTargets = this.rootsService.getSelectedRescanTargetsSnapshot();
+    if (selectedTargets.length === 0) {
+      return 0;
     }
 
     let queued = 0;
@@ -98,8 +129,6 @@ export class ScanPageComponent {
       }
     }
 
-    if (queued > 0) {
-      this.snackBar.open(`Queued rescans for ${queued} root(s).`, undefined, { duration: 1700 });
-    }
+    return queued;
   }
 }
