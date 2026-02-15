@@ -8,13 +8,15 @@
   - FE service test must assert exact request payload shape.
   - AppHost test must assert payload parser/handler accepts the intended minimal payload and rejects invalid input.
 - Keep `PLAN.md` up to date as the spec evolves.
-- Keep `BACKLOG.md` up to date with deferred tasks and follow-ups.
+- Keep `BACKLOG.md` up to date with active/deferred tasks and follow-ups.
+- Keep `BACKLOG_DONE.md` up to date with completed work history.
 - Keep `BACKLOG.md` written in Polish.
+- Prefer Polish for new entries added to `BACKLOG_DONE.md`.
 - Keep git commit messages in English.
-- For every user request/run, maintain `BACKLOG.md` lifecycle:
-  - At run start, add planned scope to `## In progress`.
-  - If user asked for more than can be done in this run, classify remaining items into appropriate backlog sections (`Now`, `Soon`, `Later`, etc.).
-  - At run end, update `BACKLOG.md` again and move completed `In progress` items to `## Done (recent)`.
+- For every user request/run, maintain backlog lifecycle:
+  - At run start, add planned scope to `BACKLOG.md` section `## W trakcie`.
+  - If user asked for more than can be done in this run, classify remaining items into appropriate backlog sections (`Teraz`, `Wkrótce`, `Później`, etc.).
+  - At run end, update `BACKLOG.md` again and move completed items from `## W trakcie` to `BACKLOG_DONE.md` section `## Zrobione (ostatnio)`.
 - If you execute only part of a user request, add the unimplemented remainder to `BACKLOG.md`.
 - Suggest good moments to commit when the changes form a coherent milestone.
 - If you want a PNG in `PLAN.md`, create/update the source `docs/excalidraw/*.excalidraw` and run `scripts/export-excalidraw.ps1` to generate PNGs in `docs/images`.
