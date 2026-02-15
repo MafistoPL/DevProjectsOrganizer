@@ -39,13 +39,18 @@ Program lokalny do porządkowania projektów na dysku:
 - **Scan UI:** ETA działa (wyliczane runtime), długie `Current path` ma poziomy scroll, a lista rootów pokazuje badge (`Projects`, `Pending`) i podsumowanie ostatniego skanu.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
+- **Project Organizer (description):** projekt ma pole opisu; opis można dodać podczas `Accept` sugestii i edytować później na zakładce `Project Organizer`.
 - **Post-accept actions:** po akceptacji sugestii projektu UI pokazuje dialog i może zlecić `Run tag heuristics` albo `Run AI tag suggestions` (IPC do AppHost).
 - **Tags:** CRUD tagów jest podpięty pod SQLite przez IPC (`tags.list/add/update/delete`), z walidacją duplikatów nazw.
+- **Tags (sorting):** lista tagów wspiera sortowanie po nazwie i po liczbie projektów (asc/desc).
 - **Tags (UI):** seedowane/systemowe tagi są widoczne na liście jako `Seeded` i nie można ich usunąć.
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
   - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
+  - `low-level` jest wykrywany jako sygnał ASM (nie ogólny sygnał C/C++).
+  - Dla projektów C/C++ z wykryciem wskaźników generowany jest tag `pointers`.
+  - Heurystyki wyznaczają też tag rozmiaru projektu po liczbie linii (`lines-*`).
 - **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
 - **Tag suggestions (archive):** odrzucone sugestie (`Rejected`) można trwale usuwać z archiwum (per-item) z poziomu GUI.
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
@@ -62,8 +67,8 @@ Program lokalny do porządkowania projektów na dysku:
 - **AppHost**: host desktopowy + IPC + persystencja (EF Core / SQLite).
 - **UI (Angular)**: widoki i interakcja z AppHost przez IPC.
 - **IPC suggestions:** `suggestions.list`, `suggestions.setStatus`, `suggestions.exportArchive`, `suggestions.openArchiveFolder`, `suggestions.openPath`.
-  - `suggestions.setStatus` accepts optional `projectName` for `Accepted` flow (rename at accept-time).
-- **IPC projects:** `projects.list`, `projects.delete`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
+  - `suggestions.setStatus` accepts optional `projectName` i `projectDescription` for `Accepted` flow.
+- **IPC projects:** `projects.list`, `projects.update`, `projects.delete`, `projects.runTagHeuristics`, `projects.runAiTagSuggestions`.
 - **IPC tags:** `tags.list`, `tags.projects`, `tags.add`, `tags.update`, `tags.delete`.
 - **IPC tag suggestions:** `tagSuggestions.list`, `tagSuggestions.setStatus`.
 - **Refactor status**: execution flow is moved to `ScanExecutionService`; `ScanCoordinator` focuses on lifecycle, scheduling, and event relay.
@@ -115,7 +120,7 @@ Heurystyki tagów (v1):
 - deduplikacja: ten sam kandydat (`project + tag + fingerprint`) nie jest dublowany; historycznie odrzucony fingerprint jest tłumiony przy kolejnych runach heurystyk.
 
 Tag taxonomy v1 (draft):
-- Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `console`, `winapi`, `gui`, `hello-world`, `lorem-ipsum`.
+- Canonical tags (heuristics-first): `csharp`, `dotnet`, `cpp`, `c`, `native`, `vs-solution`, `vs-project`, `node`, `react`, `angular`, `html`, `json`, `git`, `cmake`, `makefile`, `java`, `gradle`, `maven`, `python`, `rust`, `go`, `powershell`, `low-level`, `pointers`, `console`, `winapi`, `gui`, `hello-world`, `lorem-ipsum`, `lines-lt-100`, `lines-100-200`, `lines-200-500`, `lines-500-1k`, `lines-1k-2k`, `lines-2k-5k`, `lines-10k-20k`, `lines-20k-50k`, `lines-50k-100k`, `lines-gt-100k`.
 - Naming policy:
   - lowercase kebab-case tags,
   - one canonical form per concept (no alias duplicates in DB),
@@ -124,7 +129,8 @@ Tag taxonomy v1 (draft):
   - marker files (`.sln`, `*.csproj`, `*.vcxproj`, `package.json`, `CMakeLists.txt`, `Makefile`, `pom.xml`, `build.gradle`, `.git`),
   - extension histogram (`*.ts`, `*.tsx`, `*.jsx`, `*.cpp`, `*.h`, `*.ps1`, etc.),
   - path/name hints (`winapi`, `gui`, `console`, `katas`, `tutorial`, beginner chapter patterns),
-  - source content token hints (`hello world`, `lorem ipsum`) scanned with bounded limits.
+  - source content token hints (`hello world`, `lorem ipsum`, pointer syntax, asm keywords) scanned with bounded limits.
+  - project size bucket from estimated source line count (`lines-*` tags).
 - AI-first (not heuristics v1): semantic architecture/pattern tags such as `single-responsibility-principle`, deeper design-pattern tags, and advanced domain inference.
 - Confidence policy (v1):
   - strong: direct marker match (e.g. `package.json` -> `node`),
@@ -172,6 +178,7 @@ Minimalny zestaw:
 - **ProjectSuggestion**: kandydat projektu + metadane wykrycia + status decyzji; wpisy są archiwalne per skan (pod regresję i audyt).
 - **ProjectSuggestion.Fingerprint**: deterministyczny podpis heurystyki dla konkretnego kandydata (używany do suppress/restore po `Reject/Delete`).
 - **Project**: zaakceptowany projekt.
+- **Project.Description**: edytowalny opis projektu.
 - **Tag** i **TagSuggestion**: tagowanie i sugestie.
 - **ProjectTag**: relacja N:M między `Project` i `Tag`.
 - **Tag** ma mieć klasyfikację źródła/typu (np. `System` vs `Custom`) i regułę usuwalności.
@@ -202,11 +209,13 @@ Główne zakładki:
 - **Scan / status card:** wpisy `Completed` mają akcję `Clear` z potwierdzeniem (zarówno skany, jak i runy heurystyk tagów).
 - **Suggestions / Project suggestions**: w widokach archiwalnych `Reject` jest ukryty; `Accept` może odwrócić `Rejected`; usuwanie dotyczy tylko `Rejected` (brak usuwania `Accepted`).
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
-  - Dialog akceptacji pozwala edytować nazwę projektu przed finalnym `Accept` (z opcją: tylko zaakceptuj / zaakceptuj + heurystyki / zaakceptuj + AI).
+  - Dialog akceptacji pozwala edytować nazwę projektu i dodać opis przed finalnym `Accept` (z opcją: tylko zaakceptuj / zaakceptuj + heurystyki / zaakceptuj + AI).
 - **Project Organizer**: akcje na projekcie `Run tag heuristics` i `Run AI tag suggestions`.
+- **Project Organizer**: opis projektu jest widoczny i edytowalny inline (`Edit description` / `Save`).
 - **Tags**: zarządzanie tagami i backfill.
 - **Tags**: działające CRUD (lista + add/edit/delete), z ochroną tagów systemowych (`Seeded` bez opcji `Delete`).
 - **Tags**: licznik użycia (`Projects N`) i modal z listą projektów przypiętych do wybranego taga.
+- **Tags**: lista wspiera sortowanie po `Name` oraz `Projects count` (asc/desc).
 - **Tags**: globalna akcja `Apply latest heuristics to all projects` uruchamia heurystyki tagów dla wszystkich projektów z potwierdzeniem i statusem postępu w GUI.
 - **Tags / global apply heuristics**: po zakończeniu runa generowany jest raport regresji tag heurystyk oparty o historyczne decyzje `Accepted`/`Rejected` (summary + per-project w GUI).
 - **Recent**: last_viewed / last_opened.

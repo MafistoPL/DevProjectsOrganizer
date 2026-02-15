@@ -33,6 +33,14 @@
 * Add place to keep PAT to interact with gh, need to figureout how to keep it safely.
 
 ## Done (recent)
+* Heurystyki i metadane projektów (pakiet rozszerzeń):
+  * `low-level` został zawężony do sygnałów ASM (hint/ext/kod), bez automatycznego podbijania od `c/cpp`.
+  * Dodano heurystykę `pointers` dla projektów C/C++ z wykrytym użyciem wskaźników.
+  * Dodano tagi rozmiaru projektu po liczbie linii: `lines-lt-100`, `lines-100-200`, `lines-200-500`, `lines-500-1k`, `lines-1k-2k`, `lines-2k-5k`, `lines-10k-20k`, `lines-20k-50k`, `lines-50k-100k`, `lines-gt-100k`.
+  * Akceptacja sugestii projektu przyjmuje teraz opcjonalny opis (`projectDescription`), a `Project` ma trwałe pole `Description` (migracja DB + IPC `projects.update`).
+  * `Project Organizer` wspiera edycję opisu istniejącego projektu.
+  * Zakładka `Tags` wspiera sortowanie po liczbie projektów (`Projects count`, asc/desc).
+  * Testy: AppHost integration (`TagSuggestionHeuristicsServiceTests`, `ProjectStoreTests`), Angular unit/component (`ProjectsService`, `SuggestionsService`, `OrganizerPage`, `TagsPage`) oraz Playwright (`suggestions`, `organizer`).
 * Tag heuristics + tag suggestions hardening:
   * `Apply latest heuristics to all projects` no longer creates duplicates for already attached/semantically accepted tag suggestions.
   * `Tag suggestions` now allow permanent delete of `Rejected` entries (archive cleanup).
