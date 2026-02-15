@@ -46,11 +46,14 @@ Program lokalny do porządkowania projektów na dysku:
 - **Tags (UI):** seedowane/systemowe tagi są widoczne na liście jako `Seeded` i nie można ich usunąć.
 - **Tags (usage):** każdy tag pokazuje licznik podpiętych projektów; kliknięcie otwiera modal z listą projektów (`tags.projects`).
 - **Tags (delete UX):** usuwanie custom taga wymaga modalu potwierdzenia z przepisaniem nazwy taga.
+- **Tags (reprocessing trigger):** `tags.add` tworzy tylko wpis taga; nie uruchamia automatycznie heurystyk ani AI backfill.
 - **Tag suggestions (v1):** heurystyki tagów tworzą `AssignExisting` sugestie dla istniejących tagów; sugestie są zapisywane w DB i obsługiwane przez IPC (`tagSuggestions.list`, `tagSuggestions.setStatus`).
+  - Run heurystyk jest wyłącznie manualny (akcje usera: post-accept dialog, `Project Organizer`, globalne `Tags`).
   - Wykrywanie obejmuje też sygnały dla projektów beginner/sample: `hello-world` (path/name + kod) oraz `lorem-ipsum` (kod).
   - `low-level` jest wykrywany jako sygnał ASM (nie ogólny sygnał C/C++).
   - Dla projektów C/C++ z wykryciem wskaźników generowany jest tag `pointers`.
   - Heurystyki wyznaczają też tag rozmiaru projektu po liczbie linii (`lines-*`).
+- **AI tag suggestions (current runtime):** `projects.runAiTagSuggestions` zwraca `AiTagSuggestionsQueued`; persystencja sugestii AI jest jeszcze backlogiem.
 - **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
 - **Tag suggestions (archive):** odrzucone sugestie (`Rejected`) można trwale usuwać z archiwum (per-item) z poziomu GUI.
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).
@@ -162,11 +165,14 @@ Tag governance (docelowo):
 - `Custom tags` (dodane ręcznie lub utworzone po akceptacji sugestii AI): deletowalne.
 - Heurystyki działają na słowniku tagów systemowych + istniejących tagach użytkownika, ale `CreateNew` pozostaje domeną AI.
 
-Backfill:
-- po dodaniu nowego taga (manualnie lub po akceptacji AI) uruchamiamy backfill:
-  - heurystyczny zawsze,
-  - AI opcjonalnie.
-- backfill ma być asynchroniczny i idempotentny (bez duplikatów sugestii).
+Backfill (current vs target):
+- Obecnie wdrożone:
+  - dodanie taga (`tags.add`) nie uruchamia automatycznego backfillu,
+  - reprocess heurystyczny jest ręczny (per-projekt lub globalny run),
+  - akcja AI jest ręczna i aktualnie tylko kolejkowana (`AiTagSuggestionsQueued`), bez zapisanych sugestii AI.
+- Docelowo (backlog):
+  - custom-tag matching ma być AI-driven na jawny trigger usera (bez automatycznego runu po `tags.add`),
+  - flow ma pozostać idempotentny i deduplikowany.
 
 Konfigurowalność:
 - rozważamy GUI/YAML dla reguł heurystyk (wymaga parsera + runtime).
@@ -249,7 +255,7 @@ Najbliższe i średnie kroki są w `BACKLOG.md`. Skrót:
   3. (Done) Dialog po akceptacji projektu: `Run tag heuristics` / `Run AI tag suggestions` / `Skip`.
   4. (Done) Te same akcje uruchamiane ręcznie z `Project Organizer` dla istniejących projektów.
   5. (Done v1) `TagSuggestion` dla istniejących tagów (`AssignExisting`) ze statusem i fingerprintem.
-  6. Backfill po dodaniu nowego taga (manualnie lub po akceptacji AI): heurystyki zawsze, AI opcjonalnie.
+  6. Jawny flow reprocessingu po dodaniu taga: bez auto-run po `tags.add`; manualne heurystyki/AI i jasna komunikacja w UI.
   7. `CreateNew` sugestie tagów (AI) + akceptacja tworząca nowy tag.
 - **Mid Term:** AI tag suggestions z wykorzystaniem historii odrzuceń, split/merge projektów, incremental scan.
 - **Later:** AI do „one project vs many”, sync z backendem.

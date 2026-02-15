@@ -67,6 +67,13 @@ dotnet run --project src/AppHost/AppHost.csproj
   dotnet test tests/AppHost.IntegrationTests/AppHost.IntegrationTests.csproj --filter "Category=UserDataRegression"
   ```
 
+**Tag Reprocessing (current behavior)**
+- `tags.add` only creates a tag entry and reloads tag list; it does not trigger automatic heuristics or AI reprocessing.
+- Tag heuristics run only when explicitly triggered by the user (`Run tag heuristics` per project or global `Apply latest heuristics to all projects` in `Tags`).
+- Heuristics produce only `AssignExisting` suggestions and only when an existing tag name matches supported heuristic signals.
+- `projects.runAiTagSuggestions` currently returns queue acknowledgment (`AiTagSuggestionsQueued`) and does not yet persist AI tag suggestions.
+- Practical consequence: adding a custom tag does not automatically backfill existing projects.
+
 **IPC Contract Guardrails**
 - For each IPC payload change between `ui/` and `src/AppHost`, add contract tests on both layers:
   - FE: service spec must assert the exact payload sent by `bridge.request(...)`.
