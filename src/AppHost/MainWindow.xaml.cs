@@ -48,6 +48,18 @@ public partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        if (_scanCoordinator != null)
+        {
+            try
+            {
+                _scanCoordinator.ArchiveCompletedAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Best-effort cleanup during shutdown.
+            }
+        }
+
         _dbContext?.Dispose();
     }
 

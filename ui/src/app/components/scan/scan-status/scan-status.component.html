@@ -1,10 +1,43 @@
 <mat-card class="panel" data-testid="status-card">
   <mat-card-title class="panel-title panel-title--status">Active scans</mat-card-title>
   <mat-card-content class="status-content">
-    <div class="empty" *ngIf="(scans$ | async)?.length === 0">No active scans yet.</div>
+    <div class="scan-toolbar" data-testid="scan-toolbar">
+      <mat-button-toggle-group
+        class="scan-scope"
+        [value]="scanScope"
+        (change)="setScope($event.value)"
+        aria-label="Scan scope"
+      >
+        <mat-button-toggle value="active" data-testid="scan-scope-active">Active</mat-button-toggle>
+        <mat-button-toggle value="archived" data-testid="scan-scope-archived">Archived</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <mat-form-field class="scan-search" appearance="outline">
+        <mat-label>Path search</mat-label>
+        <input
+          matInput
+          [value]="pathQuery"
+          (input)="updatePathQuery($any($event.target).value)"
+          placeholder="Filter by root/current path"
+          data-testid="scan-path-search"
+        />
+      </mat-form-field>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="scan-sort"
+        (click)="toggleSortDirection()"
+        data-testid="scan-date-sort-toggle"
+      >
+        Date: {{ getSortDirectionLabel() }}
+      </button>
+    </div>
+
+    <div class="empty" *ngIf="(filteredScans$ | async)?.length === 0">{{ getEmptyMessage() }}</div>
     <div
       class="scan-item"
-      *ngFor="let scan of scans$ | async"
+      *ngFor="let scan of filteredScans$ | async"
       [class.is-selected]="isSelected(scan)"
       [attr.data-state]="scan.state"
       [attr.data-testid]="'scan-item-' + scan.id"
@@ -35,6 +68,10 @@
       <div class="scan-row">
         <span>ETA</span>
         <strong>{{ scan.eta ?? '--' }}</strong>
+      </div>
+      <div class="scan-row">
+        <span>Date</span>
+        <strong>{{ getDisplayTimestamp(scan) | date: 'yyyy-MM-dd HH:mm:ss' }}</strong>
       </div>
       <div class="scan-row">
         <span>Files scanned</span>

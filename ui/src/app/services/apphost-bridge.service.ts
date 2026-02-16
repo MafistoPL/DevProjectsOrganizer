@@ -218,7 +218,12 @@ export class AppHostBridgeService {
         return Promise.resolve({ id, deleted: true } as T);
       }
       case 'scan.list': {
-        return Promise.resolve(this.mockScans as T);
+        return Promise.resolve(
+          [...this.mockScans].sort(
+            (left, right) =>
+              Date.parse(right.createdAt ?? '') - Date.parse(left.createdAt ?? '')
+          ) as T
+        );
       }
       case 'scan.start': {
         const selectedRootId = typeof payload?.rootId === 'string' ? payload.rootId : '';
@@ -229,6 +234,7 @@ export class AppHostBridgeService {
         const disk = /^[A-Za-z]:/.test(rootPath) ? rootPath.slice(0, 2) : 'C:';
         const rawDepth = Number.parseInt(String(payload?.depthLimit ?? ''), 10);
         const depthLabel = Number.isFinite(rawDepth) && rawDepth > 0 ? `depth-${rawDepth}` : 'depth-auto';
+        const nowIso = new Date().toISOString();
         const scan = {
           id: this.createId(),
           rootPath,
@@ -239,9 +245,13 @@ export class AppHostBridgeService {
           filesScanned: 120,
           totalFiles: 480,
           queueReason: null,
-          outputPath: null
+          outputPath: null,
+          createdAt: nowIso,
+          startedAt: nowIso,
+          finishedAt: null
         };
         this.mockScans = [scan, ...this.mockScans];
+        this.saveMockScans();
         this.eventSubject.next({ type: 'scan.progress', data: scan });
         return Promise.resolve(scan as T);
       }
@@ -250,6 +260,7 @@ export class AppHostBridgeService {
         this.mockScans = this.mockScans.map((scan) =>
           scan.id === id ? { ...scan, state: 'Paused' } : scan
         );
+        this.saveMockScans();
         const updated = this.mockScans.find((scan) => scan.id === id);
         if (updated) {
           this.eventSubject.next({ type: 'scan.progress', data: updated });
@@ -261,6 +272,7 @@ export class AppHostBridgeService {
         this.mockScans = this.mockScans.map((scan) =>
           scan.id === id ? { ...scan, state: 'Running' } : scan
         );
+        this.saveMockScans();
         const updated = this.mockScans.find((scan) => scan.id === id);
         if (updated) {
           this.eventSubject.next({ type: 'scan.progress', data: updated });
@@ -269,7 +281,21 @@ export class AppHostBridgeService {
       }
       case 'scan.stop': {
         const id = typeof payload?.id === 'string' ? payload.id : '';
-        this.mockScans = this.mockScans.filter((scan) => scan.id !== id);
+        const finishedAt = new Date().toISOString();
+        this.mockScans = this.mockScans.map((scan) =>
+          scan.id === id
+            ? {
+                ...scan,
+                state: 'Stopped',
+                finishedAt
+              }
+            : scan
+        );
+        this.saveMockScans();
+        const updated = this.mockScans.find((scan) => scan.id === id);
+        if (updated) {
+          this.eventSubject.next({ type: 'scan.progress', data: updated });
+        }
         this.eventSubject.next({ type: 'scan.completed', data: { id } });
         return Promise.resolve({ id } as T);
       }
@@ -1184,10 +1210,40 @@ export class AppHostBridgeService {
 
     try {
       const parsed = JSON.parse(stored);
-      this.mockScans = Array.isArray(parsed) ? parsed : [];
+      this.mockScans = Array.isArray(parsed) ? parsed.map((item) => this.normalizeMockScan(item)) : [];
     } catch {
       this.mockScans = [];
     }
+  }
+
+  private normalizeMockScan(scan: any): any {
+    const nowIso = new Date().toISOString();
+    const createdAt = this.normalizeIsoTimestamp(scan?.createdAt, nowIso);
+    const startedAt = this.normalizeIsoTimestamp(scan?.startedAt, createdAt);
+    const state = String(scan?.state ?? '');
+    const finishedFallback = ['Completed', 'Failed', 'Stopped', 'Archived'].includes(state)
+      ? startedAt
+      : null;
+    const finishedAt = this.normalizeIsoTimestamp(scan?.finishedAt, finishedFallback);
+    return {
+      ...scan,
+      createdAt,
+      startedAt,
+      finishedAt
+    };
+  }
+
+  private normalizeIsoTimestamp(value: unknown, fallback: string | null): string | null {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return fallback;
+    }
+
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+
+    return new Date(parsed).toISOString();
   }
 
   private loadMockTags(): void {
@@ -1337,6 +1393,10 @@ export class AppHostBridgeService {
 
   private saveMockTags(): void {
     localStorage.setItem('mockTags', JSON.stringify(this.mockTags));
+  }
+
+  private saveMockScans(): void {
+    localStorage.setItem('mockScans', JSON.stringify(this.mockScans));
   }
 
   private saveMockTagSuggestions(): void {

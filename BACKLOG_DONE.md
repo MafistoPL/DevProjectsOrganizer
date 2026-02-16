@@ -1,6 +1,19 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Historia skanów i archiwizacja sesji:
+  * Backend skanów obsługuje teraz stan `Archived`, a `scan.list` zwraca sesje historyczne z DB (nie tylko runtime aktywnych skanów).
+  * Przy zamknięciu aplikacji skany w stanie `Completed` są automatycznie archiwizowane (`Completed -> Archived`).
+  * `Active scans` w GUI dostało:
+    * przełącznik scope `Active` / `Archived`,
+    * wyszukiwanie po ścieżce (`root/current path`),
+    * sortowanie po dacie (rosnąco/malejąco),
+    * domyślny widok `Active` ograniczony do skanów z bieżącej sesji.
+  * Rozszerzono payload sesji skanu o daty (`createdAt`, `startedAt`, `finishedAt`) i dopasowano mock bridge.
+  * Dodano testy:
+    * AppHost integration: `ScanCoordinatorTests` (listowanie historii + archiwizacja `Completed`),
+    * FE unit: `ScanService` (obsługa `scan.completed` bez nadpisywania `Stopped`),
+    * Playwright: `scan.spec.ts` i `scan-layout.spec.ts` pod nowe filtrowanie/scope/sortowanie.
 * Ograniczono nadmiarowe sugestie projektu dla repozytorium `Flashcards`:
   * Dodano granicę repozytorium `.git` w heurystyce wykrywania projektów.
   * Jeśli katalog jest wewnątrz aktywnego repo (`.git`) i nie jest nested repo z własnym `.git`, jego kandydatury (markerowe i heurystyczne) są tłumione.

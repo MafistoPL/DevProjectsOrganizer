@@ -7,11 +7,12 @@ public static class ScanSessionStates
     public const string Running = "Running";
     public const string Paused = "Paused";
     public const string Completed = "Completed";
+    public const string Archived = "Archived";
     public const string Failed = "Failed";
     public const string Stopped = "Stopped";
 
     public static bool IsTerminal(string state)
     {
-        return state is Completed or Failed or Stopped;
+        return state is Completed or Archived or Failed or Stopped;
     }
 }

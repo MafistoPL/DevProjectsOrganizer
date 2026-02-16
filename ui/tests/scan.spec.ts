@@ -118,7 +118,10 @@ test('live results are shown after selecting an active or completed scan', async
           filesScanned: 10,
           totalFiles: 40,
           queueReason: null,
-          outputPath: null
+          outputPath: null,
+          createdAt: '2099-01-01T09:00:00.000Z',
+          startedAt: '2099-01-01T09:00:00.000Z',
+          finishedAt: null
         },
         {
           id: 'scan-completed-b',
@@ -130,7 +133,10 @@ test('live results are shown after selecting an active or completed scan', async
           filesScanned: 20,
           totalFiles: 20,
           queueReason: null,
-          outputPath: 'C:\\mock\\scan-completed-b.json'
+          outputPath: 'C:\\mock\\scan-completed-b.json',
+          createdAt: '2099-01-01T08:00:00.000Z',
+          startedAt: '2099-01-01T08:00:00.000Z',
+          finishedAt: '2099-01-01T08:05:00.000Z'
         }
       ])
     );
@@ -235,4 +241,84 @@ test('selected roots are auto-rescanned on app start', async ({ page }) => {
   await expect(statusCard).toContainText('C:\\src');
   await expect(statusCard).toContainText('depth-auto');
   await expect(statusCard).toContainText('depth-2');
+});
+
+test('active scans support archived scope, path search and date sorting', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'mockScans',
+      JSON.stringify([
+        {
+          id: 'scan-archived-old',
+          rootPath: 'D:\\history\\alpha',
+          mode: 'roots',
+          state: 'Archived',
+          disk: 'D:',
+          currentPath: 'D:\\history\\alpha\\main.cpp',
+          filesScanned: 20,
+          totalFiles: 20,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-archived-old.json',
+          createdAt: '2024-01-01T10:00:00.000Z',
+          startedAt: '2024-01-01T10:00:00.000Z',
+          finishedAt: '2024-01-01T10:10:00.000Z'
+        },
+        {
+          id: 'scan-archived-new',
+          rootPath: 'D:\\history\\beta',
+          mode: 'roots',
+          state: 'Archived',
+          disk: 'D:',
+          currentPath: 'D:\\history\\beta\\main.cpp',
+          filesScanned: 30,
+          totalFiles: 30,
+          queueReason: null,
+          outputPath: 'C:\\mock\\scan-archived-new.json',
+          createdAt: '2025-01-01T10:00:00.000Z',
+          startedAt: '2025-01-01T10:00:00.000Z',
+          finishedAt: '2025-01-01T10:10:00.000Z'
+        },
+        {
+          id: 'scan-running-current',
+          rootPath: 'C:\\current\\workspace',
+          mode: 'roots',
+          state: 'Running',
+          disk: 'C:',
+          currentPath: 'C:\\current\\workspace\\file.cs',
+          filesScanned: 3,
+          totalFiles: 10,
+          queueReason: null,
+          outputPath: null,
+          createdAt: '2099-01-01T10:00:00.000Z',
+          startedAt: '2099-01-01T10:00:00.000Z',
+          finishedAt: null
+        }
+      ])
+    );
+  });
+
+  await page.goto('/scan');
+
+  const statusCard = page.getByTestId('status-card');
+  const scanItems = statusCard.locator('.scan-item');
+
+  await expect(statusCard).toContainText('C:\\current\\workspace');
+  await expect(statusCard).not.toContainText('D:\\history\\alpha');
+  await expect(statusCard).not.toContainText('D:\\history\\beta');
+
+  await page.getByTestId('scan-scope-archived').click();
+  await expect(statusCard).toContainText('D:\\history\\alpha');
+  await expect(statusCard).toContainText('D:\\history\\beta');
+  await expect(statusCard).not.toContainText('C:\\current\\workspace');
+
+  await page.getByTestId('scan-path-search').fill('beta');
+  await expect(statusCard).toContainText('D:\\history\\beta');
+  await expect(statusCard).not.toContainText('D:\\history\\alpha');
+
+  await page.getByTestId('scan-path-search').fill('');
+  await expect(scanItems).toHaveCount(2);
+  await expect(scanItems.first()).toContainText('D:\\history\\beta');
+
+  await page.getByTestId('scan-date-sort-toggle').click();
+  await expect(scanItems.first()).toContainText('D:\\history\\alpha');
 });

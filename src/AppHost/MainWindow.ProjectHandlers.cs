@@ -558,7 +558,8 @@ public partial class MainWindow
             scanSessionId,
             path,
             GetDiskKey(path),
-            new ScanStartRequest("roots", null, null));
+            new ScanStartRequest("roots", null, null),
+            now);
         runtime.SetState(ScanSessionStates.Counting);
 
         var snapshotBuilder = new ScanSnapshotBuilder();

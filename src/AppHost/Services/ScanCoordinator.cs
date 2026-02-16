@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using AppHost.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace AppHost.Services;
 
@@ -16,7 +17,10 @@ public sealed record ScanSessionDto(
     long? TotalFiles,
     string? QueueReason,
     string? OutputPath,
-    string? Eta
+    string? Eta,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? FinishedAt
 );
 
 public sealed record ScanStartRequest(
@@ -65,7 +69,7 @@ public sealed class ScanCoordinator
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        var runtime = new ScanRuntime(session.Id, rootPath, diskKey, request);
+        var runtime = new ScanRuntime(session.Id, rootPath, diskKey, request, session.CreatedAt);
         _scans[session.Id] = runtime;
 
         _ = Task.Run(() => RunScanAsync(runtime), CancellationToken.None);
@@ -75,10 +79,51 @@ public sealed class ScanCoordinator
         return dto;
     }
 
-    public Task<IReadOnlyList<ScanSessionDto>> ListActiveAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ScanSessionDto>> ListActiveAsync(CancellationToken cancellationToken)
     {
-        var sessions = _scans.Values.Select(runtime => runtime.ToDto()).ToList();
-        return Task.FromResult<IReadOnlyList<ScanSessionDto>>(sessions);
+        using var db = _dbFactory();
+        var sessions = await db.ScanSessions
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        sessions = sessions
+            .OrderByDescending(item => item.CreatedAt)
+            .ToList();
+
+        var dtos = new List<ScanSessionDto>(sessions.Count);
+        foreach (var session in sessions)
+        {
+            if (_scans.TryGetValue(session.Id, out var runtime))
+            {
+                dtos.Add(runtime.ToDto());
+                continue;
+            }
+
+            dtos.Add(MapEntityToDto(session));
+        }
+
+        return dtos;
+    }
+
+    public async Task<int> ArchiveCompletedAsync(CancellationToken cancellationToken)
+    {
+        using var db = _dbFactory();
+        var completed = await db.ScanSessions
+            .Where(item => item.State == ScanSessionStates.Completed)
+            .ToListAsync(cancellationToken);
+        if (completed.Count == 0)
+        {
+            return 0;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var session in completed)
+        {
+            session.State = ScanSessionStates.Archived;
+            session.FinishedAt ??= now;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return completed.Count;
     }
 
     public Task PauseAsync(Guid scanId)
@@ -295,5 +340,24 @@ public sealed class ScanCoordinator
     private void Emit(string type, object? data)
     {
         ScanEvent?.Invoke(type, data);
+    }
+
+    private static ScanSessionDto MapEntityToDto(ScanSessionEntity session)
+    {
+        return new ScanSessionDto(
+            session.Id,
+            session.RootPath,
+            session.Mode,
+            session.State,
+            session.DiskKey,
+            session.CurrentPath,
+            session.FilesScanned,
+            session.TotalFiles,
+            null,
+            session.OutputPath,
+            null,
+            session.CreatedAt,
+            session.StartedAt,
+            session.FinishedAt);
     }
 }

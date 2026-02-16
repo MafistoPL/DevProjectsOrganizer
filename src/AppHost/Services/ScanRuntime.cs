@@ -7,13 +7,15 @@ public sealed class ScanRuntime
 {
     private readonly AsyncManualResetEvent _pauseEvent = new(true);
     private DateTimeOffset _lastProgressAt = DateTimeOffset.MinValue;
-    private DateTimeOffset? _scanStartedAt;
     private readonly CancellationTokenSource _cts = new();
 
     public Guid ScanId { get; }
     public string RootPath { get; }
     public string DiskKey { get; }
     public ScanStartRequest Request { get; }
+    public DateTimeOffset CreatedAt { get; }
+    public DateTimeOffset? StartedAt { get; private set; }
+    public DateTimeOffset? FinishedAt { get; private set; }
     public string State { get; private set; } = ScanSessionStates.Queued;
     public long FilesScanned { get; set; }
     public long? TotalFiles { get; set; }
@@ -22,12 +24,18 @@ public sealed class ScanRuntime
     public string? QueueReason { get; set; }
     public bool HoldsWholeLock { get; set; }
 
-    public ScanRuntime(Guid scanId, string rootPath, string diskKey, ScanStartRequest request)
+    public ScanRuntime(
+        Guid scanId,
+        string rootPath,
+        string diskKey,
+        ScanStartRequest request,
+        DateTimeOffset createdAt)
     {
         ScanId = scanId;
         RootPath = rootPath;
         DiskKey = diskKey;
         Request = request;
+        CreatedAt = createdAt;
     }
 
     public CancellationToken StopToken => _cts.Token;
@@ -61,9 +69,14 @@ public sealed class ScanRuntime
 
     public void SetState(string state)
     {
-        if ((state == ScanSessionStates.Counting || state == ScanSessionStates.Running) && _scanStartedAt == null)
+        if ((state == ScanSessionStates.Counting || state == ScanSessionStates.Running) && StartedAt == null)
         {
-            _scanStartedAt = DateTimeOffset.UtcNow;
+            StartedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (ScanSessionStates.IsTerminal(state))
+        {
+            FinishedAt ??= DateTimeOffset.UtcNow;
         }
 
         State = state;
@@ -121,12 +134,15 @@ public sealed class ScanRuntime
             TotalFiles,
             QueueReason,
             OutputPath,
-            CalculateEta());
+            CalculateEta(),
+            CreatedAt,
+            StartedAt,
+            FinishedAt);
     }
 
     private string? CalculateEta()
     {
-        if (_scanStartedAt is null)
+        if (StartedAt is null)
         {
             return null;
         }
@@ -142,7 +158,7 @@ public sealed class ScanRuntime
             return "00:00:00";
         }
 
-        var elapsedSeconds = (DateTimeOffset.UtcNow - _scanStartedAt.Value).TotalSeconds;
+        var elapsedSeconds = (DateTimeOffset.UtcNow - StartedAt.Value).TotalSeconds;
         if (elapsedSeconds <= 0)
         {
             return null;

@@ -45,6 +45,8 @@ Program lokalny do porządkowania projektów na dysku:
 - **Scan UI (root selection):** każdy root ma checkbox do zbiorczego reskanu; akcja `Rescan selected roots` uruchamia `scan.start` tylko dla zaznaczonych rootów (zastępuje wcześniejszy placeholder `Import roots`), a po zaznaczeniu roota pojawia się per-root input `Depth limit` przekazywany do payloadu skanu; zaznaczenia rootów i `Depth limit` są trwałe między restartami aplikacji.
 - **Scan UI (startup rescan):** przy starcie aplikacji automatycznie uruchamia się `Rescan selected roots` dla wcześniej zaznaczonych rootów (z zachowaniem per-root `Depth limit`).
 - **Scan UI (live results selection):** `Live results` są filtrowane po ręcznie wybranym skanie z karty `Active scans` (działa dla skanów aktywnych i zakończonych).
+- **Scan UI (historia):** karta skanów pokazuje aktywne i historyczne sesje; ma scope `Active/Archived`, wyszukiwanie po ścieżce i sortowanie po dacie, a domyślny widok `Active` pokazuje tylko skany rozpoczęte po starcie aplikacji.
+- **Scan session lifecycle:** przy zamknięciu aplikacji skany ze stanem `Completed` są archiwizowane do stanu `Archived`.
 - **Live Results / Suggestions cards:** lista sugestii jest zasilana z SQLite przez IPC; `Accept/Reject` zapisuje status; `Reason` is click-to-copy, `Path` has context menu (`Copy path`, `Open in Explorer`), and grid card size is adjustable via slider.
 - **Project Organizer:** zakładka jest podpięta pod realne dane `Project` przez IPC (`projects.list`).
 - **Project Organizer (tag filter):** lista projektów wspiera podstawowe filtrowanie po wielu tagach (AND / iloczyn).
@@ -231,6 +233,7 @@ Główne zakładki:
 - **Tag suggestions panel:** ma scope (`Pending/Accepted/Rejected`), wyszukiwarkę zależną od sortu (`Project` lub `Tag`) i sortowanie (`Project`, `Tag`, `Created`, `Asc/Desc`), a sterowanie layoutem (`List/Grid` + suwak `Card size`) jest w analogicznym miejscu i zachowuje się jak w `Project suggestions`.
 - **Scan / status card:** zawiera także sekcję przebiegu heurystyk tagów (`Running/Completed/Failed`, progress, generated count).
 - **Scan / status card:** wpisy `Completed` mają akcję `Clear` z potwierdzeniem (zarówno skany, jak i runy heurystyk tagów).
+- **Scan / status card:** lista skanów wspiera przełącznik zakresu `Active`/`Archived`, filtrowanie po ścieżce oraz sortowanie po dacie.
 - **Suggestions / Project suggestions**: w widokach archiwalnych `Reject` jest ukryty; `Accept` może odwrócić `Rejected`; usuwanie dotyczy tylko `Rejected` (brak usuwania `Accepted`).
 - **Project acceptance flow**: po `Accept` projektu otwieramy dialog uruchomienia heurystyk/AI tagów.
   - Dialog akceptacji pozwala edytować nazwę projektu i dodać opis przed finalnym `Accept` (z opcją: tylko zaakceptuj / zaakceptuj + heurystyki / zaakceptuj + AI).

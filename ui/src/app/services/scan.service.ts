@@ -15,6 +15,9 @@ export type ScanSessionView = {
   outputPath?: string | null;
   progress: number;
   eta?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
 };
 
 export type StartScanPayload = {
@@ -30,6 +33,7 @@ type ScanEvent = {
 
 @Injectable({ providedIn: 'root' })
 export class ScanService {
+  private static readonly sessionStartedAt = Date.now();
   private readonly scansSubject = new BehaviorSubject<ScanSessionView[]>([]);
   readonly scans$ = this.scansSubject.asObservable();
 
@@ -68,6 +72,10 @@ export class ScanService {
     );
   }
 
+  getSessionStartedAt(): number {
+    return ScanService.sessionStartedAt;
+  }
+
   private handleEvent(event: ScanEvent): void {
     if (!event?.type) {
       return;
@@ -80,16 +88,25 @@ export class ScanService {
 
     if (event.type === 'scan.completed' && event.data) {
       const payload = event.data as { id: string; outputPath?: string | null };
+      const now = new Date().toISOString();
+      if (payload.outputPath) {
+        this.updateState(payload.id, {
+          state: 'Completed',
+          outputPath: payload.outputPath,
+          finishedAt: now
+        });
+        return;
+      }
+
       this.updateState(payload.id, {
-        state: 'Completed',
-        outputPath: payload.outputPath ?? null
+        finishedAt: now
       });
       return;
     }
 
     if (event.type === 'scan.failed' && event.data) {
       const payload = event.data as { id: string };
-      this.updateState(payload.id, { state: 'Failed' });
+      this.updateState(payload.id, { state: 'Failed', finishedAt: new Date().toISOString() });
     }
   }
 
@@ -117,13 +134,36 @@ export class ScanService {
   private normalize(scan: ScanSessionView): ScanSessionView {
     const totalFiles = scan.totalFiles ?? null;
     const filesScanned = scan.filesScanned ?? 0;
+    const nowIso = new Date().toISOString();
+    const createdAt = this.normalizeIsoTimestamp(scan.createdAt, nowIso) ?? nowIso;
+    const startedAt = this.normalizeIsoTimestamp(scan.startedAt ?? null, null);
+    const finishedAt = this.normalizeIsoTimestamp(scan.finishedAt ?? null, null);
     const progress =
       totalFiles && totalFiles > 0 ? Math.min(100, (filesScanned / totalFiles) * 100) : 0;
     return {
       ...scan,
       totalFiles,
       filesScanned,
-      progress
+      progress,
+      createdAt,
+      startedAt,
+      finishedAt
     };
+  }
+
+  private normalizeIsoTimestamp(
+    value: string | null | undefined,
+    fallback: string | null
+  ): string | null {
+    if (!value) {
+      return fallback;
+    }
+
+    const timestamp = Date.parse(value);
+    if (Number.isNaN(timestamp)) {
+      return fallback;
+    }
+
+    return new Date(timestamp).toISOString();
   }
 }

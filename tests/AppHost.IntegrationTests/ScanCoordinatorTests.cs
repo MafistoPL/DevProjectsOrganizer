@@ -10,6 +10,132 @@ namespace AppHost.IntegrationTests;
 public sealed class ScanCoordinatorTests
 {
     [Fact]
+    public async Task ListActiveAsync_returns_historical_sessions_from_database()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var newest = new ScanSessionEntity
+            {
+                Id = Guid.NewGuid(),
+                RootPath = @"D:\code\newest",
+                Mode = "roots",
+                State = ScanSessionStates.Running,
+                DiskKey = "D:",
+                CreatedAt = now.AddMinutes(-1),
+                StartedAt = now.AddMinutes(-1),
+                FilesScanned = 25,
+                TotalFiles = 100
+            };
+            var olderCompleted = new ScanSessionEntity
+            {
+                Id = Guid.NewGuid(),
+                RootPath = @"D:\code\older",
+                Mode = "roots",
+                State = ScanSessionStates.Completed,
+                DiskKey = "D:",
+                CreatedAt = now.AddMinutes(-10),
+                StartedAt = now.AddMinutes(-10),
+                FinishedAt = now.AddMinutes(-9),
+                FilesScanned = 100,
+                TotalFiles = 100,
+                OutputPath = @"C:\mock\scan-older.json"
+            };
+            var archived = new ScanSessionEntity
+            {
+                Id = Guid.NewGuid(),
+                RootPath = @"D:\code\archived",
+                Mode = "roots",
+                State = ScanSessionStates.Archived,
+                DiskKey = "D:",
+                CreatedAt = now.AddMinutes(-20),
+                StartedAt = now.AddMinutes(-20),
+                FinishedAt = now.AddMinutes(-19),
+                FilesScanned = 5,
+                TotalFiles = 5,
+                OutputPath = @"C:\mock\scan-archived.json"
+            };
+            db.ScanSessions.AddRange(newest, olderCompleted, archived);
+            await db.SaveChangesAsync();
+
+            var coordinator = new ScanCoordinator(() => new AppDbContext(options));
+            var scans = await coordinator.ListActiveAsync(CancellationToken.None);
+
+            scans.Should().HaveCount(3);
+            scans.Select(item => item.Id).Should().ContainInOrder(newest.Id, olderCompleted.Id, archived.Id);
+            scans.Single(item => item.Id == archived.Id).State.Should().Be(ScanSessionStates.Archived);
+            scans.Single(item => item.Id == olderCompleted.Id).OutputPath.Should().Be(@"C:\mock\scan-older.json");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
+    public async Task ArchiveCompletedAsync_moves_completed_sessions_to_archived()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            db.ScanSessions.AddRange(
+                new ScanSessionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RootPath = @"D:\code\completed-a",
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = now.AddMinutes(-3),
+                    StartedAt = now.AddMinutes(-3),
+                    FinishedAt = now.AddMinutes(-2)
+                },
+                new ScanSessionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RootPath = @"D:\code\completed-b",
+                    Mode = "roots",
+                    State = ScanSessionStates.Completed,
+                    DiskKey = "D:",
+                    CreatedAt = now.AddMinutes(-2),
+                    StartedAt = now.AddMinutes(-2),
+                    FinishedAt = now.AddMinutes(-1)
+                },
+                new ScanSessionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RootPath = @"D:\code\running",
+                    Mode = "roots",
+                    State = ScanSessionStates.Running,
+                    DiskKey = "D:",
+                    CreatedAt = now.AddMinutes(-1),
+                    StartedAt = now.AddMinutes(-1)
+                });
+            await db.SaveChangesAsync();
+
+            var coordinator = new ScanCoordinator(() => new AppDbContext(options));
+            var archivedCount = await coordinator.ArchiveCompletedAsync(CancellationToken.None);
+
+            archivedCount.Should().Be(2);
+
+            await using var checkDb = new AppDbContext(options);
+            var states = await checkDb.ScanSessions
+                .OrderBy(item => item.RootPath)
+                .Select(item => new { item.RootPath, item.State })
+                .ToListAsync();
+            states.Should().Contain(item => item.RootPath == @"D:\code\completed-a" && item.State == ScanSessionStates.Archived);
+            states.Should().Contain(item => item.RootPath == @"D:\code\completed-b" && item.State == ScanSessionStates.Archived);
+            states.Should().Contain(item => item.RootPath == @"D:\code\running" && item.State == ScanSessionStates.Running);
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
+    [Fact]
     public async Task StartAsync_creates_snapshot_json_for_root_scan()
     {
         var fixtureRoot = Path.Combine(

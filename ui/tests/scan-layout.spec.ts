@@ -37,7 +37,10 @@ test('Live results items are not clipped', async ({ page }) => {
           filesScanned: 42,
           totalFiles: 42,
           queueReason: null,
-          outputPath: 'C:\\mock\\scan-1.json'
+          outputPath: 'C:\\mock\\scan-1.json',
+          createdAt: '2099-01-01T10:00:00.000Z',
+          startedAt: '2099-01-01T10:00:00.000Z',
+          finishedAt: '2099-01-01T10:10:00.000Z'
         }
       ])
     );
@@ -97,7 +100,10 @@ test('Live results expands to fill available height', async ({ page }) => {
           filesScanned: 24,
           totalFiles: 24,
           queueReason: null,
-          outputPath: 'C:\\mock\\scan-6.json'
+          outputPath: 'C:\\mock\\scan-6.json',
+          createdAt: '2099-01-01T11:00:00.000Z',
+          startedAt: '2099-01-01T11:00:00.000Z',
+          finishedAt: '2099-01-01T11:05:00.000Z'
         }
       ])
     );
@@ -171,7 +177,10 @@ test('completed scan does not show stop button', async ({ page }) => {
           filesScanned: 12,
           totalFiles: 12,
           queueReason: null,
-          outputPath: 'C:\\mock\\scan-completed-1.json'
+          outputPath: 'C:\\mock\\scan-completed-1.json',
+          createdAt: '2099-01-01T12:00:00.000Z',
+          startedAt: '2099-01-01T12:00:00.000Z',
+          finishedAt: '2099-01-01T12:03:00.000Z'
         }
       ])
     );
@@ -211,7 +220,10 @@ test('active scan current path supports horizontal scroll for long paths', async
           totalFiles: 400,
           queueReason: null,
           outputPath: null,
-          eta: '00:02:31'
+          eta: '00:02:31',
+          createdAt: '2099-01-01T13:00:00.000Z',
+          startedAt: '2099-01-01T13:00:00.000Z',
+          finishedAt: null
         }
       ])
     );

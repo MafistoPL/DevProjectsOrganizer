@@ -8,6 +8,29 @@
   gap: 16px;
 }
 
+.scan-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.scan-scope {
+  flex: 0 0 auto;
+}
+
+.scan-search {
+  flex: 1 1 300px;
+}
+
+.scan-sort {
+  flex: 0 0 auto;
+}
+
+.scan-search ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
 .tag-runs-section {
   display: flex;
   flex-direction: column;
@@ -110,6 +133,11 @@
 .scan-state[data-state='Completed'] {
   background: #e8f5e9;
   color: #1b5e20;
+}
+
+.scan-state[data-state='Archived'] {
+  background: #eceff1;
+  color: #455a64;
 }
 
 .scan-state[data-state='Failed'] {
