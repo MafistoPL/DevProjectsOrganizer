@@ -1,6 +1,11 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Ograniczono nadmiarowe sugestie projektu dla repozytorium `Flashcards`:
+  * Dodano granicę repozytorium `.git` w heurystyce wykrywania projektów.
+  * Jeśli katalog jest wewnątrz aktywnego repo (`.git`) i nie jest nested repo z własnym `.git`, jego kandydatury (markerowe i heurystyczne) są tłumione.
+  * Efekt: struktury wielomodułowe wewnątrz jednego repo (np. `backend`, `frontend`, `HostAgent`, liściowe katalogi z pojedynczym plikiem) nie generują już lawiny osobnych sugestii.
+  * Dodano test regresyjny `ProjectSuggestionHeuristicsServiceTests` dla scenariusza `Flashcards` (oczekiwany jeden projekt na poziomie root repo).
 * Manualny trigger `AI` dla tagów custom został uruchomiony end-to-end:
   * `projects.runAiTagSuggestions` przetwarza teraz realnie pojedynczy projekt (zamiast samego `queued`).
   * Dopasowanie działa dla tagów custom (`isSystem = false`) i zapisuje sugestie z `Source = Ai`.

@@ -65,7 +65,11 @@ public sealed class ProjectSuggestionHeuristicsService
         var suggestions = new List<DetectedProjectSuggestion>();
         foreach (var root in snapshot.Roots)
         {
-            Collect(root, suggestions, activeSolutionRootPath: null);
+            Collect(
+                root,
+                suggestions,
+                activeSolutionRootPath: null,
+                activeRepositoryRootPath: null);
         }
 
         return suggestions
@@ -77,17 +81,24 @@ public sealed class ProjectSuggestionHeuristicsService
     private static CollectResult Collect(
         DirectoryNode node,
         List<DetectedProjectSuggestion> suggestions,
-        string? activeSolutionRootPath)
+        string? activeSolutionRootPath,
+        string? activeRepositoryRootPath)
     {
         var histogram = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var nodeMarkers = DetectMarkers(node);
         var hasSolutionMarker = nodeMarkers.Contains(".sln", StringComparer.OrdinalIgnoreCase);
+        var hasRepositoryMarker = nodeMarkers.Contains(".git", StringComparer.OrdinalIgnoreCase);
         var currentSolutionRootPath = hasSolutionMarker ? node.Path : activeSolutionRootPath;
+        var currentRepositoryRootPath = hasRepositoryMarker ? node.Path : activeRepositoryRootPath;
         var mergedModuleMarkers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var child in node.Directories)
         {
-            var childResult = Collect(child, suggestions, currentSolutionRootPath);
+            var childResult = Collect(
+                child,
+                suggestions,
+                currentSolutionRootPath,
+                currentRepositoryRootPath);
             Merge(histogram, childResult.Histogram);
             mergedModuleMarkers.UnionWith(childResult.SolutionModuleMarkers);
         }
@@ -116,6 +127,16 @@ public sealed class ProjectSuggestionHeuristicsService
 
         if (nodeMarkers.Count > 0)
         {
+            if (ShouldSuppressRepositoryNestedCandidate(node, nodeMarkers, currentRepositoryRootPath))
+            {
+                return CreateCollectResult(
+                    histogram,
+                    mergedModuleMarkers,
+                    hasSolutionMarker,
+                    activeSolutionRootPath,
+                    currentSolutionRootPath);
+            }
+
             if (ShouldSuppressSolutionModuleCandidate(node, nodeMarkers, currentSolutionRootPath))
             {
                 return CreateCollectResult(
@@ -146,6 +167,16 @@ public sealed class ProjectSuggestionHeuristicsService
         }
 
         if (ShouldSkipHeuristicCandidate(node))
+        {
+            return CreateCollectResult(
+                histogram,
+                mergedModuleMarkers,
+                hasSolutionMarker,
+                activeSolutionRootPath,
+                currentSolutionRootPath);
+        }
+
+        if (ShouldSuppressHeuristicInsideRepository(node, currentRepositoryRootPath))
         {
             return CreateCollectResult(
                 histogram,
@@ -216,6 +247,37 @@ public sealed class ProjectSuggestionHeuristicsService
 
         var hasIndependentMarker = markers.Any(marker => !SolutionModuleMarkers.Contains(marker));
         return !hasIndependentMarker;
+    }
+
+    private static bool ShouldSuppressRepositoryNestedCandidate(
+        DirectoryNode node,
+        IReadOnlyList<string> markers,
+        string? activeRepositoryRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(activeRepositoryRootPath))
+        {
+            return false;
+        }
+
+        if (string.Equals(node.Path, activeRepositoryRootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Nested repository (e.g. git submodule) is treated as independent project boundary.
+        return !markers.Contains(".git", StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldSuppressHeuristicInsideRepository(
+        DirectoryNode node,
+        string? activeRepositoryRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(activeRepositoryRootPath))
+        {
+            return false;
+        }
+
+        return !string.Equals(node.Path, activeRepositoryRootPath, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<string> DetectMarkers(DirectoryNode node)

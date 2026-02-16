@@ -30,6 +30,7 @@ Program lokalny do porządkowania projektów na dysku:
 - **Sugestie projektów:** marker heuristics działają po skanie i zapisują `ProjectSuggestion` do SQLite.
 - **Materializacja projektu:** `ProjectSuggestion` po `Accept` jest materializowany do trwałego `Project` (upsert po `path+kind`).
 - **Heurystyki solution/module:** katalog z `.sln` jest traktowany jako jeden projekt; `*.csproj/*.vcxproj/*.vcproj` pod nim są modułami (nie osobnymi sugestiami), z wyjątkiem zagnieżdżonych `.sln` (osobny projekt).
+- **Heurystyki repo boundary:** katalog z `.git` jest traktowany jako granica repozytorium; kandydaci markerowi i heurystyczni wewnątrz repo są tłumieni, chyba że to nested repo z własnym `.git`.
 - **Status sugestii:** enum `Pending` / `Accepted` / `Rejected`.
 - **Persistencja decyzji:** sugestia ma fingerprint; odrzucone (`Rejected`) wpisy z tym samym (`path`,`kind`,`fingerprint`) są automatycznie pomijane przy kolejnych skanach.
 - **Suppress po akceptacji/materializacji:** kandydat sugerowany heurystycznie jest pomijany, jeśli:
@@ -121,6 +122,7 @@ Semantyka (doprecyzowanie):
 - Jeśli katalog ma `.sln`, to jest kanonicznym kandydatem `ProjectRoot`.
 - Jeśli pod nim są podkatalogi z `*.csproj` / `*.vcxproj`, ich sugestie powinny być scalane/supresowane pod solution.
 - Wyjątek: jeśli wewnątrz jest **osobna, zagnieżdżona `.sln`**, to jest osobny projekt.
+- Repo boundary: jeśli katalog ma `.git`, potomne kandydatury (markerowe i heurystyczne) są tłumione; wyjątek stanowi nested repo z własnym `.git` (osobny projekt).
 
 Niejasne przypadki:
 - folder bez markerów i wiele plików -> `Collection` + opcjonalne `SingleFileMiniProject`.

@@ -336,4 +336,143 @@ public sealed class ProjectSuggestionHeuristicsServiceTests
         results.Select(item => item.Path).Should().Contain(@"D:\old\Workspace\Tools");
         results.Select(item => item.Path).Should().NotContain(@"D:\old\Workspace\MainApp");
     }
+
+    [Fact]
+    public void Detect_treats_git_repository_as_single_project_and_suppresses_nested_candidates()
+    {
+        var snapshot = new ScanSnapshot
+        {
+            Roots =
+            {
+                new DirectoryNode
+                {
+                    Name = "Flashcards",
+                    Path = @"D:\z-pulpitu\Wrapper\Flashcards",
+                    Files =
+                    {
+                        new FileNode { Name = "README.md", Extension = ".md" }
+                    },
+                    Directories =
+                    {
+                        new DirectoryNode { Name = ".git", Path = @"D:\z-pulpitu\Wrapper\Flashcards\.git" },
+                        new DirectoryNode
+                        {
+                            Name = "backend",
+                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\backend",
+                            Files =
+                            {
+                                new FileNode { Name = "Flashcards.sln", Extension = ".sln" }
+                            },
+                            Directories =
+                            {
+                                new DirectoryNode
+                                {
+                                    Name = "src",
+                                    Path = @"D:\z-pulpitu\Wrapper\Flashcards\backend\src",
+                                    Directories =
+                                    {
+                                        new DirectoryNode
+                                        {
+                                            Name = "Flashcards.Api",
+                                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\backend\src\Flashcards.Api",
+                                            Files =
+                                            {
+                                                new FileNode { Name = "Flashcards.Api.csproj", Extension = ".csproj" }
+                                            }
+                                        },
+                                        new DirectoryNode
+                                        {
+                                            Name = "Helpers",
+                                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\backend\src\Helpers",
+                                            Files =
+                                            {
+                                                new FileNode { Name = "ListExtensions.cs", Extension = ".cs" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        new DirectoryNode
+                        {
+                            Name = "frontend",
+                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend",
+                            Files =
+                            {
+                                new FileNode { Name = "package.json", Extension = ".json" }
+                            },
+                            Directories =
+                            {
+                                new DirectoryNode
+                                {
+                                    Name = ".angular",
+                                    Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend\.angular",
+                                    Directories =
+                                    {
+                                        new DirectoryNode
+                                        {
+                                            Name = "cache",
+                                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend\.angular\cache",
+                                            Directories =
+                                            {
+                                                new DirectoryNode
+                                                {
+                                                    Name = "deps",
+                                                    Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend\.angular\cache\deps",
+                                                    Files =
+                                                    {
+                                                        new FileNode { Name = "package.json", Extension = ".json" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                new DirectoryNode
+                                {
+                                    Name = "src",
+                                    Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend\src",
+                                    Directories =
+                                    {
+                                        new DirectoryNode
+                                        {
+                                            Name = "services",
+                                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\frontend\src\services",
+                                            Files =
+                                            {
+                                                new FileNode { Name = "auth.service.ts", Extension = ".ts" }
+                                            }
+                                        }
+                                    },
+                                    Files =
+                                    {
+                                        new FileNode { Name = "index.html", Extension = ".html" },
+                                        new FileNode { Name = "app.ts", Extension = ".ts" }
+                                    }
+                                }
+                            }
+                        },
+                        new DirectoryNode
+                        {
+                            Name = "HostAgent",
+                            Path = @"D:\z-pulpitu\Wrapper\Flashcards\HostAgent",
+                            Files =
+                            {
+                                new FileNode { Name = "HostAgent.sln", Extension = ".sln" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var sut = new ProjectSuggestionHeuristicsService();
+
+        var results = sut.Detect(snapshot);
+
+        results.Should().ContainSingle();
+        results[0].Name.Should().Be("Flashcards");
+        results[0].Path.Should().Be(@"D:\z-pulpitu\Wrapper\Flashcards");
+        results[0].Markers.Should().Contain(".git");
+    }
 }
