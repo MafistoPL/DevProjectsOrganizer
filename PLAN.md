@@ -64,7 +64,8 @@ Program lokalny do porządkowania projektów na dysku:
   - `winapi` jest wykrywany także po sygnale kodowym `WinMain()/WINMAIN`.
   - Dla projektów C/C++ z wykryciem wskaźników generowany jest tag `pointers`.
   - Heurystyki wyznaczają też tag rozmiaru projektu po liczbie linii (`lines-*`).
-- **AI tag suggestions (current runtime):** `projects.runAiTagSuggestions` zwraca `AiTagSuggestionsQueued`; persystencja sugestii AI jest jeszcze backlogiem.
+- **AI tag suggestions (current runtime):** `projects.runAiTagSuggestions` to manualny trigger per projekt; wykrywa dopasowania dla tagów custom (`isSystem=false`) po metadanych projektu i zapisuje `tag_suggestions` z `Source=Ai` (status `Pending`).
+  - AI-run czyści tylko własne `Pending` (`Source=Ai`), więc nie usuwa równoległych `Pending` heurystycznych.
 - **Tag suggestions (UX):** panel ma scope `Pending`/`Accepted`/`Rejected`, toolbar z wyszukiwarką zależną od pola sortowania (`Project`/`Tag`) oraz sortowaniem po projekcie/tagu/dacie (asc/desc); dla `Created` wyszukiwarka jest wyłączona, a domyślny kierunek to `desc` (najnowsze najpierw).
 - **Tag suggestions (archive):** odrzucone sugestie (`Rejected`) można trwale usuwać z archiwum (per-item) z poziomu GUI.
 - **Project tags:** akceptacja sugestii tagu przypina tag do projektu (`project_tags`).

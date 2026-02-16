@@ -575,9 +575,17 @@ export class AppHostBridgeService {
         if (!projectId) {
           return Promise.reject(new Error('Missing project id.'));
         }
+
+        this.eventSubject.next({
+          type: 'tagSuggestions.changed',
+          data: { reason: 'project.aiTagSuggestions', projectId, generatedCount: 0 }
+        });
+
         return Promise.resolve({
           projectId,
           action: 'AiTagSuggestionsQueued',
+          generatedCount: 0,
+          processedTagCount: this.mockTags.filter((item) => !item.isSystem).length,
           queuedAt: new Date().toISOString()
         } as T);
       }

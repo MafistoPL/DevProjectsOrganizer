@@ -1,6 +1,16 @@
 # Backlog - Zrobione
 
 ## Zrobione (ostatnio)
+* Manualny trigger `AI` dla tagów custom został uruchomiony end-to-end:
+  * `projects.runAiTagSuggestions` przetwarza teraz realnie pojedynczy projekt (zamiast samego `queued`).
+  * Dopasowanie działa dla tagów custom (`isSystem = false`) i zapisuje sugestie z `Source = Ai`.
+  * Sugestie AI są zapisywane jako `Pending` i nadal wymagają jawnej akceptacji użytkownika.
+  * Deduplikacja/idempotencja:
+    * `TagSuggestionStore.ReplaceForProjectAsync` wspiera scope źródła (`Heuristic`/`Ai`) i przy AI-run czyści tylko `Pending` z `Source = Ai`.
+    * `Pending` heurystyczne i `Pending` AI nie nadpisują się wzajemnie.
+  * Dodano testy:
+    * `AiTagSuggestionServiceTests` (match po metadanych projektu + brak false-positive dla niepowiązanych tagów),
+    * `TagSuggestionStoreTests` (AI-run podmienia tylko własne `Pending` wpisy).
 * Domknięto deduplikację sugestii projektów po akceptacji/materializacji:
   * `ProjectSuggestionStore.ReplaceForScanAsync` pomija kandydatów, które:
     * mają już materializowany `Project` z tą samą ścieżką (niezależnie od `kind`),

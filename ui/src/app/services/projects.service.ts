@@ -122,8 +122,16 @@ export class ProjectsService {
     );
   }
 
-  async runAiTagSuggestions(projectId: string): Promise<{ action: string }> {
-    return await this.bridge.request<{ action: string }>('projects.runAiTagSuggestions', { projectId });
+  async runAiTagSuggestions(projectId: string): Promise<{
+    action: string;
+    generatedCount?: number;
+    processedTagCount?: number;
+  }> {
+    return await this.bridge.request<{
+      action: string;
+      generatedCount?: number;
+      processedTagCount?: number;
+    }>('projects.runAiTagSuggestions', { projectId });
   }
 
   async rescanProject(projectId: string): Promise<{

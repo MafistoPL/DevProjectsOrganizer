@@ -71,7 +71,8 @@ dotnet run --project src/AppHost/AppHost.csproj
 - `tags.add` only creates a tag entry and reloads tag list; it does not trigger automatic heuristics or AI reprocessing.
 - Tag heuristics run only when explicitly triggered by the user (`Run tag heuristics` per project or global `Apply latest heuristics to all projects` in `Tags`).
 - Heuristics produce only `AssignExisting` suggestions and only for seeded/system tags (`isSystem=true`) matching supported heuristic signals.
-- `projects.runAiTagSuggestions` currently returns queue acknowledgment (`AiTagSuggestionsQueued`) and does not yet persist AI tag suggestions.
+- `projects.runAiTagSuggestions` is a manual per-project action; it generates `AssignExisting` suggestions for custom tags (`isSystem=false`) and persists them as `Pending` with `source=Ai`.
+- AI reprocessing is source-scoped: rerun replaces only pending AI suggestions and does not remove pending heuristic suggestions.
 - Practical consequence: adding a custom tag does not automatically backfill existing projects.
 
 **IPC Contract Guardrails**

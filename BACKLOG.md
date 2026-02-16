@@ -4,13 +4,9 @@
 * Brak aktywnych zadań.
 
 ## Teraz (najbliższy tydzień)
-1. Wdrożyć flow ponownego przetwarzania tagów zgodny z aktualnym zachowaniem.
-     * Heurystyki powinny pozostać ograniczone do sygnałów seedowanych/systemowych; nie sugerować automatycznego dopasowania dla tagów custom po ich utworzeniu.
-     * Dopasowanie tagów custom powinno być AI-driven (manualny trigger), a nie automatyczny heurystyczny backfill.
-2. Zdefiniować UX wsparcia AI dla tagów custom.
-     * Dodać/potwierdzić manualną akcję dopasowania tagów utworzonych przez użytkownika do istniejących projektów przez AI.
-     * Zachować gwarancje idempotencji i deduplikacji dla tworzonych wpisów `tag_suggestions`.
-     * Zachować jawny krok akceptacji użytkownika przed przypięciem tagów.
+1. Uspójnić UX manualnego `AI` dopasowania tagów custom.
+     * Pokazać w GUI wynik `projects.runAiTagSuggestions` (`generatedCount`) zamiast samego komunikatu o kolejce.
+     * Dodać manualny trigger AI-run dostępny także z widoku `Tags` (nie tylko z flow po `Accept` sugestii projektu).
 ## Wkrótce (2-4 tygodnie)
 * Pre-commit: zweryfikować konfigurację w dokumentacji (`core.hooksPath=.githooks`) dla każdego klonu/środowiska.
 * Tryb „nasłuchiwany root” + automatyczne reskany:

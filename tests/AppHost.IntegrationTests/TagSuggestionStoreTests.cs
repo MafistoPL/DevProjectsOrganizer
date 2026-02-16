@@ -372,6 +372,81 @@ public sealed class TagSuggestionStoreTests
         }
     }
 
+    [Fact]
+    public async Task ReplaceForProjectAsync_with_ai_scope_replaces_only_pending_ai_rows()
+    {
+        var (options, db, path) = await RootStoreTests.CreateDbAsync();
+        try
+        {
+            var (project, tag) = await SeedProjectAndTagAsync(db, "aleksandra-site");
+            var now = DateTimeOffset.UtcNow;
+
+            db.TagSuggestions.AddRange(
+                new TagSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ProjectId = project.Id,
+                    TagId = tag.Id,
+                    SuggestedTagName = tag.Name,
+                    Type = TagSuggestionType.AssignExisting,
+                    Source = TagSuggestionSource.Heuristic,
+                    Confidence = 0.8,
+                    Reason = "heuristic baseline",
+                    Fingerprint = "fp-heur-old",
+                    CreatedAt = now.AddMinutes(-2),
+                    Status = TagSuggestionStatus.Pending
+                },
+                new TagSuggestionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ProjectId = project.Id,
+                    TagId = tag.Id,
+                    SuggestedTagName = tag.Name,
+                    Type = TagSuggestionType.AssignExisting,
+                    Source = TagSuggestionSource.Ai,
+                    Confidence = 0.7,
+                    Reason = "ai baseline",
+                    Fingerprint = "fp-ai-old",
+                    CreatedAt = now.AddMinutes(-1),
+                    Status = TagSuggestionStatus.Pending
+                });
+            await db.SaveChangesAsync();
+
+            var store = new TagSuggestionStore(db);
+            var inserted = await store.ReplaceForProjectAsync(
+                project.Id,
+                [
+                    new DetectedTagSuggestion(
+                        tag.Id,
+                        tag.Name,
+                        TagSuggestionType.AssignExisting.ToString(),
+                        TagSuggestionSource.Ai.ToString(),
+                        0.93,
+                        "ai:metadata phrase",
+                        "fp-ai-new",
+                        now)
+                ],
+                TagSuggestionSource.Ai);
+
+            inserted.Should().Be(1);
+
+            await using var checkDb = new AppDbContext(options);
+            var rows = await checkDb.TagSuggestions
+                .AsNoTracking()
+                .Where(item => item.ProjectId == project.Id && item.Status == TagSuggestionStatus.Pending)
+                .OrderBy(item => item.Source)
+                .ToListAsync();
+
+            rows.Should().HaveCount(2);
+            rows.Should().Contain(item => item.Source == TagSuggestionSource.Heuristic && item.Fingerprint == "fp-heur-old");
+            rows.Should().Contain(item => item.Source == TagSuggestionSource.Ai && item.Fingerprint == "fp-ai-new");
+        }
+        finally
+        {
+            await RootStoreTests.DisposeDbAsync(db, path);
+        }
+    }
+
     private static async Task<(ProjectEntity Project, TagEntity Tag)> SeedProjectAndTagAsync(AppDbContext db, string tagName)
     {
         var now = DateTimeOffset.UtcNow;

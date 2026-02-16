@@ -384,12 +384,42 @@ public partial class MainWindow
             return;
         }
 
-        SendResponse(request.Id, request.Type, new
+        try
         {
-            projectId = project.Id,
-            action = "AiTagSuggestionsQueued",
-            queuedAt = DateTimeOffset.UtcNow
-        });
+            var customTags = await _dbContext.Tags
+                .AsNoTracking()
+                .Where(item => !item.IsSystem)
+                .ToListAsync();
+
+            var aiService = new AiTagSuggestionService();
+            var detected = aiService.Detect(project, customTags);
+
+            var store = new TagSuggestionStore(_dbContext);
+            var generated = await store.ReplaceForProjectAsync(
+                project.Id,
+                detected,
+                TagSuggestionSource.Ai);
+
+            SendEvent("tagSuggestions.changed", new
+            {
+                reason = "project.aiTagSuggestions",
+                projectId = project.Id,
+                generatedCount = generated
+            });
+
+            SendResponse(request.Id, request.Type, new
+            {
+                projectId = project.Id,
+                action = "AiTagSuggestionsQueued",
+                generatedCount = generated,
+                processedTagCount = customTags.Count,
+                queuedAt = DateTimeOffset.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            SendError(request.Id, request.Type, ex.Message);
+        }
     }
 
     private async Task<TagHeuristicsRunResult> RunTagHeuristicsForProjectAsync(ProjectEntity project)

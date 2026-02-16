@@ -117,13 +117,14 @@ public sealed class TagSuggestionStore
     public async Task<int> ReplaceForProjectAsync(
         Guid projectId,
         IReadOnlyList<DetectedTagSuggestion> suggestions,
+        TagSuggestionSource pendingScope = TagSuggestionSource.Heuristic,
         CancellationToken cancellationToken = default)
     {
         var existingPending = await _db.TagSuggestions
             .Where(item =>
                 item.ProjectId == projectId
                 && item.Status == TagSuggestionStatus.Pending
-                && item.Source == TagSuggestionSource.Heuristic)
+                && item.Source == pendingScope)
             .ToListAsync(cancellationToken);
         if (existingPending.Count > 0)
         {
